@@ -1,0 +1,42 @@
+<div class="box">
+  <div class="row">
+    <div class="column col-sm-8 col-sm-offset-2">
+      <div class="padding">
+        <h2> <i class="fa fa-users"> </i> Cargas Familiares</h2>
+        
+        <div style="margin-top: 60px;" ng-if="cargado">
+          <div class="container text-center" ng-if="datos.length<=0">
+            <i>No hay trabajadores ingresados</i>
+          </div>
+
+          <table class="table table-striped table-hover table-responsive" ng-if="datos.length>0" style="margin-top: 50px;">
+            <thead>
+              <tr>    
+                <th class="col-sm-2">RUT</th>
+                <th class="col-sm-3">Nombre</th>
+                <th class="col-sm-2">Grupo Familiar</th>
+                <th class="col-sm-1">Cargas</th>
+                <th class="col-sm-3">Cargas Autorizadas</th>
+                <th class="col-sm-1"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr ng-repeat="trabajador in datos">
+                <td>{{ trabajador.rutFormato }}</td>
+                <td>{{ trabajador.nombreCompleto }}</td>
+                <td class="text-center">{{ trabajador.grupoFamiliar }}</td>
+                <td class="text-center">{{ trabajador.cargasFamiliares }}</td>
+                <td class="text-center">{{ trabajador.cargasAutorizadas }}</td>
+                <td>
+                  <a href="" ng-if="accesos.crear && accesos.abierto" ng-click="openCarga(trabajador)"><i class="fa fa-plus-circle"></i></a>
+                  <a href="" ng-click="detalle(trabajador.sid)"><i class="fa fa-search"></i></a>
+                </td>
+              </tr>
+            </tbody>
+          </table>          
+
+        </div>
+      </div>
+    </div>
+  </div>  
+</div>

@@ -1,0 +1,22 @@
+<div class="modal-header">
+  <button type="button" class="close" ng-click="cerrar()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+  <h3 class="modal-title">Centralizar</h3>
+</div>
+<div class="modal-body">
+  <form class="simple-form" id="centralizarForm" name="centralizarForm">
+    <div class="panel panel-default">
+      <div class="panel-heading">Cuentas</div>
+
+      <div class="panel-body" style="margin-bottom: 40px;">
+
+
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<div class="modal-footer">
+  <button class="btn btn-primary" type="button" ng-click="guardar()" ng-disabled="centralizarForm.$invalid">Guardar</button>
+  <button class="btn btn-warning" type="button" ng-click="cerrar()">Cancelar</button>
+</div>

@@ -1,0 +1,49 @@
+-jornadas - calculos
+-descuentos legales (proporcionales? isapre?)
+-tasas cajas ex-regimen (seguro cesantía)
+
+
+-previred: 
+
+-afiliados voluntarios
+
+-periodo hasta
+-tramo (sólo cargas autorizadas?)
+-movimiento de personal(desde-hasta)
+-tipos cargas
+-solicitud trabajador joven
+-reintegro cargas familiares
+
+-afp (sustitutiva, trabajo pesado)1%2%
+-apvi (depositos convenidos)
+-apvc (cotizacion empleador)
+
+-ex-caja (desahucio)
+-descuentos por carga
+-bonos
+
+-fun(obligatorio)
+-adicional voluntaria
+-descuentos caja (normales)
+-descuento ccaf cargas
+
+-sucursal pago mutual
+
+-centro de costos
+
+-lineas adicionales
+
+Tipos de Licencia:
+-1,2,3,4,7 A:Compin, B:Isapre, C:CCAF, D: Empleador    
+-5,6 E: Compin, F: Mutual, G: ISL, H: Empleador
+
+ccaf
+isapre
+empleador
+
+2 tra
+3 emp
+
+causales notificación
+
+20 días de vacaciones, zonas extremas

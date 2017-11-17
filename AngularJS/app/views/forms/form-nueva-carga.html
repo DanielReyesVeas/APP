@@ -1,0 +1,197 @@
+<div class="modal-header">
+  <button type="button" class="close" ng-click="$dismiss()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+  <h3 class="modal-title">{{ titulo }}</h3>
+</div>
+<div class="modal-body">
+  
+  <form class="simple-form" id="cargaForm" name="cargaForm">
+    <div class="panel panel-default">
+      <div class="panel-heading">{{trabajador.nombreCompleto}}</div>
+
+      <div class="panel-body">
+          
+        <fieldset>
+          <legend>Datos Carga Familiar</legend>
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md">
+              <label class="col-sm-3 control-label">Parentesco:</label>
+              <div class="col-sm-5">
+                <select class="form-control form-white" ng-model="carga.parentesco" ng-options="parentesco for parentesco in parentescos">  
+                </select> 
+              </div>
+              <label class="col-sm-3 col-sm-offset-1">
+                <input type="checkbox" ng-model="carga.esCarga" value="true" icheck>Carga
+              </label>
+            </div>
+          </div>          
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md">
+              <label class="col-sm-3 control-label">Tipo de Carga:</label>
+              <div class="col-sm-6">
+                <select class="form-control form-white" name="tipoCarga" ng-model="carga.tipo" ng-options="tipo as tipo.nombre for tipo in tiposCargas">  
+                </select> 
+              </div>
+            </div>
+          </div>    
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md" ng-class="{ 'has-error': errores('rut') || erroresDatos.rut }">
+              <label class="col-sm-3 control-label">RUT:</label>
+              <div class="col-sm-5">
+                <input class="form-control form-white" type="text" rut="carga.rut" ng-model="carga.rut" maxlength="15" placeholder="11.111.111-1" />
+                <span class="help-block" ng-show="errores('rut')">
+                  Obligatorio!
+                </span>
+              </div>
+              <span class="text-danger" ng-if="erroresDatos.rut"><b>{{ erroresDatos.rut[0] }}</b></span>
+            </div>
+          </div>
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md">
+              <label class="col-sm-3 control-label">Nombre Completo:</label>
+              <div class="col-sm-8" style="padding: 0px;">
+                <div class="col-sm-10">
+                  <input ng-model="carga.nombreCompleto" class="form-control form-white" type="text" placeholder="ingrese el nombre completo" >
+                </div>              
+              </div>
+            </div>            
+          </div>
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md">
+              <label class="col-sm-3 control-label">Fecha de Nacimiento:</label>            
+              <div class="col-sm-6" style="padding: 0px;">
+                <div class="col-sm-10">
+                  <div class="input-group"> 
+                    <input type="text" class="form-control form-white" uib-datepicker-popup="dd-MM-yyyy" regularFecha ng-model="carga.fechaNacimiento" is-open="popupFechaNacimientoCarga.opened" datepicker-options="dateOptions" close-text="Close"  />
+                    <span class="input-group-btn">
+                      <button type="button" class="btn btn-default" ng-click="openFechaNacimientoCarga()">
+                        <i class="fa fa-calendar"></i>
+                      </button>
+                    </span>
+                  </div>
+                </div>                          
+              </div>
+            </div>    
+          </div>
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <label class="col-sm-3 control-label">Sexo:</label>
+            <div class="col-sm-3" style="padding: 0px;">
+              <label class="checkbox-inline">
+                <input type="radio" ng-model="carga.sexo" value="f" icheck> Femenino
+              </label>
+            </div>            
+            <div class="col-sm-4">
+              <label class="checkbox-inline">
+                <input type="radio" ng-model="carga.sexo" value="m" icheck> Masculino
+              </label>
+            </div>                            
+          </div>
+
+        </fieldset>     
+      </div>
+    </div>
+  </form>
+
+  <!--<form class="simple-form" id="cargaForm" name="cargaForm">
+    <div class="panel panel-default">
+      <div class="panel-heading">{{trabajador.nombreCompleto}}</div>
+
+      <div class="panel-body">
+          
+        <fieldset>
+          <legend>Datos Carga Familiar</legend>
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md required">
+              <label class="col-sm-3 control-label">Parentesco:</label>
+              <div class="col-sm-5">
+                <select class="form-control form-white" ng-model="carga.parentesco" ng-options="parentesco for parentesco in parentescos">  
+                </select> 
+              </div>
+              <label class="col-sm-3 col-sm-offset-1">
+                <input type="checkbox" ng-model="carga.esCarga" value="true" icheck>Carga
+              </label>
+            </div>
+          </div>          
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md required">
+              <label class="col-sm-3 control-label">Tipo de Carga:</label>
+              <div class="col-sm-6">
+                <select class="form-control form-white" name="tipoCarga" ng-model="carga.tipo" ng-options="tipo as tipo.nombre for tipo in tiposCargas">  
+                </select> 
+              </div>
+            </div>
+          </div>    
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md required" ng-class="{ 'has-error': errores('rut') || erroresDatos.rut }">
+              <label class="col-sm-3 control-label">RUT:</label>
+              <div class="col-sm-5">
+                <input class="form-control form-white" type="text" rut="carga.rut" ng-model="carga.rut" maxlength="15" placeholder="11.111.111-1" />
+                <span class="help-block" ng-show="errores('rut')">
+                  Obligatorio!
+                </span>
+              </div>
+              <span class="text-danger" ng-if="erroresDatos.rut"><b>{{ erroresDatos.rut[0] }}</b></span>
+            </div>
+          </div>
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md required">
+              <label class="col-sm-3 control-label">Nombre Completo:</label>
+              <div class="col-sm-8" style="padding: 0px;">
+                <div class="col-sm-10">
+                  <input ng-model="carga.nombreCompleto" class="form-control form-white" type="text" placeholder="ingrese el nombre completo" >
+                </div>              
+              </div>
+            </div>            
+          </div>
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <div class="form-group form-group-md">
+              <label class="col-sm-3 control-label required">Fecha de Nacimiento:</label>            
+              <div class="col-sm-6" style="padding: 0px;">
+                <div class="col-sm-10">
+                  <div class="input-group"> 
+                    <input type="text" class="form-control form-white" uib-datepicker-popup="dd-MM-yyyy" regularFecha ng-model="carga.fechaNacimiento" is-open="popupFechaNacimientoCarga.opened" datepicker-options="dateOptions" close-text="Close"  />
+                    <span class="input-group-btn">
+                      <button type="button" class="btn btn-default" ng-click="openFechaNacimientoCarga()">
+                        <i class="fa fa-calendar"></i>
+                      </button>
+                    </span>
+                  </div>
+                </div>                          
+              </div>
+            </div>    
+          </div>
+
+          <div class="col-sm-12" style="margin-top: 20px;">
+            <label class="col-sm-3 control-label required">Sexo:</label>
+            <div class="col-sm-3" style="padding: 0px;">
+              <label class="checkbox-inline">
+                <input type="radio" ng-model="carga.sexo" value="f" required icheck> Femenino
+              </label>
+            </div>            
+            <div class="col-sm-4">
+              <label class="checkbox-inline">
+                <input type="radio" ng-model="carga.sexo" value="m" required icheck> Masculino
+              </label>
+            </div>                            
+          </div>
+
+        </fieldset>     
+      </div>
+    </div>
+  </form>-->
+
+</div>
+
+<div class="modal-footer">
+  <button class="btn btn-primary" type="button" ng-click="guardar(carga, trabajador)" ng-disabled="cargaForm.$invalid" ng-show="!isEdit">Agregar Carga Familiar</button>
+  <button class="btn btn-primary" type="button" ng-click="guardar(carga, trabajador)" ng-disabled="cargaForm.$invalid" ng-show="isEdit">Modificar Carga Familiar</button>
+  <button class="btn btn-warning" type="button" ng-click="$dismiss()">Cancelar</button> 
+</div>

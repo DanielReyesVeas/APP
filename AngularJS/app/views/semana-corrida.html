@@ -1,0 +1,51 @@
+<div class="box">
+  <div class="row">
+    <div class="column col-sm-12">
+      <h2> <i class="fa fa-calendar"> </i> Trabajadores Semana Corrida</h2>       
+
+      <div class="col-sm-12" style="margin-top: 20px;">
+        <a ng-click="calendario()" ng-if="accesos.crear && accesos.abierto" href="" class="btn btn-primary btn-xs pull-right"><i class="fa fa-calendar"></i> Calendario Semana Corrida</a>
+      </div>
+
+
+      <div class="col-sm-12" style="margin-top: 60px;" ng-if="cargado">
+
+        <div class="text-center" ng-if="datos.length<=0">
+          <i>No hay trabajadores con Semana Corrida</i>
+        </div>
+
+        <table class="table table-striped table-hover" ng-if="datos.length>0">
+          <thead>
+            <tr>    
+              <th class="col-sm-1">#</th>
+              <th class="col-sm-2">RUT</th>
+              <th ng-class="{ 'col-sm-2' : semanas>4, 'col-sm-3' : semanas===4 }">Nombre</th>              
+              <th class="col-sm-1">Semana 1</th>
+              <th class="col-sm-1">Semana 2</th>
+              <th class="col-sm-1">Semana 3</th>
+              <th class="col-sm-1">Semana 4</th>
+              <th ng-if="semanas>4" class="col-sm-1">Semana 5</th>
+              <th class="col-sm-1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="dato in datos">
+              <td>{{ $index + 1 }}</td>
+              <td>{{ dato.rutFormato }}</td>
+              <td>{{ dato.nombreCompleto }}</td>
+              <td>${{ dato.semanaCorrida.semanas[0].comision | currency:'':0 }}</td>
+              <td>${{ dato.semanaCorrida.semanas[1].comision | currency:'':0 }}</td>
+              <td>${{ dato.semanaCorrida.semanas[2].comision | currency:'':0 }}</td>
+              <td>${{ dato.semanaCorrida.semanas[3].comision | currency:'':0 }}</td>
+              <td ng-if="semanas>4" >${{ dato.semanaCorrida.semanas[4].comision | currency:'':0 }}</td>
+              <td>
+                <a href="" ng-click="detalle(dato)"><i class="fa fa-search"></i></a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>          
+    </div>
+  </div>  
+</div>

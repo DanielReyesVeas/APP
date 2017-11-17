@@ -1,0 +1,112 @@
+<div class="header">
+    <h2>Administración de <b>Empresas</b> <span style="font-size:18px; font-weight: bold; color:#0a0 !important;" class="text-success">(Max: {{ globals.currentUser.max }} )</span></h2>
+</div>
+<!-- /.row -->
+<div class="row">
+    <div class="col-md-12">        
+        <div class="form-group">
+            <label for="orden" class="control-label col-md-1">
+                Ordenar:
+            </label>
+            <div class="col-md-3">
+                <select ng-model="orden" ng-init="orden='codigo'" id="orden" class="form-control form-white form-white">
+                    <option value="rut">Rut</option>
+                    <option value="razonSocial">Razon Social</option>
+                    <option value="nombreFantasia">Nombre de Fantasía</option>
+                </select>
+            </div>
+            <label for="filtro" class="col-md-1 control-label" >Filtrar:</label>
+            <div class="col-md-4">
+              <input id="filtro" type="text"  class="form-control form-white form-white" ng-model="filtro">
+            </div>
+            <div ng-if="datos.length < globals.currentUser.max" class="col-md-3" style="text-align:right; padding-right:0px;">
+                <button class="btn btn-primary btn-md" ng-click="open();">
+                    <i class="fa fa-plus"></i> Nuevo
+                </button>
+                <button ng-if="false" class="btn btn-primary btn-md" ng-click="getEmpresas();">
+                    <i class="fa fa-plus"></i> Empresas
+                </button>
+
+                <div class="btn-group" ng-if="false">
+	            	<button class="btn btn-dark btn-md" type="button" data-toggle="dropdown" aria-expanded="false">
+	                    <i class="fa fa-wrench"></i> Herramientas <span class="caret"></span>
+	                </button>
+	                <ul class="dropdown-menu dropdown-menu-sm" role="menu">
+	                    <li>
+	                        <a ng-href="{{ constantes.URL + 'empresas/exportar/excel/2007' }}">
+	                            <i class="fa fa-file-excel-o"></i> Exportar a Excel 2007 (.xlsx)
+	                        </a>
+	                    </li>
+	                    <li>
+	                        <a ng-href="{{ constantes.URL + 'empresas/exportar/excel/97' }}">
+	                            <i class="fa fa-file-excel-o"></i> Exportar a Excel 97/2003 (.xls)
+	                        </a>
+	                    </li>
+	                    <li>
+	                        <a ng-href="{{ constantes.URL + 'empresas/exportar/pdf' }}" >
+	                            <i class="fa fa-file-pdf-o"></i> Exportar PDF (.pdf)
+	                        </a>
+	                    </li>
+	                    <li>
+	                        <a href="javascript:void(0);">
+	                            <i class="fa fa-print"></i> Imprimir
+	                        </a>
+	                    </li>
+	                </ul>
+                </div>
+            </div>
+
+            <div ng-if="datos.length >= globals.currentUser.max" class="col-md-3" style="text-align: right;">
+                <span  class="text-danger" >
+                    <strong>No Puede crear más empresas</strong>
+                </span>
+            </div>
+        </div>
+        <div class="form-group">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th></th>
+                        <th class="col-sm-2">Rut</th>
+                        <th class="col-sm-4">Razón Social</th>
+                        <th class="col-sm-4">Nombre de Fantasía</th>
+                        <th class="col-sm-2">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="dato in datos | orderBy:orden | filter:filtro">
+                        <td>{{ $index + 1 }}</td>
+                        <td>
+                            <img ng-if="dato.logo" ng-src="{{ dato.logo }}" style="max-width: 50px; max-height: 30px" />
+                            <i ng-if="!dato.logo" class="icon-cloud-upload"></i>
+                        </td>
+                        <td>{{ dato.rut }}</td>
+                        <td>{{ dato.razonSocial }}</td>
+                        <td>{{ dato.nombreFantasia }}</td>
+                        <td>                          
+                            <a class="btn-acciones btn btn-default" href="javascript:void(0);" ng-click="editar(dato);" uib-tooltip-html="toolTipEdicion(dato.razonSocial)">
+                                <i class="fa fa-pencil"></i>
+                            </a>
+                            <a class="btn-acciones btn btn-danger" href="javascript:void(0);" confirmation-click="eliminar( dato );" confirmation-needed="La Empresa <b>{{ dato.razonSocial }}</b> será eliminada del sistema. ¿Desea continuar?">
+                                <i class="fa fa-remove"></i>
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+                <tr style="background:none !important;">
+                    <td colspan="10">
+                        <strong>Usted tiene {{ datos.length }} empresas de un máximo de {{ globals.currentUser.max }}</strong>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script type="text/ng-template" id="customTemplate.html">
+    <a style="cursor: pointer;">
+        <span ng-bind-html="match.label | uibTypeaheadHighlight:query"></span>
+    </a>
+</script>
+
