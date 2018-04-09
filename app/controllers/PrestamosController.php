@@ -71,14 +71,24 @@ class PrestamosController extends \BaseController {
             //$prestamo->fecha = $datos['fecha'];
             $prestamo->glosa = $datos['glosa'];
             $prestamo->nombre_liquidacion = $datos['nombre_liquidacion'];
-            //$prestamo->prestamo_caja = $datos['prestamo_caja'];
-            //$prestamo->leassing_caja = $datos['leassing_caja'];
+            $prestamo->prestamo_caja = $datos['prestamo_caja'];
+            $prestamo->leassing_caja = $datos['leassing_caja'];
             $prestamo->moneda = $datos['moneda'];
             $prestamo->monto = $datos['monto'];
             $prestamo->cuotas = $datos['cuotas'];
             $prestamo->primera_cuota = $datos['primera_cuota'];
             $prestamo->ultima_cuota = $datos['ultima_cuota'];
             $prestamo->save();
+            
+            if($prestamo->moneda=='$'){
+                $monto = $prestamo->moneda . $prestamo->monto;
+            }else{
+                $monto = $prestamo->monto . $prestamo->moneda;
+            }
+            
+            $trabajador = $prestamo->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-prestamos', $trabajador->id, $ficha->nombreCompleto(), 'Create', $prestamo->id, $monto, NULL);
             
             foreach($datos['detalle_cuotas'] as $cuota)
             {
@@ -124,8 +134,8 @@ class PrestamosController extends \BaseController {
             'primeraCuota' => $prestamo->primera_cuota,
             'glosa' => $prestamo->glosa,
             'nombreLiquidacion' => $prestamo->nombre_liquidacion,
-            //'prestamoCaja' => $prestamo->prestamo_caja ? true : false,
-            //'leassingCaja' => $prestamo->leassing_caja ? true : false,
+            'prestamoCaja' => $prestamo->prestamo_caja ? true : false,
+            'leassingCaja' => $prestamo->leassing_caja ? true : false,
             'moneda' => $prestamo->moneda,
             'monto' => $prestamo->monto,
             'cuotas' => $prestamo->cuotas,
@@ -165,14 +175,44 @@ class PrestamosController extends \BaseController {
             //$prestamo->fecha = $datos['fecha'];
             $prestamo->glosa = $datos['glosa'];
             $prestamo->nombre_liquidacion = $datos['nombre_liquidacion'];
-            //$prestamo->prestamo_caja = $datos['prestamo_caja'];
-            //$prestamo->leassing_caja = $datos['leassing_caja'];
+            $prestamo->prestamo_caja = $datos['prestamo_caja'];
+            $prestamo->leassing_caja = $datos['leassing_caja'];
             $prestamo->moneda = $datos['moneda'];
             $prestamo->monto = $datos['monto'];
             $prestamo->cuotas = $datos['cuotas'];
             $prestamo->primera_cuota = $datos['primera_cuota'];
             $prestamo->ultima_cuota = $datos['ultima_cuota'];
             $prestamo->save();
+            
+            if($prestamo->moneda=='$'){
+                $monto = $prestamo->moneda . $prestamo->monto;
+            }else{
+                $monto = $prestamo->monto . $prestamo->moneda;
+            }
+            
+            $misCuotas = Cuota::where('prestamo_id', $prestamo->id)->get();
+            
+            if($misCuotas){
+                foreach($misCuotas as $miCuota){
+                    $miCuota->delete();
+                }
+            }
+                
+            foreach($datos['detalle_cuotas'] as $cuota){
+                $nuevaCuota = new Cuota();
+                $nuevaCuota->sid = Funciones::generarSID();
+                $nuevaCuota->prestamo_id = $prestamo->id;
+                $nuevaCuota->monto = $cuota['monto'];
+                $nuevaCuota->moneda = $prestamo->moneda;
+                $nuevaCuota->mes = $cuota['mes'];
+                $nuevaCuota->numero = $cuota['numero'];
+                $nuevaCuota->save();
+            }
+        
+            $trabajador = $prestamo->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-prestamos', $trabajador->id, $ficha->nombreCompleto(), 'Update', $prestamo->id, $monto, NULL);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -197,7 +237,19 @@ class PrestamosController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
+        
         $prestamo = Prestamo::whereSid($sid)->first();
+        
+        if($prestamo->moneda=='$'){
+            $monto = $prestamo->moneda . $prestamo->monto;
+        }else{
+            $monto = $prestamo->monto . $prestamo->moneda;
+        }
+        
+        $trabajador = $prestamo->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#ingreso-prestamos', $trabajador->id, $ficha->nombreCompleto(), 'Delete', $prestamo['id'], $monto, NULL);
+                
         $prestamo->eliminarPrestamo();
         
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
@@ -209,8 +261,8 @@ class PrestamosController extends \BaseController {
             //'fecha' => Input::get('fecha'),
             'glosa' => Input::get('glosa'),
             'nombre_liquidacion' => Input::get('nombreLiquidacion'),
-            //'prestamo_caja' => Input::get('prestamoCaja'),
-            //'leassing_caja' => Input::get('leassingCaja'),
+            'prestamo_caja' => Input::get('prestamoCaja'),
+            'leassing_caja' => Input::get('leassingCaja'),
             'moneda' => Input::get('moneda'),
             'monto' => Input::get('monto'),
             'cuotas' => Input::get('cuotas'),

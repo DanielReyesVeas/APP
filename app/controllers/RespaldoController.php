@@ -1,7 +1,5 @@
 <?php
 
-use App\libraries\backup;
-
 class RespaldoController extends \BaseController {
 
 	public function index()
@@ -56,7 +54,7 @@ class RespaldoController extends \BaseController {
 			$pathToFile = public_path()."/".$archivoZip;
 			$data = array(
 					'archivo' => $archivoZip,
-					'cliente' => $datosCliente['NOMBRE']
+					'cliente' => $datosCliente['EMPRESA']
 			);
 
 
@@ -85,11 +83,11 @@ class RespaldoController extends \BaseController {
 			// se envia a los correos electronicos
 			Mail::send('correo_respaldos', $data, function($message) use($pathToFile, $datosCliente, $archivoStories)
 			{
-				$message->to('danielreyesveas@gmail.com');
+				$message->to('rrhh.easysystems@gmail.com')->cc('backup@rrhh-es.com');
 				$message->attach($pathToFile);
 				if( $archivoStories ){
 					$message->attach($archivoStories);
-				}
+				} 
 				$message->subject("EasySystems RRHH Respaldo Base Datos ". $datosCliente['NOMBRE']);
 			});
 

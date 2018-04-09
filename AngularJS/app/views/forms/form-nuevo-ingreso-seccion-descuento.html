@@ -5,9 +5,12 @@
   <h3 class="modal-title">Ingreso de Descuentos por Sección</h3>
 </div>
 <div class="modal-body centered">
+
   <form class="form-horizontal" name="descuentoSeccionForm" id="descuentoSeccionForm">
     <div class="panel panel-default">
+
       <div class="panel-heading">{{descuento.nombre}}</div>
+
       <div class="panel-body">     
         <div class="form-group">     
           <label class="col-sm-2 control-label">Sección:</label>
@@ -27,8 +30,8 @@
               <select class="form-control form-white" ng-model="monto.moneda" ng-options="mon.nombre as mon.nombre for mon in monedas" ng-change="cambiarMoneda()" > 
               </select>
             </div>                            
-            <div class="col-sm-6" style="padding: 0px;">
-              <input ng-model="monto.global" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ monedaActualGlobal }}" >
+            <div class="col-sm-6" style="padding: 0px;" ng-if="monto.montoGlobal">
+              <input ng-model="monto.global" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ monedaActualGlobal }}" required>
             </div>                       
             <div class="col-sm-1" ng-if="monto.global && monto.moneda!=='$'">
               ${{ convertir(monto.global, monto.moneda) | currency:'':0  }}
@@ -55,13 +58,13 @@
               <td>{{ trabajador.rutFormato }}</td>
               <td>{{ trabajador.nombreCompleto }}</td>
               <td>
-                <div class="col-sm-12" ng-show="datos.descuento[$index].check && !monto.montoGlobal">
+                <div class="col-sm-12" ng-if="datos.descuento[$index].check && !monto.montoGlobal">
                   <div class="col-sm-4">
                     <select class="form-control form-white" ng-model="datos.descuento[$index].moneda" ng-options="mon.nombre as mon.nombre for mon in monedas" ng-change="cambiarMonedaIndividual($index)" > 
                     </select>
                   </div>                            
-                  <div class="col-sm-6" style="padding: 0px;">
-                    <input ng-model="datos.descuento[$index].monto" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ datos.descuento[$index].monedaActual }}">
+                  <div class="col-sm-6" style="padding: 0px;" ng-if="!monto.montoGlobal">
+                    <input ng-model="datos.descuento[$index].monto" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ datos.descuento[$index].monedaActual }}" required>
                   </div>                    
                   <div class="col-sm-2" ng-show="datos.descuento[$index].monto && datos.descuento[$index].moneda!=='$'">
                     ${{ convertir(datos.descuento[$index].monto, datos.descuento[$index].moneda)  | currency:'':0  }}

@@ -8,6 +8,30 @@ class DetalleApvc extends Eloquent {
         return $this->belongsTo('Liquidacion','liquidacion_id');
     }
     
+    public function afp(){
+        return $this->belongsTo('Glosa', 'afp_id');
+    }
+
+    public function cuenta($cuentasCodigo, $centroCostoId){
+        $descuento = TipoDescuento::where('estructura_descuento_id', 3)->where('nombre', $this->afp_id)->first();
+        if($descuento){
+            $codigo = $descuento->cuenta($cuentasCodigo, $centroCostoId);
+            if($codigo){
+                return $codigo;
+            }
+        }
+        
+        return null;
+    }
+    
+    public function codigoAfp()
+    {
+        $afp = $this->afp_id;
+        $codigo = Codigo::find($afp)->codigo;
+        
+        return $codigo;
+    }
+    
     static function errores($datos){
          
         $rules = array(

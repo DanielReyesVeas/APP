@@ -65,9 +65,15 @@ class HorasExtraController extends \BaseController {
             $horaExtra->trabajador_id = $datos['trabajador_id'];
             $horaExtra->mes_id = $datos['mes_id'];
             $horaExtra->cantidad = $datos['cantidad'];
+            $horaExtra->factor = $datos['factor'];
             $horaExtra->fecha = $datos['fecha'];
             $horaExtra->observacion = $datos['observacion'];
             $horaExtra->save();
+            
+            $trabajador = $horaExtra->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-horas-extra', $trabajador->id, $ficha->nombreCompleto(), 'Create', $horaExtra->id, $horaExtra->cantidad, NULL);
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -97,6 +103,7 @@ class HorasExtraController extends \BaseController {
             'id' => $horaExtra->id,
             'sid' => $horaExtra->sid,            
             'fecha' => $horaExtra->fecha,
+            'factor' => $horaExtra->factor,
             'cantidad' => $horaExtra->cantidad,
             'observacion' => $horaExtra->observacion,
             'trabajador' => $horaExtra->trabajadorHoraExtra()
@@ -130,10 +137,16 @@ class HorasExtraController extends \BaseController {
         if(!$errores and $horaExtra){
             $horaExtra->trabajador_id = $datos['trabajador_id'];
             $horaExtra->mes_id = $datos['mes_id'];
+            $horaExtra->factor = $datos['factor'];
             $horaExtra->cantidad = $datos['cantidad'];
             $horaExtra->fecha = $datos['fecha'];
             $horaExtra->observacion = $datos['observacion'];
             $horaExtra->save();
+            
+            $trabajador = $horaExtra->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-horas-extra', $trabajador->id, $ficha->nombreCompleto(), 'Update', $horaExtra->id, $horaExtra->cantidad, NULL);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -158,7 +171,13 @@ class HorasExtraController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        HoraExtra::whereSid($sid)->delete();
+        $horaExtra = HoraExtra::whereSid($sid)->first();
+        
+        $trabajador = $horaExtra->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#ingreso-horas-extra', $trabajador->id, $ficha->nombreCompleto(), 'Delete', $horaExtra['id'], $horaExtra['cantidad'], NULL);
+            
+        $horaExtra->delete();
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     
@@ -167,6 +186,7 @@ class HorasExtraController extends \BaseController {
             'trabajador_id' => Input::get('idTrabajador'),
             'mes_id' => Input::get('idMes'),
             'fecha' => Input::get('fecha'),
+            'factor' => Input::get('factor'),
             'cantidad' => Input::get('cantidad'),
             'observacion' => Input::get('observacion')
         );

@@ -27,6 +27,75 @@ class Empresa extends \Eloquent {
     public function cuentasCorrientes(){
         return $this->hasMany('EmpresaCtaCte', 'empresa_id')->orderBy('id', 'ASC');
     }
+
+    public function misZonas()
+    {
+        $bd = $this->base_datos;
+        Config::set('database.default', $bd );     
+        $zonas = DB::table('zonas_impuesto_unico')->get();
+        $detalles = array();
+        
+        if(count($zonas)){
+            foreach($zonas as $zona){
+                $detalles[] = array(
+                    'id' => $zona->id,
+                    'sid' => $zona->sid,
+                    'nombre' => $zona->nombre,
+                    'porcentaje' => $zona->porcentaje
+                );
+            }
+        }
+
+        return $detalles;
+    }
+  
+    public function url()
+    {   
+        $url = $this->url;
+        
+        if(!$url){
+            $sub = str_replace('rrhhes_', '', Config::get('cliente.CLIENTE.EMPRESA'));
+            $dominio = 'https://' . $sub . '.rrhh-es.com';
+            $url = $dominio . '/#/login/' . $this->portal;
+        }
+        
+        return $url;
+    }
+    
+    public function misCentrosCosto()
+    {
+        $centrosCosto = array();
+        $centros = DB::table('variables_sistema')->where('variable', 'centro_costo')->orderBy('valor1')->get();
+        if(count($centros)){
+            foreach($centros as $centro){
+                $centrosCosto[] = array(
+                    'nivel' => $centro->valor1,
+                    'nombre' => $centro->valor2
+                );
+            }
+        }
+        
+        return $centrosCosto;
+    }
+    
+    public function updateCentrosCosto($centros)
+    {
+        $centrosCosto = array();
+        $i = 1;
+        $bd = $this->base_datos;
+        Config::set('database.default', $bd ); 
+        DB::table('variables_sistema')->where('variable', 'centro_costo')->delete();
+        foreach($centros as $centro){
+            $centrosCosto[] = array(
+                'variable' => 'centro_costo',
+                'valor1' => $i,
+                'valor2' => $centro['nombre']
+            );
+            $i++;
+        }
+        DB::table('variables_sistema')->insert($centrosCosto);
+        Config::set('database.default', 'principal' ); 
+    }
     
     public function domicilio()
     {
@@ -38,9 +107,109 @@ class Empresa extends \Eloquent {
         return $domicilio;
     }
     
-    static function isCME()
-    {        
-        return true;
+    public function comprobarZonas($zonas)
+    {
+        $bd = $this->base_datos;
+        Config::set('database.default', $bd );     
+        $misZonas = DB::table('zonas_impuesto_unico')->get();
+        $update = array();
+        $create = array();
+        $destroy = array();
+        
+        if($misZonas){
+            foreach($zonas as $zona)
+            {
+                $isUpdate = false;
+                
+                if(isset($zona['id'])){    
+                    foreach($misZonas as $miZona)
+                    {
+                        if($zona['id'] == $miZona->id){
+                            $update[] = array(
+                                'id' => $zona['id'],
+                                'sid' => $zona['sid'],
+                                'nombre' => $zona['nombre'],
+                                'porcentaje' => $zona['porcentaje']
+                            );
+                            $isUpdate = true;
+                        }                        
+                        if($isUpdate){
+                            break;
+                        }
+                    }
+                }else{
+                    $create[] = array(
+                        'nombre' => $zona['nombre'],
+                        'porcentaje' => $zona['porcentaje']
+                    );
+                }
+            }
+
+            foreach($misZonas as $miZona)
+            {
+                $isZona = false;
+                foreach($zonas as $zona)
+                {
+                    if(isset($zona['id'])){
+                        if($miZona->id == $zona['id']){
+                            $isZona = true;                        
+                        }
+                    }
+                }
+                if(!$isZona){
+                    $destroy[] = array(
+                        'id' => $miZona->id,
+                        'sid' => $miZona->sid
+                    );
+                }
+            }
+        }else{
+            $create = $zonas;
+        }
+        
+        $datos = array(
+            'create' => $create,
+            'update' => $update,
+            'destroy' => $destroy
+        );
+        
+        return $datos;
+    }
+    
+    static function columna($nivel)
+    {
+        $columna = DB::table('variables_sistema')->where('variable', 'centro_costo')->where('valor1', $nivel)->first();
+        if($columna){
+            return $columna->valor2;
+        }
+        
+        return null;
+    }
+    
+    public function porcentajeMutual()
+    {
+        $idAnio = \Session::get('mesActivo')->idAnio;
+        $fijo = 0;
+        $adicional = 0;
+        $extraordinaria = 0;
+        $sanna = 0;
+        
+        $mutual = Mutual::where('anio_id', $idAnio)->first();
+        if($mutual){
+            $fijo = $mutual->tasa_fija;
+            $adicional = $mutual->tasa_adicional;
+            $extraordinaria = $mutual->extraordinaria;
+            $sanna = $mutual->sanna;
+        }
+        
+        $datos = array(
+            'fijo' => $fijo,
+            'adicional' => $adicional,
+            'extraordinaria' => $extraordinaria,
+            'sanna' => $sanna
+        );
+        
+        return $datos;
     }
     
     static function isMutual()
@@ -72,7 +241,171 @@ class Empresa extends \Eloquent {
         }
         return false;
     }
+    
+    public function ultimoMes()
+    {
+        $datosMesDeTrabajo = new stdClass();          
+        $mesDeTrabajo = MesDeTrabajo::orderBy('mes', 'DESC')->first();
+        
+        
+        if($mesDeTrabajo){
+            $datosMesDeTrabajo->id = $mesDeTrabajo->id;
+            //$datosMesDeTrabajo->mes = date('Y-m-d', strtotime('+' . 1 . ' month', strtotime($mesDeTrabajo->mes)));
+            $datosMesDeTrabajo->mes = $mesDeTrabajo->mes;
+            $datosMesDeTrabajo->mesActivo = $mesDeTrabajo->nombre . ' ' . $mesDeTrabajo->anioRemuneracion->anio;
+            $datosMesDeTrabajo->nombre = $mesDeTrabajo->nombre;
+            $datosMesDeTrabajo->idAnio = $mesDeTrabajo->anio_id;
+            $datosMesDeTrabajo->anio = $mesDeTrabajo->anioRemuneracion->anio;
+            //$datosMesDeTrabajo->fechaRemuneracion = date('Y-m-d', strtotime('+' . 1 . ' month', strtotime($mesDeTrabajo->fecha_remuneracion)));
+            $datosMesDeTrabajo->fechaRemuneracion = $mesDeTrabajo->fecha_remuneracion;
+        }
+        
+        return $datosMesDeTrabajo;
+    }
+    
+    public function primerMes()
+    {
+        $datosMesDeTrabajo = new stdClass();          
+        $mesDeTrabajo = MesDeTrabajo::orderBy('mes')->first();
+        
+        if($mesDeTrabajo){
+            $datosMesDeTrabajo->id = $mesDeTrabajo->id;
+            $datosMesDeTrabajo->mes = $mesDeTrabajo->mes;
+            $datosMesDeTrabajo->mesActivo = $mesDeTrabajo->nombre . ' ' . $mesDeTrabajo->anioRemuneracion->anio;
+            $datosMesDeTrabajo->nombre = $mesDeTrabajo->nombre;
+            $datosMesDeTrabajo->idAnio = $mesDeTrabajo->anio_id;
+            $datosMesDeTrabajo->anio = $mesDeTrabajo->anioRemuneracion->anio;
+            $datosMesDeTrabajo->fechaRemuneracion = $mesDeTrabajo->fecha_remuneracion;
+        }
+        
+        return $datosMesDeTrabajo;
+    }
+	
+    public function centrosAsignables()
+    {
+        $centros = CentroCosto::listaCentrosCosto();
+        $count = 0;
+        $niveles = $this->niveles_centro_costo;
 
+        if(count($centros)){
+            foreach($centros as $centro){
+                if($centro['nivel']==$niveles){
+                    $count++;
+                }
+            }
+        }
+
+        return $count;
+    }
+    
+    public function mutuales()
+    {
+        Config::set('database.default', $this->base_datos);
+        $mutuales = Mutual::all();
+        $datos = array();
+        
+        if($mutuales->count()){
+            foreach($mutuales as $mutual){
+                $datos[] = array(
+                    'id' => $mutual->id,
+                    'mutual' => array(
+                        'id' => $mutual->mutual->id,
+                        'nombre' => $mutual->mutual->glosa
+                    ),
+                    'codigo' => $mutual->codigo,
+                    'tasaFija' => $mutual->tasa_fija,
+                    'tasaAdicional' => $mutual->tasa_adicional,
+                    'extraordinaria' => $mutual->extraordinaria,
+                    'sanna' => $mutual->sanna,
+                    'idAnio' => $mutual->anio_id,
+                    'anio' => array(
+                        'id' => $mutual->anioRemuneracion->id,
+                        'nombre' => $mutual->anioRemuneracion->anio
+                    )                        
+                );
+            }
+        }
+        Config::set('database.default', 'principal');
+        
+        return $datos;
+    }
+    
+    public function cajas()
+    {
+        Config::set('database.default', $this->base_datos);
+        $cajas = Caja::all();
+        $datos = array();
+        
+        if($cajas->count()){
+            foreach($cajas as $caja){
+                $datos[] = array(
+                    'id' => $caja->id,
+                    'caja' => array(
+                        'id' => $caja->caja->id,
+                        'nombre' => $caja->caja->glosa
+                    ),
+                    'codigo' => $caja->codigo,
+                    'idAnio' => $caja->anio_id,
+                    'anio' => array(
+                        'id' => $caja->anioRemuneracion->id,
+                        'nombre' => $caja->anioRemuneracion->anio
+                    )                        
+                );
+            }
+        }
+        Config::set('database.default', 'principal');
+        
+        return $datos;
+    }
+    
+    public function actualizarMutuales($mutuales)
+    {
+        if(count($mutuales)){
+            foreach($mutuales as $mutual){
+                $nuevaMutual = Mutual::find($mutual['id']);
+                $nuevaMutual->codigo = $mutual['codigo'];
+                $nuevaMutual->extraordinaria = $mutual['extraordinaria'];
+                $nuevaMutual->sanna = $mutual['sanna'];
+                $nuevaMutual->tasa_fija = $mutual['tasaFija'];
+                $nuevaMutual->tasa_adicional = $mutual['tasaAdicional'];
+                $nuevaMutual->mutual_id = $mutual['mutual']['id'];
+                $nuevaMutual->save();
+            }
+        }
+    }
+    
+    public function actualizarCajas($cajas)
+    {
+        if(count($cajas)){
+            foreach($cajas as $caja){
+                $nuevaCaja = Caja::find($caja['id']);
+                $nuevaCaja->codigo = $caja['codigo'];
+                $nuevaCaja->caja_id = $caja['caja']['id'];
+                $nuevaCaja->save();
+            }
+        }
+    }
+    
+    public function aniosEmpresa()
+    {
+        Config::set('database.default', $this->base_datos);
+        $anios = AnioRemuneracion::all();
+        $datos = array();
+        
+        if($anios->count()){
+            foreach($anios as $anio){
+                $datos[] = array(
+                    'id' => $anio->id,
+                    'nombre' => $anio->anio                   
+                );
+            }
+        }
+            
+        Config::set('database.default', 'principal');
+        
+        return $datos;
+    }
+    
     static function errores($datos){
 
         if($datos['id']){

@@ -59,7 +59,11 @@ class InasistenciasController extends \BaseController {
     public function store()
     {
         $datos = $this->get_datos_formulario();
-        $errores = Inasistencia::errores($datos);      
+        $errores = null;  
+        
+        if(!$datos['dias']){
+            $datos['dias'] = (($datos['hasta'] - $datos['desde']) + 1);
+        }
         
         if(!$errores){
             $inasistencia = new Inasistencia();
@@ -72,6 +76,11 @@ class InasistenciasController extends \BaseController {
             $inasistencia->motivo = $datos['motivo'];
             $inasistencia->observacion = $datos['observacion'];
             $inasistencia->save();
+            
+            $trabajador = $inasistencia->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-inasistencias', $trabajador->id, $ficha->nombreCompleto(), 'Create', $inasistencia->id, $inasistencia->dias, NULL);
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -143,6 +152,11 @@ class InasistenciasController extends \BaseController {
             $inasistencia->motivo = $datos['motivo'];
             $inasistencia->observacion = $datos['observacion'];
             $inasistencia->save();
+            
+            $trabajador = $inasistencia->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-inasistencias', $trabajador->id, $ficha->nombreCompleto(), 'Update', $inasistencia->id, $inasistencia->dias, NULL);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -167,7 +181,14 @@ class InasistenciasController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        Inasistencia::whereSid($sid)->delete();
+        $inasistencia = Inasistencia::whereSid($sid)->first();
+        
+        $trabajador = $inasistencia->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#ingreso-inasistencias', $trabajador->id, $ficha->nombreCompleto(), 'Delete', $inasistencia['id'], $inasistencia['dias'], NULL);
+        
+        $inasistencia->delete();
+        
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     

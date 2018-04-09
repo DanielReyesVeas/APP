@@ -13,7 +13,7 @@ class JornadasController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#jornadas');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#jornadas');
         $jornadas = Jornada::all();
         $listaJornadas=array();
         if( $jornadas->count() ){
@@ -169,9 +169,25 @@ class JornadasController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        Jornada::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $jornada = Jornada::whereSid($sid)->first();
+        
+        $errores = $jornada->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#jornadas', $jornada->id, $jornada->nombre, 'Delete');       
+            $jornada->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){

@@ -40,7 +40,7 @@ angular.module('angularjsApp')
       }
     }
 
-    $scope.cargarDatos = function(){
+    function cargarDatos(){
       $rootScope.cargando = true;
       $scope.cargado = false;
       var datos = tipoDescuento.ingresoDescuentos().get();
@@ -54,7 +54,7 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.cargarDatos();
+    cargarDatos();
     
     $scope.reporteTrabajadores = function(){
       $rootScope.cargando = true;
@@ -62,6 +62,21 @@ angular.module('angularjsApp')
       datos.$promise.then(function(response){
         openReporteTrabajadores(response);
         $rootScope.cargando = false;
+      });
+    }
+
+    $scope.importarPlanillaMasivo = function () {
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-importar-planilla-descuento-masivo.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormImportarPlanillaDescuentoMasivoCtrl',
+        size: 'lg'
+      });
+      miModal.result.then(function (mensaje) {
+        Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
+        cargarDatos();
+      }, function () {
+        javascript:void(0)
       });
     }
 
@@ -98,7 +113,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (object) {
         Notification.success({message: object.mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -118,7 +133,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (object) {
         Notification.success({message: object.mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -138,7 +153,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (mensaje) {
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -172,7 +187,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (mensaje) {
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -192,7 +207,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (mensaje) {
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -206,6 +221,69 @@ angular.module('angularjsApp')
         $rootScope.cargando=false;
       });
     };    
+
+  })
+  .controller('FormImportarPlanillaDescuentoMasivoCtrl', function ($scope, fecha, $uibModal, $uibModalInstance, $http, $filter, constantes, $rootScope, Notification, Upload, descuento) {
+    
+    $scope.error = {};
+    $scope.datos=[];
+    $scope.listaErrores=[];
+    $scope.constantes = constantes;
+
+    $scope.convertirFechaFormato = function(date){
+      return fecha.convertirFechaFormato(date);
+    }
+
+    $scope.$watch('files', function() {
+      $scope.upload($scope.files);
+    });
+
+    $scope.upload = function(files) {   
+      if(files) {              
+        $scope.error = {};
+        $scope.datos=[];
+        $scope.listaErrores=[];
+        var file = files;
+        Upload.upload({
+          url: constantes.URL + 'descuentos/planilla/importar-masivo',
+          data: { file : file}
+        }).progress(function (evt) {
+          var progressPercentage = parseInt(100.0 * evt.loaded / evt.total);
+          $scope.dynamic = progressPercentage;
+        }).success(function (data){
+          $scope.dynamic=0;
+          if( data.success ){
+              $scope.datos = data.datos.datos;
+              $scope.encabezado = data.datos.encabezado;
+              console.log($scope.datos)
+              console.log($scope.datos.length)
+          }else{
+            if( data.errores ){
+              $scope.listaErrores = data.errores;
+              Notification.error({message: 'Errores en los datos del archivo', title: 'Mensaje del Sistema'});
+            }else{
+              Notification.error({message: data.mensaje, title: 'Mensaje del Sistema'});                            
+            }
+          }
+        });                
+      }
+    };
+
+    $scope.confirmarDatos = function(){
+      $rootScope.cargando=true;
+      var obj = { datos : $scope.datos, descuentos : $scope.encabezado };
+      var datos = descuento.importarMasivo().post({}, obj);
+      datos.$promise.then(function(response){
+        if(response.success){
+          $uibModalInstance.close(response.mensaje);
+        }else{
+          // error
+          $scope.erroresDatos = response.errores;
+          Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
+        }
+        $rootScope.cargando = false;
+      });
+    }
 
   })
   .controller('FormImportarPlanillaDescuentoCtrl', function ($scope, $uibModal, $uibModalInstance, $http, $filter, constantes, $rootScope, Notification, Upload, objeto, descuento) {
@@ -281,6 +359,30 @@ angular.module('angularjsApp')
       });
     }
 
+    $scope.confirmacion = function(des, tipo){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaDescuentoCtrl',
+        resolve: {
+          des: function () {
+            return des;          
+          },
+          objeto: function () {
+            return tipo;          
+          },
+          tipo: function () {
+            return tipo;          
+          }
+        }
+      });
+     miModal.result.then(function (object) {
+        $scope.eliminar(object.descuento, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
+
     $scope.cargarDatos = function(des){
       $rootScope.cargando=true;
       var datos = tipoDescuento.datos().get({sid: des});
@@ -320,13 +422,17 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.eliminar = function(des, tipo){
+    $scope.eliminar = function(des, tipo, todosMeses){
       $rootScope.cargando=true;
-      $scope.result = descuento.datos().delete({ sid: des.sid });
+      if(todosMeses){
+        $scope.result = descuento.datos().delete({ sid: des.sid });
+      }else{
+        $scope.result = descuento.eliminarPermanente().post({}, des);        
+      }
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
-          $scope.cargarDatos(tipo);
+          $scope.cargarDatos(tipo.sid);
         }
       });
     };
@@ -353,8 +459,9 @@ angular.module('angularjsApp')
 
   })
   .controller('FormReporteTrabajadorDescuentosCtrl', function ($scope, $uibModal, $uibModalInstance, objeto, $http, $filter, $rootScope, Notification, trabajador, descuento) {
-    $scope.trabajador = objeto.datos;
-    $scope.accesos = objeto.accesos;
+    
+    $scope.trabajador = angular.copy(objeto.datos);
+    $scope.accesos = angular.copy(objeto.accesos);
 
     $scope.cargarDatos = function(trab){
       $rootScope.cargando=true;
@@ -366,6 +473,30 @@ angular.module('angularjsApp')
       });
     }; 
 
+    $scope.confirmacion = function(des, trab){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaDescuentoCtrl',
+        resolve: {
+          des: function () {
+            return des;          
+          },
+          objeto: function () {
+            return trab;          
+          },
+          tipo: function () {
+            return des.tipo;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.eliminar(object.descuento, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
+
     $scope.editar = function(des){
       $rootScope.cargando=true;
       var datos = descuento.datos().get({sid: des.sid});
@@ -375,9 +506,13 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.eliminar = function(des, trab){
+    $scope.eliminar = function(des, trab, todosMeses){
       $rootScope.cargando=true;
-      $scope.result = descuento.datos().delete({ sid: des.sid });
+      if(todosMeses){
+        $scope.result = descuento.datos().delete({ sid: des.sid });
+      }else{
+        $scope.result = descuento.eliminarPermanente().post({}, des);        
+      }
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
@@ -502,6 +637,7 @@ angular.module('angularjsApp')
     }
 
     $scope.cambiarSeccion = function(){
+      $scope.datos.todos = false;
       if(!$scope.objeto.descuento.seccion){
         $scope.datos = angular.copy(trabajadores); 
         crearModels();
@@ -510,6 +646,7 @@ angular.module('angularjsApp')
 
     $scope.seleccionarSeccion = function(seccion){      
       getTrabajadoresSeccion(seccion.sid);
+      $scope.datos.todos = false;
     }
 
     function crearModels(){
@@ -592,8 +729,34 @@ angular.module('angularjsApp')
       $scope.objeto.descuento.anual = false;
     }
 
-    $scope.ingresoMasivoDescuento = function(){
+    $scope.confirmacion = function(des, descuento){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaIngresoDescuentoCtrl',
+        resolve: {
+          des: function () {
+            return des;          
+          },
+          objeto: function () {
+            return descuento;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.ingresoMasivoDescuento(object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
+
+    $scope.ingresoMasivoDescuento = function(todosMeses){
+
       var ingresoMasivo = { descuentos : [] };
+      var mes = null;
+      if($scope.objeto.descuento.permanente && !todosMeses){
+        mes = $scope.mesActual.mes;
+      }
       $rootScope.cargando=true;
 
       for(var i=0, len=$scope.datos.trabajadores.length; i<len; i++){
@@ -621,7 +784,7 @@ angular.module('angularjsApp')
           }else{
             $scope.datos.trabajadores[i].mes_id = null;
             $scope.datos.trabajadores[i].mes = null;
-            $scope.datos.trabajadores[i].desde = null;
+            $scope.datos.trabajadores[i].desde = mes;
             $scope.datos.trabajadores[i].hasta = null;
           }
 
@@ -645,36 +808,12 @@ angular.module('angularjsApp')
 
     // Fecha 
 
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
-
     $scope.dateOptions = {
-      dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: new Date(2020, 5, 22),
-      minDate: new Date(),
+      minDate: new Date(1900, 1, 1),
       startingDay: 1
     };  
-
-    function disabled(data) {
-      var date = data.date,
-      mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
 
     $scope.openFechaHasta = function() {
       $scope.popupFechaHasta.opened = true;
@@ -687,37 +826,19 @@ angular.module('angularjsApp')
       format: "mm/yyyy"
     };
 
-    $scope.setDate = function(year, month) {
-      $scope.fecha = new Date(year, month);
-    };
-
     $scope.format = ['MMMM-yyyy'];
 
     $scope.popupFechaHasta = {
       opened: false
     };
 
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
-
   })
   .controller('FormReporteTrabajadoresDescuentoCtrl', function ($scope, $uibModal, $uibModalInstance, objeto, $http, $filter, $rootScope, trabajador, Notification, descuento) {
 
     $scope.mostrar = false;
     $scope.datos = angular.copy(objeto.datos);
-
+    $scope.accesos = angular.copy(objeto.accesos);
+    
     function cargarDatosTrabajador(sid){
       $rootScope.cargando=true;
       $scope.mostrar = false;
@@ -727,6 +848,30 @@ angular.module('angularjsApp')
         $scope.accesos = response.accesos;
         $rootScope.cargando=false;
         $scope.mostrar = true;
+      });
+    }
+
+    $scope.confirmacion = function(des, trab){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaDescuentoCtrl',
+        resolve: {
+          des: function () {
+            return des;          
+          },
+          objeto: function () {
+            return trab;          
+          },
+          tipo: function () {
+            return des.tipo;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.eliminar(object.descuento, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
       });
     }
 
@@ -743,9 +888,13 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.eliminar = function(des, trab){
+    $scope.eliminar = function(des, trab, todosMeses){
       $rootScope.cargando=true;
-      $scope.result = descuento.datos().delete({ sid: des.sid });
+      if(todosMeses){
+        $scope.result = descuento.datos().delete({ sid: des.sid });
+      }else{
+        $scope.result = descuento.eliminarPermanente().post({}, des);        
+      }
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
@@ -775,7 +924,47 @@ angular.module('angularjsApp')
     }
 
   })
-  .controller('FormIngresoDescuentoCtrl', function ($scope, $uibModalInstance, objeto, $http, $filter, $rootScope, trabajador, Notification, descuento, fecha, moneda) {
+  .controller('FormAdvertenciaDescuentoCtrl', function ($scope, $http, des, tipo, $rootScope, $uibModalInstance, objeto, $uibModal, $filter) {
+
+    $scope.titulo = 'Eliminar Descuento';
+    $scope.mensaje = 'El Descuento ' + tipo.nombre + ' es de tipo Permanente.';
+    $scope.mensaje2 = '¿Desea eliminarlo sólo para los <b>meses posteriores</b> o para <b>todos los meses del sistema</b> (incluidos los meses anteriores)?';
+    $scope.isOK = true;
+    $scope.isCerrar = true;
+    $scope.isExclamation = true;
+    $scope.ok = 'Sólo meses posteriores';
+    $scope.cancel = 'Todos los meses';
+
+    $scope.aceptar = function(){
+      $uibModalInstance.close({ todosMeses : false, descuento : des, objeto : objeto });
+    }
+
+    $scope.cerrar = function(){
+      $uibModalInstance.close({ todosMeses : true, descuento : des, objeto : objeto });
+    }
+
+  })
+  .controller('FormAdvertenciaIngresoDescuentoCtrl', function ($scope, $http, des, $rootScope, $uibModalInstance, objeto, $uibModal, $filter) {
+
+    $scope.titulo = 'Ingreso Descuento';
+    $scope.mensaje = 'El Descuento ' + objeto.nombre + ' será ingresado de forma Permanente.';
+    $scope.mensaje2 = '¿Desea que este sea asignado <b>a partir de este mes</b> en adelante o para <b>todos los meses del sistema</b> (incluidos los meses anteriores)?';
+    $scope.isOK = true;
+    $scope.isCerrar = true;
+    $scope.isExclamation = true;
+    $scope.ok = 'A partir de este mes';
+    $scope.cancel = 'Todos los meses';
+
+    $scope.aceptar = function(){
+      $uibModalInstance.close({ todosMeses : false, descuento : des, objeto : objeto });
+    }
+
+    $scope.cerrar = function(){
+      $uibModalInstance.close({ todosMeses : true, descuento : des, objeto : objeto });
+    }
+
+  })
+  .controller('FormIngresoDescuentoCtrl', function ($scope, $uibModal, $uibModalInstance, objeto, $http, $filter, $rootScope, trabajador, Notification, descuento, fecha, moneda) {
     
     $scope.monedaActual = 'pesos'; 
 
@@ -792,6 +981,27 @@ angular.module('angularjsApp')
     $scope.uf = $rootScope.globals.indicadores.uf;
     $scope.utm = $rootScope.globals.indicadores.utm;
     $scope.mesActual = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
+
+    $scope.confirmacion = function(des, descuento){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaIngresoDescuentoCtrl',
+        resolve: {
+          des: function () {
+            return des;          
+          },
+          objeto: function () {
+            return descuento;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.ingresoIndividualDescuento(object.descuento, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
 
     $scope.cambiarMes = function(mes){
       if(mes==='mensual'){
@@ -821,21 +1031,28 @@ angular.module('angularjsApp')
       $scope.objeto.descuento.anual = false;
     }
 
+    $scope.fechaActual = fecha.convertirFecha($scope.mesActual.mes);
+
     if(objeto.trabajador){
       $scope.objeto = {};
       $scope.objeto.descuento = { trabajador : { nombreCompleto : objeto.trabajador.nombreCompleto, id : objeto.trabajador.id, sid : objeto.trabajador.sid} , monto : objeto.monto, sid : objeto.sid, moneda : objeto.moneda, mensual : objeto.porMes, rangoMeses : objeto.rangoMeses, permanente : objeto.permanente, anual : objeto.todosAnios };
       $scope.trabajador = objeto.trabajador;
       $scope.descuento = objeto.tipo;
+      $scope.objeto.descuento.mes = fecha.convertirFecha(objeto.mes.mes);  
 
-      if($scope.objeto.descuento.mensual){
-        $scope.objeto.descuento.mes = fecha.convertirFecha(objeto.mes.mes);
-        $scope.objeto.descuento.hasta = null;
-      }else if($scope.objeto.descuento.rangoMeses){
-        $scope.objeto.descuento.mes = fecha.convertirFecha(objeto.desde);
+      if($scope.objeto.descuento.rangoMeses){
+        $scope.objeto.descuento.rangoHasta = fecha.convertirFecha(objeto.hasta);
+        $scope.fechaDesde = fecha.convertirFecha(objeto.desde);
+      }else if($scope.objeto.descuento.permanente){
+        $scope.fechaDesde = fecha.convertirFecha($scope.mesActual.mes);
+        $scope.objeto.descuento.desde = fecha.convertirFecha(objeto.desde);
         $scope.objeto.descuento.hasta = fecha.convertirFecha(objeto.hasta);
       }else{
-        $scope.objeto.descuento.mes = null;
-        $scope.objeto.descuento.hasta = null;
+        $scope.fechaDesde = fecha.convertirFecha($scope.mesActual.mes);
+        $scope.objeto.descuento.desde = fecha.convertirFecha(objeto.desde);
+        $scope.objeto.descuento.hasta = fecha.convertirFecha(objeto.hasta);
+        $scope.fechaActual = $scope.objeto.descuento.mes;
+        $scope.objeto.descuento.idMes = objeto.mes.id;
       }
 
       switch($scope.objeto.descuento.moneda){
@@ -855,8 +1072,9 @@ angular.module('angularjsApp')
       $scope.titulo = 'Modificación Descuento';
     }else{
       $scope.descuento = objeto;
+      $scope.fechaDesde = fecha.convertirFecha($scope.mesActual.mes);
       $scope.objeto = {};
-      $scope.objeto.descuento = { moneda : $scope.monedas[0].nombre, mensual : true, rangoMeses : false, permanente : false, anual : false, mes : fecha.convertirFecha($scope.mesActual.mes), desde : fecha.convertirFecha($scope.mesActual.mes) };
+      $scope.objeto.descuento = { moneda : $scope.monedas[0].nombre, mensual : true, rangoMeses : false, permanente : false, anual : false, mes : fecha.convertirFecha($scope.mesActual.mes), desde : null };
       $scope.mostrar = false;
       $scope.isEdit = false;
       $scope.titulo = 'Ingreso Individual Descuento';
@@ -893,26 +1111,35 @@ angular.module('angularjsApp')
       $scope.mostrar = true;
     }
 
-    $scope.ingresoIndividualDescuento = function(obj, des){
+    $scope.ingresoIndividualDescuento = function(obj, des, todosMeses){
       $rootScope.cargando=true;
       var response;
-      var Descuento = { idTrabajador : obj.trabajador.id, porMes : obj.mensual, rangoMeses : obj.rangoMeses, permanente : obj.permanente, todosAnios : obj.anual, idTipoDescuento : des.id, moneda : obj.moneda, monto : obj.monto };
+      var Descuento = { idTrabajador : obj.trabajador.id, porMes : obj.mensual, idMes : null, mes : null, desde : null, hasta : null, rangoMeses : obj.rangoMeses, permanente : obj.permanente, todosAnios : obj.anual, idTipoDescuento : des.id, moneda : obj.moneda, monto : obj.monto, todosMeses : false };
 
-      if(Descuento.porMes){
-        Descuento.idMes = $scope.mesActual.id;
-        Descuento.mes = $scope.mesActual.mes;
-        Descuento.desde = null;
-        Descuento.hasta = null;
-      }else if(Descuento.rangoMeses){
-        Descuento.idMes = null;
-        Descuento.mes = null;
-        Descuento.desde = obj.mes;
-        Descuento.hasta = obj.hasta;
+      if(obj.sid){
+        if(Descuento.porMes){
+          Descuento.idMes = obj.idMes;
+          Descuento.mes = obj.mes;
+        }else if(Descuento.rangoMeses){
+          Descuento.desde = $scope.fechaDesde;
+          Descuento.hasta = obj.rangoHasta;
+        }else{
+          Descuento.desde = obj.desde;
+          Descuento.hasta = obj.hasta;
+        }
       }else{
-        Descuento.idMes = null;
-        Descuento.mes = null;
-        Descuento.desde = null;
-        Descuento.hasta = null;
+        if(Descuento.porMes){
+          Descuento.idMes = $scope.mesActual.id;
+          Descuento.mes = $scope.mesActual.mes;
+        }else if(Descuento.rangoMeses){
+          Descuento.desde = obj.mes;
+          Descuento.hasta = obj.rangoHasta;
+        }else{
+          if(!todosMeses){
+            Descuento.desde = $scope.mesActual.mes;
+          }
+        }
+        Descuento.todosMeses = todosMeses;
       }
 
       if( obj.sid ){
@@ -921,7 +1148,6 @@ angular.module('angularjsApp')
         response = descuento.datos().create({}, Descuento);
       }
       
-
       response.$promise.then(
         function(response){
           if(response.success){
@@ -938,39 +1164,23 @@ angular.module('angularjsApp')
 
     // Fecha 
 
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
-
     $scope.dateOptions = {
-      dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: new Date(2020, 5, 22),
-      minDate: new Date(),
+      minDate: new Date(1900, 1, 1),
       startingDay: 1
     };  
 
-    function disabled(data) {
-      var date = data.date,
-        mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
-
     $scope.openFechaHasta = function() {
       $scope.popupFechaHasta.opened = true;
+    };
+
+    $scope.openFechaRangoHasta = function() {
+      $scope.popupFechaRangoHasta.opened = true;
+    };
+
+    $scope.openFechaDesde = function() {
+      $scope.popupFechaDesde.opened = true;
     };
 
     $scope.dateOptionsMes = {
@@ -980,30 +1190,19 @@ angular.module('angularjsApp')
       format: "mm/yyyy"
     };
 
-    $scope.setDate = function(year, month) {
-      $scope.fecha = new Date(year, month);
-    };
-
     $scope.format = ['MMMM-yyyy'];
 
     $scope.popupFechaHasta = {
       opened: false
     };
 
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
+    $scope.popupFechaDesde = {
+      opened: false
+    };
+
+    $scope.popupFechaRangoHasta = {
+      opened: false
+    };
 
   });
 

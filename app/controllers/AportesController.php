@@ -15,9 +15,10 @@ class AportesController extends \BaseController {
         }
         $empresa = \Session::get('empresa');
         
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#gestion-cuentas');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#gestion-cuentas');
         $aportes = Aporte::all();
         $cuentas = Cuenta::listaCuentas();
+        $listaCentrosCostos = CentroCosto::listaCentrosCostoCuentas();
         $listaAportes = array();
         $listaHaberesImp = array();
         $listaHaberesNoImp = array();
@@ -34,6 +35,7 @@ class AportesController extends \BaseController {
         $listaSeguroCesantiaTrabajador = array();
         $listaCuentasAhorroAfps = array();
         $listaExCajas = array();
+        $listaGenerales = array();
         $haberes = TipoHaber::orderBy('codigo')->get();
         $descuentos = TipoDescuento::orderBy('codigo')->get();
         
@@ -108,6 +110,7 @@ class AportesController extends \BaseController {
                         'id' => $descuento->id,
                         'sid' => $descuento->sid,
                         'cuenta' => $descuento->cuenta($cuentas),
+                        'a' => $descuento,
                         'nombre' => $descuento->nombreIsapre()
                     );
                 }else if($descuento->estructura_descuento_id<3){
@@ -148,7 +151,7 @@ class AportesController extends \BaseController {
                         'id' => $aporte->id,
                         'sid' => $aporte->sid,
                         'cuenta' => $aporte->cuenta($cuentas),
-                        'nombre' => 'Aporte Empleador AFP ' . $aporte->afp()
+                        'nombre' => 'SIS AFP ' . $aporte->afp()
                     );
                 }else if($aporte->tipo_aporte==4){
                     $listaAfpsTrabajador[]=array(
@@ -178,6 +181,13 @@ class AportesController extends \BaseController {
                         'cuenta' => $aporte->cuenta($cuentas),
                         'nombre' => 'Seguro Cesantía Empleador AFP ' . $aporte->afp()
                     );
+                }else if($aporte->tipo_aporte>6){
+                    $listaGenerales[]=array(
+                        'id' => $aporte->id,
+                        'sid' => $aporte->sid,
+                        'cuenta' => $aporte->cuenta($cuentas),
+                        'nombre' => $aporte->nombre
+                    );
                 }
             }
         }
@@ -192,6 +202,7 @@ class AportesController extends \BaseController {
                 'eliminar' => true
             ),
             'aportes' => $listaAportes,
+            'generales' => $listaGenerales,
             'afpsEmpleador' => $listaAfpsEmpleador,
             'afpsTrabajador' => $listaAfpsTrabajador,
             'seguroCesantiaTrabajador' => $listaSeguroCesantiaTrabajador,
@@ -207,7 +218,7 @@ class AportesController extends \BaseController {
             'apvcs' => $listaApvcs,
             'ccafs' => $listaCCAFs,
             'salud' => $listaSalud,
-            'isCuentas' => Aporte::isCuentas()
+            'centrosCostos' => $listaCentrosCostos
         );
         
         return Response::json($datos);
@@ -264,8 +275,9 @@ class AportesController extends \BaseController {
     {
         $aporte = Aporte::whereSid($sid)->first();
         $cuentas = Cuenta::listaCuentas();
+        
         if($aporte->tipo_aporte==2){
-            $nombre = 'Aporte Empleador AFP ' . $aporte->afp();
+            $nombre = 'SIS AFP ' . $aporte->afp();
         }else if($aporte->tipo_aporte==4){
             $nombre = 'Aporte Trabajador AFP ' . $aporte->afp();
         }else if($aporte->tipo_aporte==5){
@@ -284,7 +296,41 @@ class AportesController extends \BaseController {
         
         $datos = array(
             'datos' => $datosAporte,
-            'cuentas' => $cuentas
+            'cuentas' => array_values($cuentas)
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function cuentaAporteCentroCosto($sid)
+    {
+        $aporte = Aporte::whereSid($sid)->first();
+        $cuentas = Cuenta::listaCuentas();
+        
+        if($aporte->tipo_aporte==2){
+            $nombre = 'SIS AFP ' . $aporte->afp();
+        }else if($aporte->tipo_aporte==4){
+            $nombre = 'Aporte Trabajador AFP ' . $aporte->afp();
+        }else if($aporte->tipo_aporte==5){
+            $nombre = 'Seguro Cesantía Trabajador AFP ' . $aporte->afp();
+        }else if($aporte->tipo_aporte==6){
+            $nombre = 'Seguro Cesantía Empleador AFP ' . $aporte->afp();
+        }else{
+            $nombre = $aporte->nombre;
+        }
+        
+        $listaCentrosCostos = CentroCosto::listaCentrosCostoCuentas($aporte->id, 'aporte', true, $cuentas);
+        
+        $datosAporte=array(
+            'id' => $aporte->id,
+            'sid' => $aporte->sid,
+            'nombre' => $nombre
+        );
+        
+        $datos = array(
+            'datos' => $datosAporte,
+            'cuentas' => array_values($cuentas),
+            'centrosCostos' => $listaCentrosCostos
         );
         
         return Response::json($datos);
@@ -343,6 +389,39 @@ class AportesController extends \BaseController {
             'success' => true,
             'mensaje' => "La Información fue actualizada correctamente",
             'sid' => $aporte->sid
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function updateCuentaCentroCosto()
+    {
+        $datos = Input::all();
+        
+        $ccc = CuentaCentroCosto::where('concepto_id', $datos['idConcepto'])->where('concepto', $datos['concepto'])->get();
+        
+        if($ccc->count()){
+            foreach($ccc as $c){
+                $c->delete();
+            }
+        }
+        
+        foreach($datos['centrosCosto'] as $dato){
+            if($dato['cuenta']){
+                $cuentaCentroCosto = new CuentaCentroCosto();
+                $cuentaCentroCosto->centro_costo_id = $dato['id'];
+                $cuentaCentroCosto->cuenta_id = $dato['cuenta']['id'];
+                $cuentaCentroCosto->concepto_id = $datos['idConcepto'];
+                $cuentaCentroCosto->concepto = $datos['concepto'];
+                $cuentaCentroCosto->save();
+            }
+        }
+
+        
+        $respuesta = array(
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente",
+            'ccc' => $ccc
         );
         
         return Response::json($respuesta);

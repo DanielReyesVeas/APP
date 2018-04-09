@@ -55,6 +55,234 @@ class Liquidacion extends Eloquent {
     public function documento(){
         return $this->belongsTo('Documento', 'documento_id');
     }        
+	
+    public function centroCosto(){
+        return $this->belongsTo('CentroCosto', 'centro_costo_id');
+    }  
+    
+    public function generarCuerpo()
+    {
+        $mes = \Session::get('mesActivo');
+        $semanaCorrida = $this->semanaCorrida();
+        $tasaAfp = $this->tasaAfp();
+        $detalles = $this->misDetalles();
+        $empleado = $this->trabajador->ficha();
+        
+        $miLiquidacion = array(
+            'mes' => $mes->nombre . ' del ' . $mes->anio,
+            'empresa' => array(
+                'razon_social' => $this->empresa_razon_social
+            ),
+            'rutEmpresa' => Funciones::formatear_rut($this->empresa_rut),
+            'rutFormato' => Funciones::formatear_rut($this->trabajador_rut),
+            'nombreCompleto' => $this->trabajador_nombres . ' ' . $this->trabajador_apellidos,
+            'cargo' => array(
+                'nombre' => $this->trabajador_cargo
+            ),
+            'seccion' => array(
+                'nombre' => $this->trabajador_seccion
+            ),
+            'fechaIngreso' => $this->trabajador_fecha_ingreso,
+            'tipoContrato' => array(
+                'nombre' => $this->tipo_contrato
+            ),
+            'sueldoBase' => $this->sueldo_base,
+            'colacion' => array(
+                'monto' => $this->colacion
+            ),
+            'movilizacion' => array(
+                'monto' => $this->movilizacion
+            ),
+            'viatico' => array(
+                'monto' => $this->viatico
+            ),
+            'afp' => array(
+                'nombre' => $this->detalleAfp ? $this->detalleAfp->afp->glosa : ""
+            ),
+            'prevision' => array(
+                'id' => $this->prevision_id,
+            ),
+            'seguroDesempleo' => $this->seguro_cesantia ? true : false,
+            'isapre' => array(
+                'id' => $this->detalleSalud ? $this->detalleSalud->salud_id : 240,
+                'nombre' =>  $this->detalleSalud ? $this->detalleSalud->isapre->glosa : ""
+            ),
+            'cotizacionIsapre' => 0,
+            'diasTrabajados' => $this->dias_trabajados,
+            'sueldo' => $this->sueldo,
+            'gratificacion' => $this->gratificacion,
+            'horasExtra' => array(
+                'cantidad' => $this->horas_extra,
+                'total' => $this->total_horas_extra
+            ),
+            'imponibles' => $this->imponibles,
+            'totalHaberes' => $this->total_haberes,
+            'cargasFamiliares' => array(
+                'monto' => $this->total_cargas
+            ),
+            'noImponibles' => $this->no_imponibles,
+            'semanaCorrida' => $semanaCorrida,
+            'isSemanaCorrida' => $semanaCorrida ? true : false,
+            'rentaImponible' => $this->renta_imponible,
+            'tasaAfp' => $tasaAfp['tasaAfp'],
+            'tasaSis' => $tasaAfp['tasaSis'],
+            'totalAfp' => $this->detalleAfp ? $this->detalleAfp->cotizacion : 0,
+            'totalSalud' => array(
+                'total' => $this->detalleSalud ? ($this->detalleSalud->cotizacion_obligatoria + $this->detalleSalud->cotizacion_adicional) : 0,
+                'obligatorio' => $this->detalleSalud ? $this->detalleSalud->cotizacion_obligatoria : 0,
+                'adicional' => $this->detalleSalud ? $this->detalleSalud->cotizacion_adicional : 0
+            ),
+            'totalSeguroCesantia' => array(
+                'total' => $this->detalleSeguroCesantia ? $this->detalleSeguroCesantia->aporte_trabajador : 0
+            ),
+            'totalDescuentosPrevisionales' => $this->total_descuentos_previsionales,
+            'totalDescuentos' => $this->total_descuentos,
+            'baseImpuestoUnico' => $this->base_impuesto_unico,
+            'tramoImpuesto' => $this->tramo_impuesto,
+            'impuestoDeterminado' => $this->impuesto_determinado,
+            'totalOtrosDescuentos' => $this->total_otros_descuentos,
+            'otrosImponibles' => $this->otros_imponibles,
+            'apvs' => $this->apvs(),
+            'haberesImponibles' => $detalles['imponibles'],
+            'haberesNoImponibles' => $detalles['noImponibles'],
+            'descuentos' => $detalles['descuentos'],
+            'prestamos' => $detalles['prestamos'],
+            'sueldoLiquidoPalabras' => strtoupper(Funciones::convertirPalabras($this->sueldo_liquido)),
+            'sueldoLiquido' => $this->sueldo_liquido,
+            'banco' => $empleado->banco ? $empleado->banco->nombre : "",
+            'cuenta' => $empleado->numero_cuenta ? $empleado->numero_cuenta : "",
+            'sis' => $tasaAfp['sis'],
+            'observacion' => $this->observacion,
+            'nombreDocumento' => $this->documento->nombre,
+            'aliasDocumento' => $this->documento->alias,
+            'a' => $detalles
+        );    
+        
+        $view = View::make('pdf.liquidacion', [
+            'liquidacion' => $miLiquidacion
+        ]);
+        $html = $view->render();
+        
+        return $html;
+    }
+    
+    public function misDetalles()
+    {
+        $detalles = $this->detalles;
+        $imponibles = array();
+        $noImponibles = array();
+        $descuentos = array();
+        $prestamos = array();
+        
+        if($detalles->count()){
+            foreach($detalles as $detalle){
+                if($detalle->tipo_id==1){
+                    if($detalle->tipo=='imponible'){
+                        $imponibles[] = array(
+                            'tipo' => array(
+                                'id' => $detalle->detalle_id,
+                                'nombre' => $detalle->nombre                    
+                            ),
+                            'montoPesos' => $detalle->valor
+                        );
+                    }else if($detalle->tipo=='no imponible'){
+                        $noImponibles[] = array(
+                            'tipo' => array(
+                                'id' => $detalle->detalle_id,
+                                'nombre' => $detalle->nombre                    
+                            ),
+                            'montoPesos' => $detalle->valor
+                        );
+                    }
+                }else if($detalle->tipo_id==2){
+                    $descuentos[] = array(
+                        'tipo' => array(
+                            'id' => $detalle->detalle_id,
+                            'nombre' => $detalle->nombre                    
+                        ),
+                        'montoPesos' => $detalle->valor
+                    );
+                }else if($detalle->tipo_id==4){
+                    $prestamos[] = array(
+                        'glosa' => $detalle->nombre,                    
+                        'montoCuotaPagar' => $detalle->valor
+                    );
+                }
+            }
+        }
+        
+        $datos = array(
+            'imponibles' => $imponibles,
+            'noImponibles' => $noImponibles,
+            'descuentos' => $descuentos,
+            'prestamos' => $prestamos
+        );
+        
+        return $datos;
+    }
+    
+    public function apvs()
+    {
+        $detalles = $this->detalleApvi;
+        $apvs = array();
+        
+        if($detalles->count()){
+            foreach($detalles as $detalle){
+                $apvs[] = array(
+                    'regimen' => strtoupper($detalle->regimen),
+                    'afp' => array(
+                        'id' => $detalle->afp_id,
+                        'nombre' => $detalle->afp->glosa
+                    ),
+                    'montoPesos' => $detalle->monto
+                );
+            }
+        }
+        
+        return $apvs;
+    }
+    
+    public function tasaAfp()
+    {
+        $tasaAfp = $this->detalleAfp ? $this->detalleAfp->porcentaje_cotizacion : 0;
+        $tasaSis = $this->detalleAfp ? $this->detalleAfp->porcentaje_sis : 0;
+        $sis = 0;
+        
+        if(!$tasaAfp && !$tasaSis){
+            $tasa = $this->trabajador->tasaAfp();
+            $tasaAfp = $tasa['tasaTrabajador'];            
+            $tasaAfp = $tasa['tasaSis'];            
+        }
+        
+        $isSis = $this->detalleAfp ? $this->detalleAfp->paga_sis : "";
+        if($isSis=='empleado'){
+            $sis = $this->detalleAfp->sis;
+        }
+        
+        $datos = array(
+            'tasaAfp' => $tasaAfp,
+            'tasaSis' => $tasaSis,
+            'sis' => $sis
+        );
+        
+        return $datos;
+    }
+    
+    public function semanaCorrida()
+    {
+        $detalles = $this->detalles;
+        $total = 0;
+        
+        if($detalles->count()){
+            foreach($detalles as $detalle){
+                if($detalle->nombre=='Semana Corrida'){
+                    $total = ($total + $detalle->valor);
+                }
+            }
+        }
+        
+        return $total;
+    }
     
     public function cotizacionSalud()
     {
@@ -63,14 +291,14 @@ class Liquidacion extends Eloquent {
         }else if($this->cotizacion_salud=='UF'){
             return 2;
         }else{
-            return '';
+            return 0;
         }
     }
     
     public function cotizacionFonasa()
     {        
         $idSalud = $this->id_salud;
-        $montoFonasa = '';
+        $montoFonasa = 0;
         
         if($idSalud==246){
             $montoFonasa = $this->total_salud;
@@ -94,10 +322,79 @@ class Liquidacion extends Eloquent {
         return $codigo;
     }
     
+    public function sisAnterior()
+    {
+        $trabajador = $this->trabajador;
+        $mesActual = $this->mes;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mesActual)));
+        $liquidacionAnterior = Liquidacion::where('trabajador_id', $trabajador->id)->where('mes', $mesAnterior)->first();
+        if($liquidacionAnterior){
+            if($liquidacionAnterior->detalleAfp){
+                return $liquidacionAnterior->miDetalleAfp()['sis'];
+            }
+        }
+        
+        return 0;
+    }
+    
+    public function sisDetalleAfp()
+    {
+        if($this->dias_trabajados==0 && $this->movimiento_personal==3){
+            return $this->sisAnterior();
+        }
+        
+        return $this->detalleAfp->sis;
+    }
+    
+    public function rentaNoGravada()
+    {
+        $detalles = $this->detalles;
+        $total = 0;
+        
+        if($detalles->count()){
+            foreach($detalles as $detalle){
+                if($detalle->tipo_id==1){
+                    $haber = TipoHaber::find($detalle->detalle_id);
+                    if($haber){
+                        if(!$haber->tributable){
+                            $total += $detalle->valor;
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $total;
+    }
+    
+    public function rebajaZona()
+    {
+        $rebaja = 0;
+        $trabajador = $this->trabajador;
+        if($trabajador){
+            $rebaja = $trabajador->zonaImpuestoUnico();
+        }
+        
+        return $rebaja;
+    }
+    
+    public function movimientoPersonal()
+    {
+        $desde = $this->fecha_desde;
+        $hasta = $this->fecha_hasta;
+        
+        $datos = array(
+            'desde' => $desde,
+            'hasta' => $hasta
+        );
+        
+        return $datos;
+    }
+    
     public function miDetalleAfp()
     {
         $detalleAfp = $this->detalleAfp;
-        $codigoAfp = '';
+        $codigoAfp = 0;
         $rentaImponible = 0;
         $cotizacionAfp = 0;
         $sis = 0;
@@ -108,7 +405,7 @@ class Liquidacion extends Eloquent {
         $numeroPeriodos = 0;
         $periodoDesdeSustit = 0;
         $periodoHastaSustit = 0;
-        $puestoTrabajoPesado = '';
+        $puestoTrabajoPesado = 0;
         $porcentajeTrabajoPesado = 0;
         $cotizacionTrabajoPesado = 0;
         
@@ -116,7 +413,7 @@ class Liquidacion extends Eloquent {
             $codigoAfp = $detalleAfp->afp_id ? $detalleAfp->codigoAfp(1) : '';
             $rentaImponible = $detalleAfp->renta_imponible;
             $cotizacionAfp = $detalleAfp->cotizacion;
-            $sis = $detalleAfp->sis;
+            $sis = $this->sisDetalleAfp();
             $cuentaAhorroVoluntario = $detalleAfp->cuenta_ahorro_voluntario;
             $rentaSustitutiva = $detalleAfp->renta_sustitutiva;
             $tasaSustitutiva = $detalleAfp->tasa_sustitutiva;
@@ -152,10 +449,10 @@ class Liquidacion extends Eloquent {
     public function miDetalleSalud()
     {
         $detalleSalud = $this->detalleSalud;
-        $codigoSalud = '';
+        $codigoSalud = 0;
         $numeroFun = 0;
         $rentaImponible = 0;
-        $moneda = '';
+        $moneda = 0;
         $cotizacionPactada = 0;
         $cotizacionObligatoria = 0;
         $cotizacionAdicional = 0;
@@ -166,11 +463,19 @@ class Liquidacion extends Eloquent {
             $rentaImponible = $detalleSalud->renta_imponible;
             if($codigoSalud!=7){
                 $numeroFun = $detalleSalud->numero_fun;
-                $moneda = $detalleSalud->moneda ? $detalleSalud->moneda : '';
+                if(strtoupper($detalleSalud->moneda)=='UF'){
+                    $mon = 2;
+                }else{
+                    $mon = 1;
+                }
+                $moneda = $mon;
                 $cotizacionPactada = $detalleSalud->cotizacion_pactada;
                 $cotizacionObligatoria = $detalleSalud->cotizacion_obligatoria;
                 $cotizacionAdicional = $detalleSalud->cotizacion_adicional;
                 $ges = $detalleSalud->ges;  
+                if($moneda==1){
+                    $cotizacionPactada = round($cotizacionPactada);
+                }
             }
         }
         
@@ -271,8 +576,10 @@ class Liquidacion extends Eloquent {
         $rentaImponible = 0;
         $aporteTrabajador = 0;
         $aporteEmpleador = 0;
+        $codigo = 0;
         
         if($detalleSeguroCesantia){
+            $codigo = $detalleSeguroCesantia->codigoAfp(1);
             $rentaImponible = $detalleSeguroCesantia->renta_imponible;
             $aporteTrabajador = $detalleSeguroCesantia->aporte_trabajador;
             $aporteEmpleador = $detalleSeguroCesantia->aporte_empleador;         
@@ -281,7 +588,8 @@ class Liquidacion extends Eloquent {
         $datos = array(
             'rentaImponible' => $rentaImponible,
             'aporteTrabajador' => $aporteTrabajador,
-            'aporteEmpleador' => $aporteEmpleador
+            'aporteEmpleador' => $aporteEmpleador,
+            'codigo' => $codigo,
         );
         
         return $datos;
@@ -324,8 +632,8 @@ class Liquidacion extends Eloquent {
         $bonosGobierno = 0;
         
         if($detalleIpsIslFonasa){
-            $codigoExCaja = $detalleIpsIslFonasa->ex_caja_id ? $detalleIpsIslFonasa->ex_caja_id : '';
-            $tasa = $detalleIpsIslFonasa->tasa_cotizacion;
+            $codigoExCaja = $detalleIpsIslFonasa->ex_caja_id ? $detalleIpsIslFonasa->codigoExCaja(1) : '';
+            $tasa = $detalleIpsIslFonasa->tasa_cotizacion ? str_replace(".", ",", $detalleIpsIslFonasa->tasa_cotizacion) : "";
             $rentaImponible = $detalleIpsIslFonasa->renta_imponible;
             $cotizacionObligatoria = $detalleIpsIslFonasa->cotizacion_obligatoria;
             $rentaImponibleDesahucio = $detalleIpsIslFonasa->renta_imponible_desahucio;
@@ -368,13 +676,33 @@ class Liquidacion extends Eloquent {
         $cotizacionDepositosConvenidos = 0;
 
         if(count($detalle)){
-            $codigo = $detalle[0]->afp_id;
+            $codigo = $detalle[0]->codigoAfp(1);
             $numeroContrato = $detalle[0]->numero_contrato ? $detalle->numero_contrato : '';
-            $formaPago = $detalle[0]->forma_pago_id;
-            $cotizacion = $detalle[0]->cotizacion;
+            if($detalle[0]->forma_pago_id==102){
+                $formaPago = 1;
+            }else if($detalle[0]->forma_pago_id==103){
+                $formaPago = 2;                
+            }
+            $formaPago = $formaPago;
+            $cotizacion = round($detalle[0]->monto);
             $cotizacionDepositosConvenidos = $detalle[0]->cotizacion_depositos_convenidos;
             if(count($detalle)>1){
-                $lineaAdicional = true;
+                foreach($detalle as $index => $det){
+                    if($index>0){
+                        if($det->forma_pago_id==102){
+                            $formaPago = 1;
+                        }else if($det->forma_pago_id==103){
+                            $formaPago = 2;                
+                        }
+                        $lineaAdicional[] = array(
+                            'codigo' => $det->codigoAfp(1),
+                            'numeroContrato' => $det->numero_contrato ? $detalle->numero_contrato : '',
+                            'formaPago' => $formaPago,
+                            'cotizacion' => round($det->monto),
+                            'cotizacionDepositosConvenidos' => $det->cotizacion_depositos_convenidos
+                        );
+                    }
+                } 
             }
         }
         
@@ -389,6 +717,19 @@ class Liquidacion extends Eloquent {
         return $datos;
     }
     
+    public function diasTotales()
+    {
+        if($this->movimiento_personal==3 || $this->movimiento_personal==4 || $this->movimiento_personal == 11){
+            $desde = $this->fecha_desde;
+            $hasta = $this->fecha_hasta;
+            $dias = ((($hasta - $desde) + 1) + $this->dias_trabajados);
+        }else{
+            $dias = $this->dias_trabajados;
+        }
+        
+        return $dias;
+    }
+    
     public function miDetalleApvc(&$lineaAdicional)
     {
         $detalle = $this->detalleApvc;
@@ -399,10 +740,14 @@ class Liquidacion extends Eloquent {
         $cotizacionEmpleador = 0;
 
         if(count($detalle)){
-            $codigo = $detalle[0]->afp_id;
+            $codigo = $detalle[0]->codigoAfp(1);
             $numeroContrato = $detalle[0]->numero_contrato;
-            $formaPago = $detalle[0]->forma_pago_id;
-            $cotizacionTrabajador = $detalle[0]->cotizacion_trabajador;
+            if($detalle[0]->forma_pago_id==102){
+                $formaPago = 1;
+            }else if($detalle[0]->forma_pago_id==103){
+                $formaPago = 2;                
+            }
+            $cotizacionTrabajador = $detalle[0]->monto;
             $cotizacionEmpleador = $detalle[0]->cotizacion_empleador;
             if(count($detalle)>1){
                 $lineaAdicional = true;
@@ -420,89 +765,246 @@ class Liquidacion extends Eloquent {
         return $datos;
     }
     
-    public function detallesLiquidacion($bd)
+    public function detallesLiquidacion($bd, $listaCuentas, $centroCostoId)
     {
         $detalles = $this->detalles;
         $detalleAfp = $this->detalleAfp;
         $detalleSeguroCesantia = $this->detalleSeguroCesantia;
         $detalleIpsIslFonasa = $this->detalleIpsIslFonasa;
+        $detalleMutual = $this->detalleMutual;
+        $detalleSalud = $this->detalleSalud;
+        $detallesApvi = $this->detalleApvi;
+        $detallesApvc = $this->detalleApvc;
+        $detalleCaja = $this->detalleCaja;
         $listaHaberes = array();
         $listaDescuentos = array();
+        $ap = array();
+
+        $cuentasCodigo = array();
+        if(count($listaCuentas)){
+            foreach ($listaCuentas as $key => $value) {
+                $cuentasCodigo[$value['id']]=$value;
+            }
+        }
+        
+        if($this->sueldo>0){
+            $sueldo = TipoHaber::find(12);
+            $codigo = $sueldo->cuenta($cuentasCodigo, $centroCostoId);
+            
+            if($sueldo) {
+                $listaHaberes[] = array(
+                    'nombre' => 'Sueldo Base',
+                    'monto' => $this->sueldo,
+                    'idCuenta' => $codigo
+                );
+            }
+        }
+        
+        if($this->impuesto_determinado>0){
+            $impuesto = TipoDescuento::find(1);
+            $codigo = $impuesto->cuenta($cuentasCodigo, $centroCostoId);
+
+            $listaDescuentos[] = array(
+                'nombre' => 'Impuesto Único al Trabajo',
+                'monto' => $this->impuesto_determinado,
+                'idCuenta' => $codigo
+            );
+        }
+        
+        if($this->gratificacion>0){
+            $gratificacion = TipoHaber::find(1);
+            $codigo = $gratificacion->cuenta($cuentasCodigo, $centroCostoId);
+
+            $listaHaberes[] = array(
+                'nombre' => 'Gratificación',
+                'monto' => $this->gratificacion,
+                'idCuenta' => $codigo
+            );
+        }
+        
+        if($this->total_horas_extra>0){
+            $horasExtra = TipoHaber::find(7);
+            $codigo = $horasExtra->cuenta($cuentasCodigo, $centroCostoId);
+            
+            $listaHaberes[] = array(
+                'nombre' => 'Horas Extras',
+                'monto' => $this->total_horas_extra,
+                'idCuenta' => $codigo
+            );
+        }
+        
+        if($this->total_cargas>0){
+            $cargas = TipoHaber::find(2);
+            $codigo = $cargas->cuenta($cuentasCodigo, $centroCostoId);
+            
+            $listaHaberes[] = array(
+                'nombre' => 'Asignación Familiar',
+                'monto' => $this->total_cargas,
+                'idCuenta' => $codigo
+            );
+        }
+        
+        if($this->asignacion_retroactiva>0){
+            $cargas = TipoHaber::find(10);
+            $codigo = $cargas->cuenta($cuentasCodigo, $centroCostoId);
+            
+            $listaHaberes[] = array(
+                'nombre' => 'Asignación Familiar Retroactiva',
+                'monto' => $this->asignacion_retroactiva,
+                'idCuenta' => $codigo
+            );
+        }
+        
+        if($this->reintegro_cargas>0){
+            $cargas = TipoHaber::find(11);
+            $codigo = $cargas->cuenta($cuentasCodigo, $centroCostoId);
+            
+            $listaHaberes[] = array(
+                'nombre' => 'Reintegro Cargas Familiares',
+                'monto' => $this->reintegro_cargas,
+                'idCuenta' => $codigo
+            );
+        }
         
         if($detalleAfp){
-            Config::set('database.default', 'principal' );
-            $afp = DB::table('tipos_estructura_glosa')->where('id', $detalleAfp->afp_id)->first();
-            $idAfp = (int) $detalleAfp->afp_id;
-            Config::set('database.default', $bd );
-            $ap = DB::table('aportes_cuentas')->where('nombre', 40)->where('tipo_aporte', 4)->first();
-            $listaDescuentos[] = array(
-                'nombre' => 'AFP ' . $afp->glosa,
-                'monto' => $detalleAfp->cotizacion,
-                'idCuenta' => $ap->cuenta_id
-            );
+            if($detalleAfp->afp_id!=35){
+                $aporteEmpresa = 0;
+                $cotizacionTrabajador = $detalleAfp->cotizacion;
+                if($detalleAfp->paga_sis=='empleado'){
+                    $cotizacionTrabajador = ($cotizacionTrabajador + $detalleAfp->sis);
+                }else{
+                    $aporteEmpresa = $detalleAfp->sis;
+                }
+                $listaDescuentos[] = array(
+                    'nombre' => 'AFP ' . $detalleAfp->afp->glosa,
+                    'monto' => $cotizacionTrabajador,
+                    'idCuenta' => $detalleAfp->cuenta($cuentasCodigo, $centroCostoId)
+                );
+                if($aporteEmpresa>0){
+                    $ap[] = array(
+                        'nombre' => 'Aporte Empleador AFP ' . $detalleAfp->afp->glosa,
+                        'monto' => $aporteEmpresa,
+                        'idCuenta' => $detalleAfp->cuentaSis($cuentasCodigo, $centroCostoId)
+                    );
+                }
+                /*if($detalleAfp->cuenta_ahorro_voluntario>0){
+                    $listaDescuentos[] = array(
+                        'nombre' => 'Cuenta de Ahorro AFP ' . $detalleAfp->afp->glosa,
+                        'monto' => $detalleAfp->cuenta_ahorro_voluntario,
+                        'idCuenta' => $detalleAfp->cuentaAhorro($cuentasCodigo, $centroCostoId)
+                    );
+                }*/
+            }
         }
         
         if($detalleSeguroCesantia){
-            Config::set('database.default', $bd );
-            $seguro = DB::table('aportes_cuentas')->where('id', 3)->first();
-            $listaDescuentos[] = array(
-                'nombre' => 'Seguro Cesantía',
-                'monto' => $detalleSeguroCesantia->aporte_trabajador,
-                'idCuenta' => $seguro->cuenta_id
-            );
+            if($detalleSeguroCesantia->afp_id!=35){
+                if($detalleSeguroCesantia->aporte_trabajador>0){
+                    $listaDescuentos[] = array(
+                        'nombre' => 'Seguro Cesantía Trabajador AFP ' . $detalleSeguroCesantia->afp->glosa,
+                        'monto' => $detalleSeguroCesantia->aporte_trabajador,
+                        'idCuenta' => $detalleSeguroCesantia->cuenta($cuentasCodigo, $centroCostoId)
+                    );
+                }
+                if($detalleSeguroCesantia->aporte_empleador>0){
+                    $ap[] = array(
+                        'nombre' => 'Aporte Empleador Seg de Cesant AFP ' . $detalleSeguroCesantia->afp->glosa,
+                        'monto' => $detalleSeguroCesantia->aporte_empleador,
+                        'idCuenta' => $detalleSeguroCesantia->cuentaEmpleador($cuentasCodigo, $centroCostoId)
+                    );
+                }
+            }
         }
         
         if($detalleIpsIslFonasa){
-            Config::set('database.default', $bd );
-            $fonasa = DB::table('aportes_cuentas')->where('id', 2)->first();
-            $listaDescuentos[] = array(
-                'nombre' => 'Fonasa',
-                'monto' => $detalleIpsIslFonasa->cotizacion_fonasa,
-                'idCuenta' => $fonasa->cuenta_id
+            if($detalleIpsIslFonasa->cotizacion_fonasa>0){
+                $listaDescuentos[] = array(
+                    'nombre' => 'Cotización salud Fonasa',
+                    'monto' => $detalleIpsIslFonasa->cotizacion_fonasa,
+                    'idCuenta' => $detalleIpsIslFonasa->cuenta($cuentasCodigo, $centroCostoId)
+                );
+            }
+            if($detalleIpsIslFonasa->cotizacion_isl>0){
+                $ap[] = array(
+                    'nombre' => 'ISL',
+                    'monto' => $detalleIpsIslFonasa->cotizacion_isl,
+                    'idCuenta' => $detalleIpsIslFonasa->cuentaIsl($cuentasCodigo,$centroCostoId)
+                );
+            }
+        }
+        
+        if($detalleSalud){
+            if( $detalleSalud->isapre->glosa != "Sin Isapre" && $detalleSalud->isapre->glosa != "Fonasa" ) {
+                $listaDescuentos[] = array(
+                    'nombre' => $detalleSalud->isapre->glosa,
+                    'monto' => ($detalleSalud->cotizacion_obligatoria + $detalleSalud->cotizacion_adicional),
+                    'idCuenta' => $detalleSalud->cuenta($cuentasCodigo, $centroCostoId)
+                );
+            }
+        }
+        
+        if($detallesApvi->count()){
+            foreach($detallesApvi as $detalleApvi){
+                $listaDescuentos[] = array(
+                    'nombre' => 'APV $ (Régimen ' . strtoupper($detalleApvi->regimen) . ' Individual) AFP ' . $detalleApvi->afp->glosa,
+                    'monto' => $detalleApvi->monto,
+                    'idCuenta' => $detalleApvi->cuenta($cuentasCodigo, $centroCostoId)
+                );
+            }
+        }
+        
+        if($detallesApvc->count()){
+            foreach($detallesApvc as $detalleApvc){
+                $listaDescuentos[] = array(
+                    'nombre' => 'APVC AFP ' . $detalleApvc->afp->glosa,
+                    'monto' => $detalleApvc->monto,
+                    'idCuenta' => $detalleApvc->cuenta($cuentasCodigo, $centroCostoId)
+                );
+            }
+        }
+        
+        if($detalleCaja){
+            if($detalleCaja->cotizacion>0){
+                $listaDescuentos[] = array(
+                    'nombre' => 'Aporte Fonasa a C.C.A.F.',
+                    'monto' => $detalleCaja->cotizacion,
+                    'idCuenta' => $detalleCaja->cuenta($cuentasCodigo, $centroCostoId)
+                );
+            }
+        }
+        
+        if($detalleMutual){
+            $ap[] = array(
+                'nombre' => 'Mutual de Seguridad',
+                'monto' => $detalleMutual->cotizacion_accidentes,
+                'idCuenta' => $detalleMutual->cuenta($cuentasCodigo, $centroCostoId)
             );
         }
         
         if($detalles->count()){
             foreach($detalles as $detalle){
                 if($detalle->tipo_id==1){
+                    $haber = TipoHaber::find($detalle->detalle_id);
+                    $codigo = $haber->cuenta($cuentasCodigo, $centroCostoId);
+
                     $listaHaberes[] = array(
                         'nombre' => $detalle->nombre,
                         'monto' => $detalle->valor,
-                        'idCuenta' => $detalle->cuenta_id
+                        'idCuenta' => $codigo
                     );
-                }else if($detalle->tipo_id==1){
+                }else if($detalle->tipo_id==2){
+                    $descuento = TipoDescuento::find($detalle->detalle_id);
+                    $codigo = $descuento->cuenta($cuentasCodigo, $centroCostoId);
+
                     $listaDescuentos[] = array(
                         'nombre' => $detalle->nombre,
                         'monto' => $detalle->valor,
-                        'idCuenta' => $detalle->cuenta_id
+                        'idCuenta' => $codigo
                     );                  
                 }
             }
         }
-        
-        /*$aportes = Aporte::aportes();
-        $ap = array();
-        $ap[] = array(
-            'nombre' => 'Caja de Compensación',
-            'monto' => 54125,
-            'idCuenta' => 43
-        );
-         $ap[] = array(
-            'nombre' => 'Fonasa',
-            'monto' => 45001,
-            'idCuenta' => 49
-        );
-         $ap[] = array(
-            'nombre' => 'Mutual',
-            'monto' => 512,
-            'idCuenta' => 43
-        );
-         $ap[] = array(
-            'nombre' => 'SIS AFP',
-            'monto' => 55105,
-            'idCuenta' => 42
-        );*/
-        
+
         $datos = array(
             'haberes' => $listaHaberes,
             'descuentos' => $listaDescuentos,
@@ -764,23 +1266,46 @@ class Liquidacion extends Eloquent {
         
         if($apvs){
             foreach($apvs as $apv){
-                $totalApvs += ($apv['aporte_trabajador'] + $apv['aporte_empleador']);
+                $totalApvs += ($apv['monto']);
             }
         }
         
         return $totalApvs;
     }
+    public function totalApvi()
+    {
+        $totalApvs = 0;
+        $apvs = $this->detalleApvi;
+        
+        if($apvs){
+            foreach($apvs as $apv){
+                $totalApvs += ($apv['monto']);
+            }
+        }
+        
+        return $apvs;
+    }
     
     public function totalSalud()
     {
         $totalSalud = 0;
-        $fonasa = $this->detalleIpsIslFonasa;
+        $empresa = \Session::get('empresa');        
         
-        if($fonasa->cotizacion_fonasa > 0){
-            $totalSalud = $fonasa->cotizacion_fonasa;
-        }else{
-            $totalSalud = $this->detalleSalud->cotizacion_obligatoria;
-        }
+        if($this->detalleSalud){
+            if($this->detalleSalud->cotizacion_obligatoria>0){
+                $totalSalud = ($this->detalleSalud->cotizacion_obligatoria + $this->detalleSalud->cotizacion_adicional);
+            }
+        }else if($this->detalleIpsIslFonasa){
+            if($this->detalleIpsIslFonasa->cotizacion_fonasa > 0){
+                $caja = 0;
+                if($empresa->caja_id!=257){
+                    if($this->detalleCaja){
+                        $caja = $this->detalleCaja->cotizacion;                        
+                    }
+                }
+                $totalSalud = ($this->detalleIpsIslFonasa->cotizacion_fonasa + $caja);
+            }
+        } 
         
         return $totalSalud;
     }

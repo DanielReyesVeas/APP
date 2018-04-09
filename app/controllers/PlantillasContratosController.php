@@ -58,6 +58,9 @@ class PlantillasContratosController extends \BaseController {
             $plantillaContrato->nombre = $datos['nombre'];
             $plantillaContrato->cuerpo = $datos['cuerpo'];
             $plantillaContrato->save();
+            
+            Logs::crearLog('#trabajadores', $plantillaContrato->id, $plantillaContrato->nombre, 'Create', NULL, NULL, 'Gestión Planillas Contrato'); 
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -129,6 +132,9 @@ class PlantillasContratosController extends \BaseController {
             $plantillaContrato->nombre = $datos['nombre'];
             $plantillaContrato->cuerpo = $datos['cuerpo'];
             $plantillaContrato->save();
+            
+            Logs::crearLog('#trabajadores', $plantillaContrato->id, $plantillaContrato->nombre, 'Update', NULL, NULL, 'Gestión Planillas Contrato'); 
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -153,7 +159,12 @@ class PlantillasContratosController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        PlantillaContrato::whereSid($sid)->delete();
+        $plantillaContrato = PlantillaContrato::whereSid($sid)->first();
+        
+        Logs::crearLog('#trabajadores', $plantillaContrato->id, $plantillaContrato->nombre, 'Delete', NULL, NULL, 'Gestión Planillas Contrato'); 
+        
+        $plantillaContrato->delete();
+        
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     

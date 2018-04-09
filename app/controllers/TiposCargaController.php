@@ -13,7 +13,7 @@ class TiposCargaController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'accesosTabla' => array(), 'accesosIngreso' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tipos-carga');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tipos-carga');
     
         $tiposCarga = TipoCarga::all();
         $listaTiposCarga=array();

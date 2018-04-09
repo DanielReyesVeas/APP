@@ -19,7 +19,7 @@
               </select>
         
             </div> 
-            <div class="col-sm-5 pull-right" ng-if="cargado && isCME">
+            <div class="col-sm-5 pull-right" ng-if="cargado && isCME && false">
               <a href="#liquidaciones-de-sueldo" ng-if="!isLiquidaciones">
                 <div class="alert alert-danger">
                   <i class="fa fa-exclamation-triangle fa-3x" style="margin-right: 20px;"> </i>
@@ -73,7 +73,7 @@
                         <button ng-click="centralizar(mes)" type="button" class="btn btn-primary btn-xs">Centralizar</button>
                       </div>
                       <div class="col-sm-2" ng-if="isFirst($index)">
-                        <button confirmation-click="confirmar(mes)" confirmation-needed="Se inciará el mes de {{ mes.nombre }} {{ anio }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
+                        <button confirmation-click="confirmar(mes)" confirmation-needed="Se inciará el mes de {{ mes.nombre }} {{ datos.nombre }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
                       </div>
                     </div>
                   </td>
@@ -114,7 +114,10 @@
                         <button ng-click="centralizar(mes)" type="button" class="btn btn-primary btn-xs">Centralizar</button>
                       </div>
                       <div class="col-sm-2" ng-if="isFirst($index)">
-                        <button confirmation-click="confirmar(mes)" confirmation-needed="Se inciará el mes de {{ mes.nombre }} {{ anio }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
+                        <button confirmation-click="confirmar(mes)" confirmation-needed="Se iniciará el mes de {{ mes.nombre }} {{ datos.nombre }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
+                      </div>
+                      <div class="col-sm-2" ng-if="isNuevoAnio && mes.nombre=='Diciembre' && mes.iniciado">
+                        <button confirmation-click="confirmar({ nombre : 'NuevoAnio' })" confirmation-needed="Se inciará el mes de Enero de 2018. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar nuevo Año</button>
                       </div>
                     </div>
                   </td>

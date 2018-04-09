@@ -61,7 +61,7 @@ angular.module('angularjsApp')
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
         cargarDatos();         
       }, function () {
-        javascript:void(0)
+        cargarDatos();
       });
     };
 

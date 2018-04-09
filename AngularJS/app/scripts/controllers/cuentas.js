@@ -72,7 +72,7 @@ angular.module('angularjsApp')
       $scope.cuenta = angular.copy(objeto);
       $scope.tituloFormulario = 'Modificación Cuentas';
       $scope.encabezado = $scope.cuenta.nombre;
-      $scope.cuenta.comportamiento = $filter('filter')( $scope.comportamientos, {id :  $scope.cuenta.comportamiento.id }, true )[0];
+      $scope.cuenta.comportamiento = $filter('filter')( $scope.comportamientos, $scope.cuenta.comportamiento , true )[0];
     }else{
       $scope.cuenta = {};
       $scope.tituloFormulario = 'Ingreso Cuentas';

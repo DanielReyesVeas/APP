@@ -26,10 +26,19 @@ angular.module('angularjsApp')
             cuenta : function(){
               return $resource(constantes.URL + 'tipos-descuento/cuentas/obtener/:sid');
             },
+            centroCosto : function(){
+              return $resource(constantes.URL + 'tipos-descuento/centro-costo/obtener/:sid');
+            },
             updateCuenta : function(){
               return $resource(constantes.URL + 'tipos-descuento/cuentas/actualizar',
                   {},
                   { post : { 'method': 'POST' } }
+              );
+            },
+            updateCuentaCentrosCosto : function(){
+              return $resource(constantes.URL + 'tipos-descuento/cuentas-centros-costos/actualizar',
+                {},
+                { post : { 'method': 'POST' } }
               );
             }
         };

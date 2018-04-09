@@ -78,6 +78,10 @@
 </div>
 
 <div class="modal-footer">
-  <button class="btn btn-primary" type="button" ng-click="generarExcel()" ng-disabled="!isSelected()">Exportar</button>
+  <button class="btn btn-primary" 
+  type="button" ng-click="generarExcel(true)" ng-disabled="!isSelected()">Exportar Excel</button>
+  <button class="btn btn-primary" 
+  type="button" ng-click="generarExcel(false)" ng-if="tipo==1" ng-disabled="!isSelected()">Exportar PDF</button>
+  <button class="btn btn-primary" ng-if="false" type="button" ng-click="generarExcel(true)" ng-disabled="!isSelected()">Exportar</button>
   <button class="btn btn-warning" type="button" ng-click="$dismiss()">Cancelar</button> 
 </div>

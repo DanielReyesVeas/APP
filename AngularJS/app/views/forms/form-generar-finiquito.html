@@ -14,16 +14,16 @@
       </div>        
 
       <div class="row">
-        <div class="col-sm-3 col-sm-offset-2 text-center" style="border-bottom: 1px solid black;"></div>
+        <div class="col-sm-4 col-sm-offset-1" style="border-bottom: 1px solid black;"></div>
+        <div class="col-sm-4 col-sm-offset-2" style="border-bottom: 1px solid black;"></div>
       </div>
       <div class="row">
-        <div class="col-sm-3 col-sm-offset-2 text-center">{{ trabajador.nombreCompleto }}</div>
-      </div>
-      <div class="row" style="margin-top: 20px;">
-        <div class="col-sm-3 col-sm-offset-2 text-center">c.c. carpeta personal</div>
+        <div class="col-sm-4 col-sm-offset-1 text-center">{{ trabajador.nombreCompleto }}</div>
+        <div class="col-sm-4 col-sm-offset-2 text-center">{{ empresa.empresa | uppercase }}</div>
       </div>
       <div class="row">
-        <div class="col-sm-3 col-sm-offset-2 text-center">Inspección del Trabajo</div>
+        <div class="col-sm-4 col-sm-offset-1 text-center">{{ trabajador.rutFormato }}</div>
+        <div class="col-sm-4 col-sm-offset-2 text-center">{{ empresa.rutFormato }}</div>
       </div>
 
     </div>

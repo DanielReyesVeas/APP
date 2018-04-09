@@ -21,7 +21,11 @@ angular.module('angularjsApp')
     $scope.cierre = {};
 
     function actualizarOptions(){
-      $scope.cierre.anio = $filter('filter')( $scope.anios, $scope.cierre.anio, true )[0];
+        if( $scope.datos.nombre ){
+            $scope.cierre.anio = $filter('filter')( $scope.anios, { nombre : $scope.datos.nombre } , true )[0];
+        }else{
+            $scope.cierre.anio = $filter('filter')( $scope.anios, $scope.cierre.anio, true )[0];
+        }
     }
 
     $scope.get = function(mes){
@@ -39,6 +43,7 @@ angular.module('angularjsApp')
       var datos = anio.datosCierre().get();
       datos.$promise.then(function(response){
         $scope.anios = response.anios;
+        $scope.isNuevoAnio = response.isNuevoAnio;
         $scope.datos = response.datos;
         $scope.accesos = response.accesos;
         $scope.isLiquidaciones = response.isLiquidaciones;
@@ -144,7 +149,12 @@ angular.module('angularjsApp')
 
     function iniciar(mes){
       $rootScope.cargando=true;
-      var datosMes = { mes : mes.mes, nombre : mes.nombre, fechaRemuneracion : mes.fechaRemuneracion, idAnio : $scope.datos.id };
+      console.log(mes)
+      if(mes.nombre==='NuevoAnio'){
+        var datosMes = { mes : '2018-01-01', nombre : 'NuevoAnio', fechaRemuneracion : '2018-01-31', idAnio : $scope.datos.id };
+      }else{
+        var datosMes = { mes : mes.mes, nombre : mes.nombre, fechaRemuneracion : mes.fechaRemuneracion, idAnio : $scope.datos.id };
+      }
       var response;
       response = mesDeTrabajo.datos().create({}, datosMes);
 
@@ -160,6 +170,24 @@ angular.module('angularjsApp')
         }
       );
     }
+
+
+      $scope.selectAnio = function(){
+          $scope.cargado = false;
+          $rootScope.cargando = true;
+          var datos = anio.datosCierre().get({anio:$scope.cierre.anio.nombre});
+          datos.$promise.then(function(response){
+            $scope.anios = response.anios;
+            $scope.isNuevoAnio = response.isNuevoAnio;
+            $scope.datos = response.datos;
+            $scope.accesos = response.accesos;
+            $scope.isLiquidaciones = response.isLiquidaciones;
+            $scope.isCuentas = response.isCuentas;
+            $rootScope.cargando = false;      
+            $scope.cargado = true;  
+            actualizarOptions();
+          });
+      };
 
   })
   .controller('FormTerminos', function ($scope, $uibModalInstance, objeto, $rootScope) {

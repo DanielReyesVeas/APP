@@ -58,6 +58,9 @@ class TiposDocumentoController extends \BaseController {
             $tipoDocumento->sid = Funciones::generarSID();
             $tipoDocumento->nombre = $datos['nombre'];
             $tipoDocumento->save();
+            
+            Logs::crearLog('#asociar-documentos', $tipoDocumento->id, $tipoDocumento->nombre, 'Create', NULL, NULL, 'Tipos de Documento');
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -126,6 +129,9 @@ class TiposDocumentoController extends \BaseController {
         if(!$errores and $tipoDocumento){
             $tipoDocumento->nombre = $datos['nombre'];
             $tipoDocumento->save();
+            
+            Logs::crearLog('#asociar-documentos', $tipoDocumento->id, $tipoDocumento->nombre, 'Update', NULL, NULL, 'Tipos de Documento');
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -150,7 +156,12 @@ class TiposDocumentoController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        TipoDocumento::whereSid($sid)->delete();
+        $tipoDocumento = TipoDocumento::whereSid($sid)->first();
+        
+        Logs::crearLog('#asociar-documentos', $tipoDocumento['id'], $tipoDocumento['nombre'], 'Delete', NULL, NULL, 'Tipos de Documento');
+        
+        $tipoDocumento->delete();
+        
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     

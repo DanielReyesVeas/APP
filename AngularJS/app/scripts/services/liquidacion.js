@@ -28,6 +28,12 @@ angular.module('angularjsApp')
                     {},
                     { post : { 'method': 'POST' } }
                 );
+            },
+            imprimirMasivo : function(){
+                return $resource(constantes.URL + 'liquidaciones/imprimir/masivo',
+                    {},
+                    { post : { 'method': 'POST' } }
+                );
             }
         };
   });

@@ -106,12 +106,14 @@ class Glosa extends Eloquent {
         $mes = \Session::get('mesActivo')->mes;
     	if( $afps->count() ){
             foreach( $afps as $afp ){
-                $tasa = TasaCotizacionObligatorioAfp::where('afp_id', $afp->id)->where('mes', $mes)->first();
-                $listaAfps[]=array(
-                    'id' => $afp->id,
-                    'nombre' => $afp->glosa,
-                    'tasa' => $tasa['tasa_afp']
-                );
+                if($afp->id!=35){
+                    $tasa = TasaCotizacionObligatorioAfp::where('afp_id', $afp->id)->where('mes', $mes)->first();
+                    $listaAfps[]=array(
+                        'id' => $afp->id,
+                        'nombre' => $afp->glosa,
+                        'tasa' => $tasa['tasa_afp']
+                    );
+                }
             }
     	}
     	return $listaAfps;

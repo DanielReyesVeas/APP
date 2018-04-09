@@ -41,6 +41,10 @@ angular.module('angularjsApp')
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
           cargarDatos();
+        }else{
+          $scope.erroresDatos = response.errores;
+          Notification.error({message: response.errores.error[0], title: 'Mensaje del Sistema', delay: ''});
+          $rootScope.cargando=false;
         }
       });
     };
@@ -196,8 +200,6 @@ angular.module('angularjsApp')
   })
   .controller('FormJornadaCtrl', function ($scope, $uibModalInstance, $filter, objeto, Notification, $rootScope, jornada, tramoHoraExtra) {
     
-    $scope.tipoJornadas = [ 'Part-Time', '45 horas'];
-
     $scope.tramosHorasExtra = objeto.tramosHorasExtra;
 
     if(objeto.datos){

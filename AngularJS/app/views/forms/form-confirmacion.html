@@ -1,5 +1,8 @@
 <div>
   <div class="modal-header dialog-header-confirm">
+    <button ng-if="isCerrar" type="button" class="close" ng-click="$dismiss()">
+      <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+    </button>
     <h4 class="modal-title" ng-bind-html="titulo"></h4>
   </div>
   <div class="modal-body">
@@ -18,7 +21,8 @@
     </div>
   </div>
   <div class="modal-footer">
-    <button class="btn btn-warning" ng-click="cerrar()" >{{ cancel }}</button>
     <button class="btn btn-primary" ng-if="isOK" ng-click="aceptar()">{{ ok }}</button>
+    <button class="btn btn-primary" ng-if="isOK2" ng-click="aceptar2()">{{ ok2 }}</button>
+    <button class="btn btn-warning" ng-click="cerrar()" >{{ cancel }}</button>
   </div>
 </div>

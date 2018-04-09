@@ -1,89 +1,91 @@
 <?php
-/*$sistemas=array(
-    'aaae',
+//rrhhes_principal
+//rrhhes_principal_1234
+
+$sistemas=array(
     'ac',
-    'aduarte',
-    'ASCCS', 
-    'BARRITELLI',
-    'BASIC',
-    'beta', 
-    'br',
-    'cgon',
+    'asccs',
+    'barritelli',
     'cl075',
     'cl083',
     'cl091',
-    'cl099',
     'cl107',
     'cl115',
     'cl123',
     'cl131',
-    'cl139',
-    'cl147',
-    'cl155',
     'cl162',
-    'cme101',
+    'cl169',
+    'cl176',
     'demo',
+    'dimet',
     'estay',
-    'exclientes',
-    'free01',
-    'grupodaso',
     'ibs',
-    'JC',
-    'lienlaff',
-    'ofjuce',
-    'prueba1',
-    'prueba2',
-    'prueba3',
-    'prueba4',
-    'prueba5',
-    'prueba6',
-    'prueba7',
-    'prueba8',
-    'prueba9',
-    'prueba10',
-    'prueba11',
-    'prueba12',
-    'prueba13',
-    'prueba14',
-    'prueba15',
-    'prueba16',
-    'prueba17',
-    'prueba18',
-    'prueba19',
-    'prueba20',
-    'prueba21',
-    'prueba22',
-    'top',
-    'transerch',
+    'jc',
     'master',
-    'hilda',
-    'jug',
-    'atc'
-);*/
-
-
-$sistemas=array(
-    'demo'
+    'ofjuce',
+    'pancho',
+    'prueba4',
+    'prueba7',
+    'prueba11',
+    'prueba14',
+    'transearch'
 );
-    
 
+/*$sistemas=array(
+    'demo'
+);*/
+    
 foreach( $sistemas as $sistema ){
   //  $directorioRaiz = '/home/easysystems/public_html/'.$sistema;
     $directorioRaiz = '../'.$sistema;
     if( $directorioRaiz ){
         $controladores = $directorioRaiz."/app/controllers";
         $modelos = $directorioRaiz."/app/models";
+        $composer = $directorioRaiz."/vendor/composer";
         $vistas = $directorioRaiz."/app/views";
+        $planillas = $directorioRaiz."/public/planillas";
         $scriptAngularJS = $directorioRaiz."/public/scripts";
         $vistaAngularJS = $directorioRaiz."/public/views";
         $imagesAngularJS = $directorioRaiz."/public/images";
+        $stylesAngularJS = $directorioRaiz."/public/styles";
+        $actualizacionesSQL = $directorioRaiz."/public/actualizacionesSQL";
         $publicRoot = $directorioRaiz."/public";
         //$stylosPlantilla = $directorioRaiz."/public/assets/global/css";
         //$logosPlantilla = $directorioRaiz."/public/assets/global/images/logo";
         $appRoot = $directorioRaiz."/app";
-
+    
+        
+        // actualizacionesSQL
+        if ( is_dir('php/actualizacionesSQL') ) {
+            if ( is_dir($scriptAngularJS) ) {
+                // se recorren los archivos del origen y se reemplazan
+                $gestor = opendir('php/actualizacionesSQL');
+                if ($gestor) {
+                    $limpiarDir=true;
+                    while (false !== ($entrada = readdir($gestor))) {
+                        if ($entrada != "." && $entrada != "..") {
+                            if( $limpiarDir ){
+                                // se limpia el directorio de destino
+                                $gestorDest = opendir( $actualizacionesSQL );
+                                if ($gestorDest) {
+                                    while (false !== ($entradaDest = readdir($gestorDest))) {
+                                        if ($entradaDest != "." && $entradaDest != "..") {
+                                            unlink( $actualizacionesSQL.'/'.$entradaDest );
+                                        }
+                                    }
+                                }
+                                $limpiarDir=false;
+                            }
+                            copy('php/actualizacionesSQL/' . $entrada, $actualizacionesSQL . "/". $entrada);
+                        }
+                    }
+                    closedir($gestor);
+                }
+            }
+        }
+        
         // vistas de angularJS
-        $dirViewAngularJS=array('comun', 'forms');
+       $dirViewAngularJS=array('comun', 'forms');
         foreach( $dirViewAngularJS as $dirView ) {
             if (is_dir('angularjs/'.$dirView)) {
                 if (is_dir($vistaAngularJS . "/".$dirView)) {
@@ -129,7 +131,67 @@ foreach( $sistemas as $sistema ){
                 }
             }
         }
+    
+        
+        
+        // styles de angularJS
+        if( is_dir('dist/styles') ) {
+            if ( is_dir($stylesAngularJS) ) {
+                // se recorren los archivos del origen y se reemplazan
+                $gestor = opendir('dist/styles');
+                if ($gestor) {
+                    $limpiarDir=true;
+                    while (false !== ($entrada = readdir($gestor))) {
+                        if ($entrada != "." && $entrada != "..") {
+                            if( $limpiarDir ){
+                                // se limpia el directorio de destino
+                                $gestorDest = opendir( $stylesAngularJS );
+                                if ($gestorDest) {
+                                    while (false !== ($entradaDest = readdir($gestorDest))) {
+                                        if ($entradaDest != "." && $entradaDest != "..") {
+                                            unlink( $stylesAngularJS.'/'.$entradaDest );
+                                        }
+                                    }
+                                }
+                                $limpiarDir=false;
+                            }                            
+                            copy('dist/styles/' . $entrada, $stylesAngularJS . "/". $entrada);
+                        }
+                    }
+                    closedir($gestor);
+                }
+            }
+        }
 
+        // planillas
+        if ( is_dir('php/planillas') ) {
+            if ( is_dir($planillas) ) {
+                // se recorren los archivos del origen y se reemplazan
+                $gestor = opendir('php/planillas');
+                if ($gestor) {
+                    $limpiarDir=true;
+                    while (false !== ($entrada = readdir($gestor))) {
+                        if ($entrada != "." && $entrada != "..") {
+                            if( $limpiarDir ){
+                                // se limpia el directorio de destino
+                                $gestorDest = opendir( $planillas );
+                                if ($gestorDest) {
+                                    while (false !== ($entradaDest = readdir($gestorDest))) {
+                                        if ($entradaDest != "." && $entradaDest != "..") {
+                                            unlink( $planillas.'/'.$entradaDest );
+                                        }
+                                    }
+                                }
+                                $limpiarDir=false;
+                            }
+                            copy('php/planillas/' . $entrada, $planillas . "/". $entrada);
+                        }
+                    }
+                    closedir($gestor);
+                }
+            }
+        }
+        
         // imagenes de angular
         if ( is_dir('dist/images') ) {
             if ( is_dir($imagesAngularJS) ) {
@@ -189,16 +251,57 @@ foreach( $sistemas as $sistema ){
                 }
             }
         }
-
+        
+        // imagenes de angular dashboard
+        if ( is_dir('dist/images/dashboard') ) {
+            if ( is_dir($imagesAngularJS.'/dashboard') ) {
+                // se recorren los archivos del origen y se reemplazan
+                $gestor = opendir('dist/images/dashboard');
+                if ($gestor) {
+                    $limpiarDir=true;
+                    while (false !== ($entrada = readdir($gestor))) {
+                        if ($entrada != "." && $entrada != "..") {
+                            if( $limpiarDir ){
+                                // se limpia el directorio de destino
+                                $gestorDest = opendir( $imagesAngularJS.'/dashboard' );
+                                if ($gestorDest) {
+                                    while (false !== ($entradaDest = readdir($gestorDest))) {
+                                        if ($entradaDest != "." && $entradaDest != "..") {
+                                            unlink( $imagesAngularJS.'/dashboard'.'/'.$entradaDest );
+                                        }
+                                    }
+                                }
+                                $limpiarDir=false;
+                            }
+                            copy('dist/images/dashboard/' . $entrada, $imagesAngularJS.'/dashboard' . "/". $entrada);
+                        }
+                    }
+                    closedir($gestor);
+                }
+            }
+        }
 
         // controllers de laravel
-        if (is_dir('php/controllers')) {
+        if(is_dir('php/controllers')) {
             if (is_dir($controladores)) {
                 // se recorren los archivos del origen y se reemplazan
                 $gestor = opendir('php/controllers');
                 if ($gestor) {
+                    $limpiarDir=true;
                     while (false !== ($entrada = readdir($gestor))) {
                         if ($entrada != "." && $entrada != "..") {
+                            if( $limpiarDir ){
+                                // se limpia el directorio de destino
+                                $gestorDest = opendir( $controladores );
+                                if ($gestorDest) {
+                                    while (false !== ($entradaDest = readdir($gestorDest))) {
+                                        if ($entradaDest != "." && $entradaDest != "..") {
+                                            unlink( $controladores . '/'.$entradaDest );
+                                        }
+                                    }
+                                }
+                                $limpiarDir=false;
+                            }
                             copy('php/controllers/'. $entrada, $controladores . "/" . $entrada);
                         }
                     }
@@ -213,8 +316,21 @@ foreach( $sistemas as $sistema ){
                 // se recorren los archivos del origen y se reemplazan
                 $gestor = opendir('php/models');
                 if ($gestor) {
+                    $limpiarDir=true;
                     while (false !== ($entrada = readdir($gestor))) {
                         if ($entrada != "." && $entrada != "..") {
+                            if( $limpiarDir ){
+                                // se limpia el directorio de destino
+                                $gestorDest = opendir( $modelos );
+                                if ($gestorDest) {
+                                    while (false !== ($entradaDest = readdir($gestorDest))) {
+                                        if ($entradaDest != "." && $entradaDest != "..") {
+                                            unlink( $modelos . '/'.$entradaDest );
+                                        }
+                                    }
+                                }
+                                $limpiarDir=false;
+                            }
                             copy('php/models/'. $entrada, $modelos . "/" . $entrada);
                         }
                     }
@@ -222,6 +338,7 @@ foreach( $sistemas as $sistema ){
                 }
             }
         }
+
 
         // views de laravel
         $dirViewPHP=array('excel', 'pdf');
@@ -231,8 +348,21 @@ foreach( $sistemas as $sistema ){
                     // se recorren los archivos del origen y se reemplazan
                     $gestor = opendir('php/views/'.$dirView);
                     if ($gestor) {
+                        $limpiarDir=true;
                         while (false !== ($entrada = readdir($gestor))) {
                             if ($entrada != "." && $entrada != "..") {
+                                if( $limpiarDir ){
+                                    // se limpia el directorio de destino
+                                    $gestorDest = opendir( $vistas . "/".$dirView );
+                                    if ($gestorDest) {
+                                        while (false !== ($entradaDest = readdir($gestorDest))) {
+                                            if ($entradaDest != "." && $entradaDest != "..") {
+                                                unlink( $vistas . "/".$dirView . '/'.$entradaDest );
+                                            }
+                                        }
+                                    }
+                                    $limpiarDir=false;
+                                }
                                 copy('php/views/'.$dirView.'/' . $entrada, $vistas . "/".$dirView."/" . $entrada);
                             }
                         }
@@ -243,9 +373,8 @@ foreach( $sistemas as $sistema ){
         }
 
 
-
         // stylos de la plantilla
-        /*if (is_dir('dist/assets')) {
+        if (is_dir('dist/assets')) {
             if (is_dir($stylosPlantilla)) {
                 // se recorren los archivos del origen y se reemplazan
                 $gestor = opendir('dist/assets');
@@ -287,9 +416,7 @@ foreach( $sistemas as $sistema ){
                     closedir($gestor);
                 }
             }
-        }*/
-
-
+        }
 
         // se reemplaza el archivo index.html por index.php
         if( file_exists('dist/index.html') ){
@@ -305,43 +432,34 @@ foreach( $sistemas as $sistema ){
         if( file_exists('php/config/constants.php') ){
             copy('php/config/constants.php', $directorioRaiz."/app/config/constants.php");
         }
+        
+        /*if( file_exists('php/config/mail.php') ){
+            copy('php/config/mail.php', $directorioRaiz."/app/config/mail.php");
+        }*/
 
+
+        if( file_exists('php/views/correo_respaldos.blade.php') ){
+            copy('php/views/correo_respaldos.blade.php', $directorioRaiz."/app/views/correo_respaldos.blade.php");
+        }
+        
         if( file_exists('php/libraries/funciones.php') ){
             copy('php/libraries/funciones.php', $directorioRaiz."/app/libraries/funciones.php");
         }
-
-        /*if( file_exists('php/libraries/Sii.php') ){
-            copy('php/libraries/Sii.php', $directorioRaiz."/app/libraries/Sii.php");
-        }*/
+        
+        if( file_exists('php/libraries/backup.php') ){
+            copy('php/libraries/backup.php', $directorioRaiz."/app/libraries/backup.php");
+        }
 
         if( file_exists('php/estructura_empresa.sql') ){
             copy('php/estructura_empresa.sql', $publicRoot."/estructura_empresa.sql");
         }
-
-
-        // archivos excel para importacion
-        /*if( file_exists('php/ejmUploadLbrBoleta.csv') ){
-            copy('php/ejmUploadLbrBoleta.csv', $publicRoot."/ejmUploadLbrBoleta.csv");
-        }
-        if( file_exists('php/ejmUploadLbrCmp.csv') ){
-            copy('php/ejmUploadLbrCmp.csv', $publicRoot."/ejmUploadLbrCmp.csv");
-        }
-        if( file_exists('php/ejmUploadLbrVta.csv') ){
-            copy('php/ejmUploadLbrVta.csv', $publicRoot."/ejmUploadLbrVta.csv");
-        }
-        if( file_exists('php/impBoletasHonorarios.xlsx') ){
-            copy('php/impBoletasHonorarios.xlsx', $publicRoot."/impBoletasHonorarios.xlsx");
-        }
-        if( file_exists('php/impComprobantes.xlsx') ){
-            copy('php/impComprobantes.xlsx', $publicRoot."/impComprobantes.xlsx");
-        }*/
 
         if( file_exists('VERSIONAPP.dat') ){
             copy('VERSIONAPP.dat', $appRoot."/VERSIONAPP.dat");
         }
 
         // se borran las sesiones de usuario abiertas en el sistema
-        /*
+        
         $gestorDest = opendir( $appRoot.'/storage/sessions' );
         if ($gestorDest) {
             while (false !== ($entradaDest = readdir($gestorDest))) {
@@ -350,7 +468,42 @@ foreach( $sistemas as $sistema ){
                 }
             }
         }
-        */
+        
+        
+        //Composer
+        if (is_dir('php/vendor/composer')) {
+            if (is_dir($composer)) {
+                // se recorren los archivos del origen y se reemplazan
+                $gestor = opendir('php/vendor/composer');
+                if ($gestor) {
+                    $limpiarDir=true;
+                    while (false !== ($entrada = readdir($gestor))) {
+                        if ($entrada != "." && $entrada != "..") {
+                            if( $limpiarDir ){
+                                // se limpia el directorio de destino
+                                $gestorDest = opendir( $composer );
+                                if ($gestorDest) {
+                                    while (false !== ($entradaDest = readdir($gestorDest))) {
+                                        if ($entradaDest != "." && $entradaDest != "..") {
+                                            unlink( $composer . '/'.$entradaDest );
+                                        }
+                                    }
+                                }
+                                $limpiarDir=false;
+                            }
+                            copy('php/vendor/composer/'. $entrada, $composer . "/" . $entrada);
+                        }
+                    }
+                    closedir($gestor);
+                }
+            }
+        }
+        
+        if( file_exists('php/vendor/autoload.php') ){
+            copy('php/vendor/autoload.php', $directorioRaiz."/vendor/autoload.php");
+        }
+        
+        
 
         /*
             ACTUALIZACION DEL CONFIG PARA AGREGAR BASE DE DATOS GLOBAL

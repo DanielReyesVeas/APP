@@ -79,7 +79,10 @@
                   <span ng-if="!isEdit"> {{ dato.valor | number }} ) UF</span>                  
                   <span ng-if="isEdit"><input type="text" ng-model="inputRTI[$index]" style="width: 50px" /> ) UF</span>                  
                 </td>
-                <td>${{ convertirUF(dato.valor) | currency:'':0  }}</td>
+                <td>
+                  <span ng-if="dato.nombre==='Para afiliados al IPS (ex INP)'">${{ convertirUFAnterior(dato.valor) | currency:'':0  }}</span>
+                  <span ng-if="dato.nombre!=='Para afiliados al IPS (ex INP)'">${{ convertirUF(dato.valor) | currency:'':0  }}</span>
+                </td>
               </tr>              
             </tbody>
           </table>
@@ -240,7 +243,7 @@
                 <td class="text-center">
                   <span ng-if="dato.tramo==='a'">Renta &lt; ó = 
                     <span ng-if="!isEdit">${{ dato.rentaMayor | currency:'':0  }}</span>
-                    <span ng-if="isEdit">$<input type="text" ng-model="inputAFMenor[$index]" style="width: 70px" /></span>
+                    <span ng-if="isEdit">$<input type="text" ng-model="inputAFMayor[$index]" style="width: 70px" /></span>
                   </span>
                   <span ng-if="dato.tramo==='b'">Renta &gt; 
                     <span ng-if="!isEdit">${{ dato.rentaMenor | currency:'':0  }}</span>

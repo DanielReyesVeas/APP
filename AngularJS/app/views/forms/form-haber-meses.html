@@ -2,7 +2,7 @@
   <button type="button" class="close" ng-click="$dismiss()">
     <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
   </button>
-  <h3 class="modal-title">Temporalidad haberes</h3>
+  <h3 class="modal-title">Temporalidad Haberes</h3>
 </div>
 <div class="modal-body centered">
   <form class="form-horizontal" name="haberMesesForm" id="haberMesesForm">
@@ -55,11 +55,11 @@
               <div class="col-sm-2">{{ objeto.haber.mes | date : "MM-y" }}</div>
             </div>
 
-            <div ng-show="objeto.haber.rangoMeses">
+            <div ng-if="objeto.haber.rangoMeses">
               <label class="col-sm-1 control-label required">Hasta:</label>            
               <div class="col-sm-3">
                 <div class="input-group"> 
-                  <input type="text" class="form-control form-white" uib-datepicker-popup="MM-yyyy" regularFecha ng-model="objeto.haber.hasta" is-open="popupFechaHasta.opened" datepicker-options="dateOptionsMes" close-text="Close" />
+                  <input type="text" class="form-control form-white" uib-datepicker-popup="MM-yyyy" regularFecha ng-model="objeto.haber.hasta" is-open="popupFechaHasta.opened" datepicker-options="dateOptionsMes" close-text="Close" required />
                   <span class="input-group-btn">
                     <button type="button" class="btn btn-default" ng-click="openFechaHasta()">
                       <i class="fa fa-calendar"></i>
@@ -69,15 +69,6 @@
               </div>
             </div>
 
-            <!--<label class="col-sm-2 control-label">Todos los Años:</label>         
-            <div class="col-sm-2">
-              <label class="switch switch-green">
-                <input class="switch-input" ng-model="objeto.haber.anual" type="checkbox">
-                <span class="switch-label" data-on="SI" data-off="NO"></span>
-                <span class="switch-handle"></span>
-              </label>
-            </div>-->
-
           </div>
         </div>    
       </div>
@@ -86,7 +77,8 @@
   </form>
   <div class="modal-footer">
     <div class="pull-right" style="padding: 6px;">
-      <button class="btn btn-primary" type="button" confirmation-click="ingresoMasivoHaber( datos.haber, haber );" confirmation-needed="El Haber <b>{{haber.nombre}}</b> será ingresado a los trabajadores seleccionados. ¿Desea continuar?" ng-disabled="haberMesesForm.$invalid" ng-show="!isEdit">Ingresar Haber</button>
+      <button class="btn btn-primary" type="button" confirmation-click="ingresoMasivoHaber( false );" confirmation-needed="El Haber <b>{{haber.nombre}}</b> será ingresado a los trabajadores seleccionados. ¿Desea continuar?" ng-disabled="haberMesesForm.$invalid" ng-class="{ 'hidden' : objeto.haber.permanente }">Ingresar Haber</button>
+      <button class="btn btn-primary" type="button" confirmation-click="confirmacion( datos.haber, haber );" confirmation-needed="El Haber <b>{{haber.nombre}}</b> será ingresado a los trabajadores seleccionados. ¿Desea continuar?" ng-disabled="haberMesesForm.$invalid" ng-class="{ 'hidden' : !objeto.haber.permanente }">Ingresar Haber</button>
       <button class="btn btn-warning" type="button" ng-click="$dismiss()">Cancelar</button>
     </div>
   </div>

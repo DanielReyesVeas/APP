@@ -21,9 +21,8 @@
         <div class="col-sm-12" style="margin-top: 20px;">
           <div class="form-group form-group-md required">          
             <label class="col-sm-4 control-label">N° de Horas:</label>
-            <div class="col-sm-4">
-              <select class="form-control form-white" ng-model="jornada.numeroHoras" ng-options="tipo as tipo for tipo in tipoJornadas" required> 
-              </select>
+            <div class="col-sm-3">
+              <input ng-model="jornada.numeroHoras" class="form-control form-white" name="horas" type="text" required>
             </div>
           </div>
         </div>

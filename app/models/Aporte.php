@@ -4,30 +4,72 @@ class Aporte extends Eloquent {
     
     protected $table = 'aportes_cuentas';
     
-    public function cuenta($cuentas=null){
-        $nombre = "";
-        $idCuenta = "";
-
-        if($this->cuenta_id){
-            $bool = true;
-            $idCuenta = $this->cuenta_id;
-            if(!$cuentas){
-                $cuentas = Cuenta::listaCuentas();
-            }
-            foreach($cuentas as $cuenta){
-                if($cuenta['id']==$idCuenta){
-                    $nombre = $cuenta['nombre'];
+    public function miCuenta(){
+        return $this->belongsTo('Cuenta', 'cuenta_id');
+    }
+    
+    function cuentaCentroCosto(){
+    	return $this->hasOne('CuentaCentroCosto', 'concepto_id');
+    }
+    
+    public function cuenta($cuentas=null, $centroCostoId=null)
+    {
+        $empresa = Session::get('empresa');
+                
+        if($empresa->centro_costo){
+            return $this->aporteCuenta($cuentas, $centroCostoId);
+        }else{
+            if($this->cuenta_id){
+                if(!$cuentas){
+                    $cuentas = Cuenta::listaCuentas();
+                }
+                $idCuenta = $this->cuenta_id;
+                if(array_key_exists($idCuenta, $cuentas)){
+                    return $cuentas[$idCuenta];
                 }
             }
+
+            return null;
         }
-        $datos = array(
-            'id' => $idCuenta,
-            'nombre' => $nombre
-        );
-        
-        return $datos;
-	}
+    }
     
+    public function aporteCuenta($cuentasCodigo = null, $centroCostoId=null)
+    {
+        if($centroCostoId){
+            $codigo=null;
+            if(!$cuentasCodigo){
+                $cuentas = Cuenta::listaCuentas();
+            }
+            $centroCostoCuenta = CuentaCentroCosto::where('concepto', 'aporte')
+                ->where('concepto_id', $this->id)
+                ->where('centro_costo_id', $centroCostoId )
+                ->first();
+
+            if( $centroCostoCuenta ){
+                if(array_key_exists($centroCostoCuenta->cuenta_id, $cuentasCodigo)){
+                    return $cuentasCodigo[$centroCostoCuenta->cuenta_id];
+                }
+            }
+        }else{
+            $empresa = Session::get('empresa');
+            $centroCostoCuenta = CuentaCentroCosto::where('concepto', 'aporte')
+                ->where('concepto_id', $this->id)
+                ->get();
+            if($centroCostoCuenta->count()){
+                $asignables = $empresa->centrosAsignables();
+                if($centroCostoCuenta->count()==$asignables){
+                    return 2;
+                }else{
+                    return 1;							
+                }
+            }else{
+                return 0;
+            }
+        }
+
+        return null;
+    }       
+   
     static function aportes()
     {
         $aportes = Aporte::all();

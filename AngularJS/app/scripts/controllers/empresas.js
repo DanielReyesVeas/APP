@@ -12,6 +12,7 @@ angular.module('angularjsApp')
    
     $scope.datos = [];
     $scope.constantes = constantes;
+    $scope.cargado = false;
     var empresaActual = $rootScope.globals.currentUser.empresa;
     var mutuales;
     var cajas;
@@ -33,27 +34,27 @@ angular.module('angularjsApp')
         backdrop:'static',
         resolve: {
           objeto : function(){
-            return emp;
+            return emp.datos;
           },
           mutuales : function(){
             return mutuales;
           },
           cajas : function(){
             return cajas;
+          },
+          anios : function(){
+            return emp.anios;
           }
         }
       });
       modalInstance.result.then(function (obj) {
         Notification.success({message: obj.mensaje, title: 'Mensaje del Sistema'});
         if(obj.crear){
-          console.log('cambiar1')
           $scope.cambiarEmpresa(obj.empresa);
         }else if(obj.editar){          
           if(obj.empresa.id===empresaActual.id){
-            console.log('cambiar2')
             $scope.cambiarEmpresa(obj.empresa);
           }else{
-            console.log('nocambiar')
             $scope.cargarDatos();
           }
         }
@@ -64,6 +65,8 @@ angular.module('angularjsApp')
 
     $scope.cargarDatos = function(){
       $rootScope.cargando=true;
+      $scope.cargado=false;
+
       var listado=false;
       var emp = empresa.datos().get();
       emp.$promise.then(function(response){
@@ -96,17 +99,16 @@ angular.module('angularjsApp')
           }
           */
           $rootScope.cargando=false;
+          $scope.cargado=true;
         });
       });
-    };
-
-    
+    };    
 
     $scope.editar = function(emp){
       $rootScope.cargando=true;
       var datos = empresa.datos().get({id:emp.id});
       datos.$promise.then(function(response){
-        $scope.open( response, mutuales, cajas );
+        $scope.open( response );
         $rootScope.cargando=false;
       });
     };
@@ -135,28 +137,70 @@ angular.module('angularjsApp')
     $scope.cargarDatos();
       
   })
-  .controller('ModalFormEmpresaCtrl', function ($scope, $route, mutuales, cajas, $rootScope, $timeout, $http, $uibModal, $uibModalInstance, $filter, Notification, objeto, empresa, constantes, $localStorage) {
+  .controller('ModalFormEmpresaCtrl', function ($scope, $route, mutuales, anios, cajas, $rootScope, $timeout, $http, $uibModal, $uibModalInstance, $filter, Notification, objeto, empresa, constantes, $localStorage) {
 
     var anioActual = parseInt( $filter('date')(new Date(), 'yyyy') );
     $scope.mutuales = angular.copy(mutuales);
     $scope.cajas = angular.copy(cajas);
     $scope.anios=[];
-    $scope.meses = angular.copy(constantes.MESES);    
+    $scope.meses = angular.copy(constantes.MESES); 
+    $scope.niveles = [ 1, 2, 3, 4, 5 ];
+    $scope.isZona = false;   
+    $scope.isCentro = false;   
+    $scope.isEdit = false;    
+    $scope.isSanna = false;
+    $scope.isCollapsed = true;
 
-    for( var i=anioActual; i >= 2010; i--){
-      $scope.anios.push(i);
+    $scope.cambiarAnioInicial = function(){
+      if($scope.objeto.anioInicial>2017){
+        $scope.objeto.mutual.tasaFija = 0.90;
+        if($scope.objeto.anioInicial==2018){
+          $scope.objeto.mutual.extraordinaria = 0.015;
+          $scope.objeto.mutual.sanna = 0.015;
+        }else if($scope.objeto.anioInicial==2019){
+          $scope.objeto.mutual.extraordinaria = 0.01;
+          $scope.objeto.mutual.sanna = 0.02;
+        }else{
+          $scope.objeto.mutual.extraordinaria = 0;
+          $scope.objeto.mutual.sanna = 0.03;
+        }
+      }else{
+        $scope.objeto.mutual.tasaFija = 0.95;        
+        $scope.objeto.mutual.extraordinaria = 0;
+        $scope.objeto.mutual.sanna = 0;
+      }
+      $scope.objeto.mutual.tasaAdicional = 0;
+      $scope.isSanna = ($scope.objeto.anioInicial > 2017);
+      console.log($scope.objeto)
+    } 
+
+    $scope.cambiarAnio = function(){
+      cambiarMutual();
+      cambiarCaja();      
+      $scope.isSanna = ($scope.objeto.anio.nombre > 2017);
     }
 
-    if(objeto){
+    if(objeto.id){
       $scope.objeto = objeto;
-      $scope.objeto.fotografiaBase64='';      
-      $scope.objeto.mutual = $filter('filter')( $scope.mutuales, {id :  $scope.objeto.mutual.id }, true )[0];
-      $scope.objeto.caja = $filter('filter')( $scope.cajas, {id :  $scope.objeto.caja.id }, true )[0];
+      $scope.anios = angular.copy(anios);
+      $scope.objeto.fotografiaBase64='';            
+      $scope.objeto.anio = $filter('filter')( $scope.anios, { nombre :  anioActual }, true )[0];
+      if(!$scope.objeto.anio){
+        $scope.objeto.anio = $scope.anios[0];
+      }
+      $scope.cambiarAnio();
     }else{
-      $scope.objeto = { anioInicial : $scope.anios[0], mesInicial : $scope.meses[0], sis : true, tasaFijaMutual : 0.95, tasaAdicionalMutual : 0, tipoGratificacion : 'm', gratificacion : 'e', zona : 0.00, topeGratificacion : 4.75 };
-      $scope.objeto.fotografiaBase64='';
+      for( var i=anioActual; i >= 2010; i--){
+        $scope.anios.push(i);
+      }
+      $scope.objeto = { impuestoUnico : 'e', anioInicial : $scope.anios[0], proporcionalLicencias : false, proporcionalInasistencias : false, mesInicial : $scope.meses[0], sis : true, mutual : { tasaFija : 0.9, tasaAdicional : 0, extraordinaria : 0.15, sanna : 0.15, codigo : null, id : $scope.mutuales[0].id }, caja : { codigo : null, id : $scope.cajas[0].id }, tipoGratificacion : 'm', gratificacion : 'e', zona : 0.00, topeGratificacion : 4.75, centroCosto : false, nivelesCentroCosto : 0, cme : false, zonasImpuestoUnico : [], centrosCosto : [], saludCompleta : false, licencias30 : false, ingresos30 : false, finiquitos30 : false };
+      $scope.objeto.caja = $filter('filter')( $scope.cajas, { id :  $scope.objeto.caja.id }, true )[0];
+      $scope.objeto.mutual = $filter('filter')( $scope.mutuales, { id :  $scope.objeto.mutual.id }, true )[0];
+      $scope.cambiarAnioInicial();
+      $scope.objeto.mutual.codigo = null;
+      $scope.objeto.caja.codigo = null;
+      $scope.objeto.fotografiaBase64='';      
     }
-    console.log($scope.objeto)
     
     $scope.imagen={};
     $scope.erroresDatos = {};
@@ -214,7 +258,95 @@ angular.module('angularjsApp')
           $scope.objeto.gratificacionMensual = true;          
         }
       }
-      console.log($scope.objeto.gratificacion)
+    }
+
+    $scope.cambiarCentroCosto = function(){
+      if($scope.objeto.centroCosto){
+        $scope.objeto.nivelesCentroCosto = 1;
+        $scope.objeto.centrosCosto = [{ nombre : 'Nivel 1', edit : false }];
+      }else{
+        $scope.objeto.nivelesCentroCosto = 0;
+        $scope.objeto.centrosCosto = [];
+      }
+    }
+
+    $scope.cambiarNiveles = function(){
+      $scope.objeto.centrosCosto = [];
+      for(var i=0,len=$scope.objeto.nivelesCentroCosto; i<len; i++){
+        $scope.objeto.centrosCosto.push({ nombre : 'Nivel ' + (i+1), edit : false });
+      }
+    }    
+
+    $scope.cambiarMutual = function(){
+      var anio;
+      if($scope.objeto.id){
+        anio = $scope.objeto.anio.nombre;
+      }else{
+        anio = $scope.objeto.anioInicial;
+      }
+      if(anio>2017){
+        $scope.objeto.mutual.tasaFija = 0.90;
+        if(anio==2018){
+          $scope.objeto.mutual.extraordinaria = 0.015;
+          $scope.objeto.mutual.sanna = 0.015;
+        }else if(anio==2019){
+          $scope.objeto.mutual.extraordinaria = 0.01;
+          $scope.objeto.mutual.sanna = 0.02;
+        }else{
+          $scope.objeto.mutual.extraordinaria = 0;
+          $scope.objeto.mutual.sanna = 0.03;
+        }
+      }else{
+        $scope.objeto.mutual.tasaFija = 0.95;        
+        $scope.objeto.mutual.extraordinaria = 0;
+        $scope.objeto.mutual.sanna = 0;
+      }
+      $scope.objeto.mutual.tasaAdicional = 0;
+      $scope.objeto.mutual.codigo = null;
+      console.log($scope.objeto)
+    }
+
+    $scope.cambiarCaja = function(){
+      $scope.objeto.caja.codigo = null;
+    }
+
+    function cambiarMutual(){
+      if($scope.objeto.id){
+        if($scope.objeto.mutual){
+          var actual = $filter('filter')( $scope.objeto.mutuales, { id :  $scope.objeto.mutual.idMutual }, true )[0];
+          var index = $scope.objeto.mutuales.indexOf(actual);
+          $scope.objeto.mutuales[index].mutual = { id : $scope.objeto.mutual.id, nombre : $scope.objeto.mutual.nombre };
+          $scope.objeto.mutuales[index].codigo = $scope.objeto.mutual.codigo;
+          $scope.objeto.mutuales[index].tasaFija = $scope.objeto.mutual.tasaFija;
+          $scope.objeto.mutuales[index].tasaAdicional = $scope.objeto.mutual.tasaAdicional;
+          $scope.objeto.mutuales[index].extraordinaria = $scope.objeto.mutual.extraordinaria;
+          $scope.objeto.mutuales[index].sanna = $scope.objeto.mutual.sanna;
+        }
+        console.log($scope.objeto)
+        var mutual = $filter('filter')( $scope.objeto.mutuales, { idAnio :  $scope.objeto.anio.id }, true )[0];
+        $scope.objeto.mutual = $filter('filter')( $scope.mutuales, { id :  mutual.mutual.id }, true )[0];
+        $scope.objeto.mutual.codigo = mutual.codigo;
+        $scope.objeto.mutual.tasaFija = mutual.tasaFija;
+        $scope.objeto.mutual.tasaAdicional = mutual.tasaAdicional;
+        $scope.objeto.mutual.extraordinaria = mutual.extraordinaria;
+        $scope.objeto.mutual.sanna = mutual.sanna;
+        $scope.objeto.mutual.idMutual = mutual.id;
+      }
+    }
+
+    function cambiarCaja(){
+      if($scope.objeto.id){
+        if($scope.objeto.caja){
+          var actual = $filter('filter')( $scope.objeto.cajas, { id :  $scope.objeto.caja.idCaja }, true )[0];
+          var index = $scope.objeto.cajas.indexOf(actual);
+          $scope.objeto.cajas[index].caja = { id : $scope.objeto.caja.id, nombre : $scope.objeto.caja.nombre };
+          $scope.objeto.cajas[index].codigo = $scope.objeto.caja.codigo;
+        }
+        var caja = $filter('filter')( $scope.objeto.cajas, { idAnio :  $scope.objeto.anio.id }, true )[0];
+        $scope.objeto.caja = $filter('filter')( $scope.cajas, { id :  caja.caja.id }, true )[0];
+        $scope.objeto.caja.codigo = caja.codigo;
+        $scope.objeto.caja.idCaja = caja.id;
+      }
     }
 
     $scope.obtenerImagenB64 = function(){
@@ -234,9 +366,69 @@ angular.module('angularjsApp')
       }, 1000);
     };
 
+    $scope.agregarZona = function(){
+      if($scope.isZona){
+        $scope.isZona = false;
+        $scope.isEdit = false;
+      }else{
+        $scope.tituloZona = 'Agregar Zona';
+        $scope.isZona = true;
+      }
+    }
+
+    $scope.updateZona = function(zona){
+      $scope.isZona = false;
+      $scope.isEdit = false;
+
+      $scope.objeto.zonasImpuestoUnico[$scope.zonaIndex].nombre = zona.nombre;
+      $scope.objeto.zonasImpuestoUnico[$scope.zonaIndex].porcentaje = zona.porcentaje;
+
+      $scope.zona.nombre = "";
+      $scope.zona.porcentaje = null;
+    }
+
+    $scope.guardarZona = function(){
+      var zona = angular.copy($scope.zona);
+      $scope.objeto.zonasImpuestoUnico.push(zona);
+      $scope.isZona = false;
+      $scope.zona.nombre = "";
+      $scope.zona.porcentaje = null;
+    }
+
+    $scope.editarZona = function(zona){
+      $scope.tituloZona = 'Modificar no Zona';
+      $scope.zonaIndex = $scope.objeto.zonasImpuestoUnico.indexOf(zona);
+      $scope.isZona = true;
+      $scope.isEdit = true;
+      $scope.zona = { nombre : zona.nombre, porcentaje : zona.porcentaje };
+    }
+
+    $scope.eliminarZona = function(zona){
+      var index = $scope.objeto.zonasImpuestoUnico.indexOf(zona);
+      $scope.objeto.zonasImpuestoUnico.splice(index,1);
+    }
+
+    $scope.updateCentro = function(centro){
+      $scope.isCentro = false;
+      $scope.objeto.centrosCosto[$scope.centroIndex] = { nombre : centro.nombre, edit : false };
+      centro.nombre = "";
+    }
+
+    $scope.editarCentro = function(centro){
+      $scope.centroIndex = $scope.objeto.centrosCosto.indexOf(centro);
+      for(var i=0,len=$scope.objeto.centrosCosto.length; i<len; i++){
+        $scope.objeto.centrosCosto[i].edit = false;
+      }
+      $scope.objeto.centrosCosto[$scope.centroIndex].edit = true;
+      $scope.isCentro = true;
+      centro.nombre = centro.nombre;
+    }
+
     $scope.guardar = function () {
       $rootScope.cargando=true;
       var response;
+      cambiarMutual();
+      cambiarCaja();
 
       if( $scope.objeto.id ){
         response = empresa.datos().update({id:$scope.objeto.id}, $scope.objeto);
@@ -272,6 +464,7 @@ angular.module('angularjsApp')
           }else{
             Notification.error({message: response.mensaje, title:'Notificación del Sistema'});
             $scope.erroresDatos = response.errores;
+            $rootScope.cargando=false;
           }
         }
       );

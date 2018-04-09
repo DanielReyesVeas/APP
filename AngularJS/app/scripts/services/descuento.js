@@ -20,6 +20,12 @@ angular.module('angularjsApp')
                     }
                 );
             },
+            eliminarPermanente : function(){
+              return $resource(constantes.URL + 'descuentos/permanentes/eliminar',
+                  {},
+                  { post : { 'method': 'POST' } }
+              );
+            },
             masivo : function(){
                 return $resource(constantes.URL + 'descuentos/ingreso/masivo',
                     {},
@@ -28,6 +34,12 @@ angular.module('angularjsApp')
             },
             importar : function(){
                 return $resource(constantes.URL + 'descuentos/generar-ingreso/masivo',
+                    {},
+                    { post : { 'method': 'POST' } }
+                );
+            },
+            importarMasivo : function(){
+                return $resource(constantes.URL + 'descuentos/generar-ingreso-masivo/masivo',
                     {},
                     { post : { 'method': 'POST' } }
                 );

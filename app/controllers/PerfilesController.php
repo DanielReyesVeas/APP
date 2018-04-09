@@ -10,10 +10,10 @@ class PerfilesController extends BaseController {
             $datos['empresa'] = $empresa->razon_social;
             $datos['perfiles'] = array();
 
-            if( Auth::user()->id == "1"){
+            if( Auth::usuario()->user()->id == "1"){
                 $perfiles = Perfil::orderBy('perfil')->get();
             }else{
-                $acceso = array( Auth::user()->funcionario->departamento_id );
+                $acceso = array( Auth::usuario()->user()->funcionario->departamento_id );
                 //$perfiles = Perfil::whereIn('departamento_id', $acceso )->orderBy('departamento_id')->orderBy('perfil')->get();
             }
 

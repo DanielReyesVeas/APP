@@ -54,6 +54,99 @@ class User extends Eloquent implements UserInterface, RemindableInterface {
         return $this->hasMany('UsuarioEmpresa', 'usuario_id');
     }
     
+    public function isEmpresa()
+    {
+        $empresa = \Session::get('empresa');
+        $empresas = $this->usuarioEmpresa;
+        if($empresas->count()){
+            foreach($empresas as $emp){
+                if($emp->empresa_id==$empresa->id){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    public function listaEmpresas()
+    {
+        $empresas = $this->usuarioEmpresa;
+        $ids = array();
+        $listaEmpresas = array();
+        
+        foreach($empresas as $empresa){
+            $ids[] = $empresa->empresa_id;
+        }
+        
+        $misEmpresas = Empresa::whereIn('id', $ids)->get();
+            
+        foreach( $misEmpresas as $empresa ){
+            $listaEmpresas[]=array(
+                'id' => $empresa->id,
+                'empresa' => $empresa->razon_social,
+                'rutFormato' => $empresa->rut_formato(),
+                'rut' => $empresa->rut
+            );
+        }
+        return $listaEmpresas;
+    }
+    
+    public function misPermisos()
+    {
+        $datos = array();
+        $empresa = \Session::get('empresa');
+        if(Auth::usuario()->user()->perfil_id>0){
+            $permisos = PerfilDetalle::where('perfil_id', Auth::usuario()->user()->perfil_id)->where('empresa_id', 100000)->get();
+            if($permisos->count()){
+                foreach($permisos as $permiso){
+                    if($permiso->ver){
+                        $datos[] = $permiso->menu_id;
+                    }
+                }
+            }else{
+               $permisos = PerfilDetalle::where('perfil_id', Auth::usuario()->user()->perfil_id)->where('empresa_id', $empresa->id)->get();
+                if($permisos->count()){
+                    foreach($permisos as $permiso){
+                        if($permiso->ver){
+                            $datos[] = $permiso->menu_id;
+                        }
+                    }
+                } 
+            }
+        }else{                                
+            $permisos = UsuarioPerfilDetalle::where('usuario_id', Auth::usuario()->user()->id)->where('empresa_id', 100000)->get();
+            if($permisos->count()){
+                foreach($permisos as $permiso){
+                    if($permiso->ver){
+                        $datos[] = $permiso->menu_id;
+                    }
+                }
+            }else{
+               $permisos = UsuarioPerfilDetalle::where('usuario_id', Auth::usuario()->user()->id)->where('empresa_id', $empresa->id)->get();
+                if($permisos->count()){
+                    foreach($permisos as $permiso){
+                        if($permiso->ver){
+                            $datos[] = $permiso->menu_id;
+                        }
+                    }
+                } 
+            }
+        }
+        
+        return $datos;
+    }
+    
+    public function nombreCompleto()
+    {
+        if($this->perfil_id==2){
+            if($this->trabajador->ficha()){
+                return $this->trabajador->ficha()->nombreCompleto();
+            }
+            return '';
+        }
+        return $this->funcionario->nombre_completo();
+    }
+    
     public function accesos()
     {
         $empresa = \Session::get('empresa');

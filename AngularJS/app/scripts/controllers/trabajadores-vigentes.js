@@ -46,7 +46,7 @@ angular.module('angularjsApp')
       $rootScope.cargando=true;
       var datos = trabajador.datos().get({sid:tra.sid});
       datos.$promise.then(function(response){
-        $scope.openDetalleTrabajador( response.datos );
+        $scope.openDetalleTrabajador( response.trabajador );
         $rootScope.cargando=false;
       });
     };

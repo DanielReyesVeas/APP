@@ -1,11 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <title>{{ $liquidacion['nombreCompleto'] }}</title>
-  
+
   <style type="text/css">     
-    
+
     html, body {
       font-family: sans-serif;
       font-size: 12px;  
@@ -13,76 +9,90 @@
       height: 100%;
       margin: 0;
     }
+
     .page {
       margin: 20px;
       border: 2px solid black;
     }
+
     .contenedor{  
       padding: 10px;
       border-bottom: 1px solid black;
     }
+      
     .contenedor2{  
       padding: 10px;
     }
+
     .pie{  
       border: 1px solid black;
       padding: 5px;
-      margin-top: 20px;
-    }
-    .encabezado{
-      width: 100%;
       margin-top: 10px;
     }
+
+    .encabezado{
+      width: 100%;
+      margin-top: 5px;
+    }
+
     .encabezado td{
       padding-top: 5px;      
     }
+
     .resumen{
       border: 1px solid black;
       border-collapse: collapse;
       width: 100%;
-      margin-top: 20px;
+      margin-top: 15px;
       font-size: 11px;
     }
+
     table.resumen td{
       border: 1px solid black;
     }
+
     tr.valores td{
       border: 1px solid black;
       font-weight: 800;
       text-align: right;
-      padding-top: 15px;
+      padding-top: 10px;
       padding-bottom: 5px;
       padding-right: 5px;
       font-size: 12px;
     }  
+
     .contenido{
       border-collapse: collapse;
       margin: 0px;
       font-size: 11px;
     }
+
     .contenido2{
       border-collapse: collapse;
       margin: 0px;
       font-size: 11px;
     }
+
     .cont1{
       width: 100%;
       border-collapse: collapse;
     }
+
     .cont1 tr td{
-      border-right: 1px solid black;
       border-collapse: collapse;
       width: 70%;
     }
+
     .cont2 tr td{
-      border-right: 1px solid black;
       border-collapse: collapse;
       width: 70%;
     }
+
     .cont2{
       width: 100%;
       border-collapse: collapse;
     }
+
     .col{
       position: absolute;
       border-collapse: collapse;
@@ -90,28 +100,34 @@
       width: 100%;
       border: 0;
     }
+
     .totalesContenido{
       border-collapse: collapse;
       width: 100%;
       margin: 0px;
       font-size: 11px;
     }
+
     .totalesContenido td{
       border-collapse: collapse;
       border: 1px solid black;
     }
+
     .liquidoContenido{
       border-collapse: collapse;
       width: 100%;
       margin: 0px;
       font-size: 11px;
     }
+
     .liquidoContenido td{
       border-collapse: collapse;
       border: 1px solid black;
     }
+
     .contenidoContenedor{
       border-collapse: collapse;
+      position: relative;
       height: 360px;
       border-top: 1px solid black;
       border-left: 1px solid black;
@@ -120,26 +136,30 @@
       margin-top: 10px;
       padding: 0;
     }
+
     .totalesContenedor{
       border-collapse: collapse;
       margin: 0px;
       padding: 0;
     }
+
     .liquidoContenedor{
       padding: 0;
       border-collapse: collapse;
       margin: 0;
     }
+
     .tablaContenidos{
       padding: 0;
       border-collapse: collapse;
       width: 100%;
     }
-    .tablaContenidos tr td{
 
+    .tablaContenidos tr td{
       border-collapse: collapse;
       width: 100%;
     }
+
     .fila{
       border-collapse: collapse;
       float: left;
@@ -148,21 +168,26 @@
       margin: 0;
       height: 100px;
     }
+
     .fila:nth-child(even){
       width: 86px;
     }
+
     table.contenido td{
       text-align: left;
     }
+
     table.contenido2 td{
       text-align: left;
     }
+
     .resumen tr.titulos td{
       border: 1px solid black;
       padding-top: 5px;
       text-align: center;
       font-size: 13px;
     }
+
     /*.contenido tr.titulos td{
       border-right: 1px solid black;
       width: 32%;
@@ -170,6 +195,7 @@
       font-size: 13px;
       text-align: center;
     }
+
     .contenido2 tr.titulos2 td{
       width: 32%;
       padding-top: 5px;
@@ -177,6 +203,7 @@
       font-size: 13px;
       text-align: center;
     }*/
+
     tr.detalle td{
       width: 32%;
       padding-top: 5px;
@@ -184,19 +211,23 @@
       text-align: left;
       border-right: 1px solid black;
     }
+
     tr.detalle2 td{
       width: 32%;
       padding-top: 5px;
       padding-left: 5px;
       text-align: left;
     }
+
     tr.totales td{
       width: 32%;
       padding-top: 5px;
       padding-left: 5px;
       text-align: right;
       border-right: 1px solid black;
+
     }    
+
     tr.liquido td{
       width: 32%;
       padding-top: 5px;
@@ -204,88 +235,129 @@
       text-align: right;
       border-right: 1px solid black;
     }
+
     .final{
       margin-top: 10px;  
       border-collapse: collapse;
       width: 100%;
       font-size: 11px;
     }
+
     .title td{
-      padding-top: 8px;
-      padding-bottom: 8px;
-      border-right: 1px solid black;
+      padding-top: 5px;
+      padding-bottom: 5px;
       border-bottom: 1px solid black;
       text-align: center;
       font-size: 13px;
     }
+
     .conforme{
       margin-top: 20px;
       font-size: 13px;
     }
+
     .firma{
-      margin-top: 85px;
-      margin-bottom: 25px;
+      margin-top: 75px;
+      margin-bottom: 15px;
       margin-right: 10px;
     }
+
     table.final td{
       border: 1px solid black;
       padding-top: 5px;
       padding-left: 5px;
       text-align: right;
     }
+
     tr.detalle td:nth-child(even){
       font-weight: 800;
       text-align: right;
     }
+
     tr.detalle2 td:nth-child(even){
       font-weight: 800;
       text-align: right;
     }
+
     .contenido tr.titulos td:nth-child(even){
       text-align: right;
     }
+
     .contenido2 tr.titulos2 td:nth-child(even){
       text-align: right;
     }
+
     .liquidoContenido tr.liquido td:nth-child(even){
       font-weight: 800;
     }
+
     .totalesContenido tr.totales td:nth-child(even){
       font-weight: 800;
     }  
+
     .cont1 tr td:nth-child(even){
       text-align: right;
       font-weight: 800;
       width: 30%;
     }   
+
     .cont2 tr td:nth-child(even){
       text-align: right;
       border-right: 0;
       font-weight: 800;
       width: 30%;
     }    
+
     .tablaFirma{
       width: 100%;
     }
+
     .tablaFirma td{
       padding: 5px;
       text-align: center;
       font-size: 13px;
     }
-    
+
+    .lineaVertical1{
+      position: absolute;
+      margin-left: 0;
+      margin-top: 0;
+      width: 279px; 
+      height: 360px; 
+      opacity: 0.5; 
+      border-right: 1px solid black;
+    }
+
+    .lineaVertical2{
+      position: absolute;
+      margin-left: 0;
+      margin-top: 0;
+      width: 363px; 
+      height: 360px; 
+      opacity: 0.5; 
+      border-right: 1px solid black;
+    }
+
+    .lineaVertical3{
+      position: absolute;
+      margin-left: 0;
+      margin-top: 0;
+      width: 643px; 
+      height: 360px; 
+      opacity: 0.5; 
+      border-right: 1px solid black;
+    }
+
   </style>
-  
-</head>
-  <body>
     <div class="page">
 
       <div class="contenedor">
-
+        <center><h3>Liquidación de Sueldo del mes de {{ $liquidacion['mes'] }}</h3></center>
+          
         <div>
-
           <table class="encabezado">
             <tbody>
-              <tr>
+              <!--<tr>
                 <td><b>{{ $liquidacion['empresa']['razon_social'] }}</b></td>
                 <td>RUT : <b>{{ $liquidacion['rutEmpresa'] }}</b></td>
               </tr>
@@ -308,7 +380,40 @@
                         Cargo :  <b>{{ $liquidacion['cargo']['nombre'] }}</b>
                     @endif
                 </td>                
+              </tr>-->                
+              <tr>
+                <td>Trabajador : <b>{{ $liquidacion['nombreCompleto'] }}</b></td>
+                  <td rowspan="3" style="border: 1px solid black;"></td>
               </tr>
+              <tr>
+                <td>RUT : <b>{{ $liquidacion['rutFormato'] }}</b></td>
+              </tr>
+              <tr>
+                <td>Fecha de Ingreso : <b>{{ $liquidacion['fechaIngreso'] }}</b></td>
+              </tr>
+              @if($liquidacion['seccion']['nombre'])
+                  <tr>
+                    <td>                    
+                        Sección :  <b>{{ $liquidacion['seccion']['nombre'] }}</b>
+                    </td>
+                  </tr>
+              @endif
+              <tr>
+                <td>
+                    @if($liquidacion['cargo']['nombre'])
+                        Cargo :  <b>{{ $liquidacion['cargo']['nombre'] }}</b>
+                    @endif
+                </td>
+                <td>RUT : <b>{{ $liquidacion['rutEmpresa'] }}</b></td>                
+              </tr>
+              @if( $liquidacion['observacion'] )
+                  <tr>
+                      <td colspan="2" style="border:1px solid #000; height: 60px; padding:2px;" valign="top">
+                        <b>Observaciones:</b>&nbsp;
+                        {{ $liquidacion['observacion'] }}
+                      </td>
+                  </tr>
+              @endif
             </tbody>
           </table>
         </div>
@@ -319,11 +424,11 @@
             <tbody>
               <tr class="titulos">
                 <td>Tot. Imponible</td>
-                <td>No Imponible</td>
+                <td>No Imponibles</td>
                 <td>Renta Imponible</td>
                 <td>Afec. Impuesto</td>
                 <td>Pacto Isapre</td>
-                <td>DL 889</td>
+                <td>UF</td>
                 <td>Días Trabajados</td>
               </tr>
               <tr class="valores">
@@ -338,13 +443,13 @@
                   @endif
                 </td>
                 <td>
-                    @if($liquidacion['isapre']['id']!=246 && $liquidacion['isapre']['id']!=240)
-                        {{ Funciones::formatoPesos($liquidacion['totalSalud']['total']) }}
-                    @else
-                        0 
-                    @endif
+                  @if($liquidacion['isapre']['id']!=246 && $liquidacion['isapre']['id']!=240)
+                      {{ Funciones::formatoPesos($liquidacion['totalSalud']['total']) }}
+                  @else
+                      0 
+                  @endif
                 </td>
-                <td>DL 889</td>
+                <td> {{ Funciones::formatoPesos($liquidacion['uf'], true, false) }}</td>
                 <td>{{ $liquidacion['diasTrabajados'] }}</td>
               </tr>
 
@@ -353,8 +458,17 @@
 
         </div>
 
-        <div class="contenidoContenedor">
-
+        <div class="contenidoContenedor" style="height: {{ $liquidacion['observacion']? "290px" : "360px" }};">
+          
+          <div class="lineaVertical1" style="height: {{ $liquidacion['observacion']? "290px" : "360px" }};">
+          </div>
+            
+          <div class="lineaVertical2" style="height: {{ $liquidacion['observacion']? "290px" : "360px" }};">
+          </div>
+            
+          <div class="lineaVertical3" style="height: {{ $liquidacion['observacion']? "290px" : "360px" }};">
+          </div>
+          
           <table class="tablaContenidos">
             <tbody>
               <tr>
@@ -366,8 +480,8 @@
                         <td></td>
                       </tr>
                       <tr>
-                        <td>Sueldo Base</td>
-                        <td>{{ Funciones::formatoPesos($liquidacion['sueldoBase']) }}</td>
+                        <td>Sueldo</td>
+                        <td>{{ Funciones::formatoPesos($liquidacion['sueldo']) }}</td>
                       </tr>
                       @if($liquidacion['gratificacion']>0)
                         <tr>
@@ -387,12 +501,7 @@
                           <td>{{ Funciones::formatoPesos($liquidacion['semanaCorrida']) }}</td>
                         </tr>
                       @endif
-                      @if($liquidacion['diasDescontados']['monto']>0)
-                        <tr>
-                          <td>{{ $liquidacion['diasDescontados']['diasCalendario'] }} Días Descontados (-)</td>
-                          <td>{{ Funciones::formatoPesos($liquidacion['diasDescontados']['monto']) }}</td>
-                        </tr>
-                      @endif
+
                       @if(count($liquidacion['haberesImponibles'])>0)
                         <tr>
                           <td><b>Imponibles:</b></td>
@@ -446,9 +555,7 @@
                     </tbody>
                   </table>
                 </td>
-                <div class="col">
 
-                </div>
                 <td valign="top">
                   <table class="cont2">
                     <tbody>
@@ -458,7 +565,19 @@
                       </tr>
                       @if ($liquidacion['totalSalud']['obligatorio']>0)
                         <tr>
-                          <td>Salud {{ $liquidacion['isapre']['nombre'] }}</td>                    
+                          <td>Salud {{ $liquidacion['isapre']['nombre'] }} 
+                          @if ($liquidacion['cotizacionIsapre']=='%')
+                              (7%)
+                          @elseif ($liquidacion['cotizacionIsapre']=='7%')
+                              ({{ $liquidacion['cotizacionIsapre'] }})
+                          @elseif ($liquidacion['cotizacionIsapre']=='7% + UF')
+                              (7% + {{ $liquidacion['montoIsapre'] + 0 }} UF)
+                          @elseif ($liquidacion['cotizacionIsapre']=='UF')
+                            ({{ $liquidacion['montoIsapre'] + 0 }} UF)
+                          @else
+                              ({{ $liquidacion['cotizacionIsapre'] }} {{ $liquidacion['montoIsapre'] + 0 }})
+                          @endif
+                          </td>           
                           <td>{{ Funciones::formatoPesos($liquidacion['totalSalud']['obligatorio']) }}</td>
                         </tr> 
                       @endif
@@ -468,9 +587,20 @@
                           <td>{{ Funciones::formatoPesos($liquidacion['totalSalud']['adicional']) }}</td>
                         </tr> 
                       @endif
-                      @if ($liquidacion['afp']['id']!=35)
+                      @if ($liquidacion['prevision']['id']==8)
                         <tr>
                           <td>{{ $liquidacion['tasaAfp'] }}% Previsión {{ $liquidacion['afp']['nombre'] }}</td>
+                          <td>{{ Funciones::formatoPesos($liquidacion['totalAfp']) }}</td>
+                        </tr>
+                        @if ($liquidacion['sis'])
+                          <tr>
+                            <td>{{ $liquidacion['tasaSis'] }}% SIS {{ $liquidacion['afp']['nombre'] }}</td>
+                            <td>{{ Funciones::formatoPesos($liquidacion['sis']) }}</td>
+                          </tr>
+                        @endif
+                      @elseif ($liquidacion['prevision']['id']==9)
+                        <tr>
+                          <td>{{ $liquidacion['tasaAfp'] }}% {{ $liquidacion['afp']['nombre'] }}</td>
                           <td>{{ Funciones::formatoPesos($liquidacion['totalAfp']) }}</td>
                         </tr>
                       @endif
@@ -483,7 +613,11 @@
                       @foreach($liquidacion['apvs'] as $apv)
                           @if(strtoupper($apv['regimen'])=='B')
                             <tr>
-                              <td>APV régimen B ({{ $apv['afp']['nombre'] }})</td>
+                              <td>APV régimen B {{ $apv['afp']['nombre'] }} 
+                              @if ($apv['moneda']!='$')
+                                  ({{ $apv['monto'] + 0 }} {{ $apv['moneda'] }})
+                              @endif
+                              </td>
                               <td>{{ Funciones::formatoPesos($apv['montoPesos']) }}</td>
                             </tr>
                           @endif
@@ -494,7 +628,7 @@
                           <td>{{ Funciones::formatoPesos($liquidacion['impuestoDeterminado']) }}</td>
                         </tr> 
                       @endif
-                      @if(count($liquidacion['descuentos'])>0 || count($liquidacion['apvs'])>0)
+                      @if(count($liquidacion['descuentos'])>0 || count($liquidacion['apvs'])>0 || count($liquidacion['prestamos'])>0)
                         <tr>
                           <td><b>Otros Descuentos:</b></td>
                           <td></td>
@@ -505,10 +639,20 @@
                             <td>{{ Funciones::formatoPesos($descuento['montoPesos']) }}</td>
                           </tr>
                         @endforeach
+                        @foreach($liquidacion['prestamos'] as $prestamo)
+                          <tr>
+                            <td style="padding-left: 10px;">{{ $prestamo['glosa'] }} ({{ $prestamo['numeroCuotaPagar'] }}/{{ $prestamo['cuotas'] }})</td>
+                            <td>{{ Funciones::formatoPesos($prestamo['montoCuotaPagar']) }}</td>
+                          </tr>
+                        @endforeach
                         @foreach($liquidacion['apvs'] as $apv)
                             @if(strtoupper($apv['regimen'])!='B')
                               <tr>
-                                <td style="padding-left: 10px;">APV régimen A ({{ $apv['afp']['nombre'] }})</td>
+                                <td style="padding-left: 10px;">APV régimen A {{ $apv['afp']['nombre'] }}
+                                  @if ($apv['moneda']!='$')
+                                    ({{ $apv['monto'] + 0 }} {{ $apv['moneda'] }})
+                                  @endif
+                                 </td>
                                 <td>{{ Funciones::formatoPesos($apv['montoPesos']) }}</td>
                               </tr>
                             @endif
@@ -517,16 +661,9 @@
                     </tbody>
                   </table>
                 </td>
-                <div class="col">
-
-                </div>
               </tr>
             </tbody>
           </table>
-         <!--
-          <div class="fila"></div>
-          <div class="fila"></div>
-          <div class="fila"></div>-->
         </div>
 
         <div class="totalesContenedor">
@@ -605,8 +742,8 @@
               <tr class="liquido">
                 <td style="border: 0;"></td>
                 <td style="border: 0;"></td>
-                  <td style="padding: 10px;"><b>Alcance Líquido :</b></td>
-                <td style="padding: 10px;"><b>{{ Funciones::formatoPesos($liquidacion['sueldoLiquido']) }}</b></td>
+                  <td style="padding: 5px;"><b>Alcance Líquido :</b></td>
+                <td style="padding: 5px;"><b>{{ Funciones::formatoPesos($liquidacion['sueldoLiquido']) }}</b></td>
               </tr>
 
             </tbody>
@@ -615,7 +752,7 @@
 
         <div class="conforme">
           @if($liquidacion['cuenta'] && $liquidacion['banco'])            
-            Recibí conforme el alcance líquido de la presente liquidación en mi cuenta {{ $liquidacion['cuenta'] }} del banco {{ $liquidacion['banco'] }}, no teniendo cargo o cobre alguno que hacer por ningún concepto.
+            Recibí conforme el alcance líquido de la presente liquidación en mi cuenta {{ $liquidacion['cuenta'] }} del banco {{ $liquidacion['banco'] }}, no teniendo cargo o cobro alguno que hacer por ningún concepto.
           @else
             Recibí conforme el alcance líquido de la presente liquidación, no teniendo cargo o cobro alguno que hacer por ningún concepto.
           @endif
@@ -627,7 +764,7 @@
               <tr>
                 <td></td>
                 <td></td>
-                <td style="width: 40%; border-top: 1px solid black;">
+                <td style="width: 50%; border-top: 1px solid black;">
                   {{ $liquidacion['nombreCompleto'] }}
                 </td>
               </tr>
@@ -638,31 +775,3 @@
       </div>
 
     </div>
-
-  </body>
-</html>
-<!--
-
-    Código Asociado Mutual
-    Código Asociado Caja
-    SobreGiro mes Anterior (descuento sindicato)
-    Préstamo al trabajador (para pagar sobregiro)
-
-    Descuentos:
-    descuento cuenta de ahorro AFP
-    descuento APVC
-
-    Al momento de ingresar licencia, ¿Quién paga?
-    RUTs    
-    Compin Fonasa
-
-    Tipos de Licencia
-    -1,2,3,4,7 A:Compin, B:Isapre, C:CCAF, D: Empleador
-    -5,6 E: Compin, F: Mutual, G: ISL, H: Empleador
-
-    Mantenedor Tipos de Licencia
-
-    Gratificación Anual
-    Semana Corrida
-
--->

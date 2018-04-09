@@ -1,6 +1,5 @@
 <?php
 
-namespace App\Libraries;
 class Backup_Database {
     /**
      * Host where database is located

@@ -12,7 +12,7 @@ class AsignacionFamiliar extends Eloquent {
         }
         
     	$listaAsignacionFamiliar = array();
-    	$asignacionesFamiliares = AsignacionFamiliar::where('mes', $mes)->orderBy('id', 'ASC')->get();
+    	$asignacionesFamiliares = AsignacionFamiliar::where('mes', $mes)->orderBy('tramo', 'ASC')->get();
     	if( $asignacionesFamiliares->count() ){
             foreach( $asignacionesFamiliares as $asignacionFamiliar ){
                 $listaAsignacionFamiliar[]=array(
@@ -26,6 +26,20 @@ class AsignacionFamiliar extends Eloquent {
     	}
         
     	return $listaAsignacionFamiliar;
+    }
+    
+    static function listaTramos(){
+        $mes = \Session::get('mesActivo')->mes;        
+    	$listaTramos = array();
+    	$tramos = AsignacionFamiliar::where('mes', $mes)->orderBy('tramo', 'ASC')->get();
+        
+    	if( $tramos->count() ){
+            foreach( $tramos as $tramo ){
+                $listaTramos[] = $tramo->tramo;
+            }
+    	}
+        
+    	return $listaTramos;
     }
     
     static function errores($datos){

@@ -13,7 +13,7 @@ class ClausulasContratoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#clausulas-contrato');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#clausulas-contrato');
         $clausulasContrato = ClausulaContrato::orderBy('plantilla_contrato_id')->get();
         $listaClausulasContrato=array();
         if( $clausulasContrato->count() ){

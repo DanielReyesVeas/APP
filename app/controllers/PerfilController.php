@@ -31,10 +31,10 @@ class PerfilController extends BaseController {
         }
         else
         {
-            if (Hash::check($password_act, Auth::user()->password))
+            if (Hash::check($password_act, Auth::usuario()->user()->password))
             {
 
-                $user = User::find(Auth::user()->id);
+                $user = User::find(Auth::usuario()->user()->id);
                 $user->password = Hash::make($registerData['password']);
                 $user->save();
 

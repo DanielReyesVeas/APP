@@ -72,7 +72,7 @@
                   <td>
                     <input type="checkbox" ng-model="det.imponibles.rentaImponible.check" ng-change="select(det.imponibles.rentaImponible.check)" icheck>
                   </td>
-                  <td>Renta Imponible {{ det.mes }}</td>
+                  <td>Sueldo {{ det.mes }}</td>
                   <td>${{ det.imponibles.rentaImponible.monto | currency:'':0 }}<a href="" class="pull-right" ng-click="detalles(det, 'Imponibles', $index)"><i class="fa fa-search"></i></a></td>
                 </tr>
                 <tr ng-if="sueldoVariable && mesAviso.mesAviso">

@@ -16,6 +16,14 @@ class DocumentoEmpresa extends Eloquent {
         }
     }
     
+    public function extension()
+    {
+        $extension = $this->nombre;
+        $info = new SplFileInfo($extension);
+        
+        return $info->getExtension();
+    }
+    
     static function errores($datos){
          
         $rules = array(

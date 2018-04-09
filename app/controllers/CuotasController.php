@@ -135,7 +135,7 @@ class CuotasController extends \BaseController {
     {
         $cuota = Cuota::whereSid($sid)->first();
         $datos = $this->get_datos_formulario();
-        $errores = Cuota::errores($datos);       
+        $errores = null;       
         
         if(!$errores and $prestamo){
             $cuota->prestamo_id = $datos['prestamo_id'];

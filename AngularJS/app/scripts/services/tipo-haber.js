@@ -23,10 +23,22 @@ angular.module('angularjsApp')
             ingresoHaberes : function(){
               return $resource(constantes.URL + 'tipos-haber/ingreso-haberes/obtener');
             },
+            cuenta : function(){
+              return $resource(constantes.URL + 'tipos-haber/cuentas/obtener/:sid');
+            },
+            centroCosto : function(){
+              return $resource(constantes.URL + 'tipos-haber/centro-costo/obtener/:sid');
+            },
             updateCuenta : function(){
               return $resource(constantes.URL + 'tipos-haber/cuentas/actualizar',
                   {},
                   { post : { 'method': 'POST' } }
+              );
+            },
+            updateCuentaCentrosCosto : function(){
+              return $resource(constantes.URL + 'tipos-haber/cuentas-centros-costos/actualizar',
+                {},
+                { post : { 'method': 'POST' } }
               );
             }
         };

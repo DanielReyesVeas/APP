@@ -12,6 +12,10 @@ class FichaTrabajador extends Eloquent {
         return $this->belongsTo('Glosa', 'afp_id');
     }
     
+    public function zonaImpuestoUnico(){
+        return $this->belongsTo('ZonaImpuestoUnico', 'zona_id');
+    }
+    
     public function prevision(){
         return $this->belongsTo('Glosa', 'prevision_id');
     }
@@ -78,19 +82,153 @@ class FichaTrabajador extends Eloquent {
     
     public function afpSeguro(){
         return $this->belongsTo('Glosa', 'afp_seguro_id');
-    }
-    
-    public function apvs(){
-        return $this->hasMany('Apv','ficha_trabajador_id');
-    }
-    
-    public function cargas(){
-        return $this->hasMany('Carga','ficha_trabajador_id');
-    }
+    }           
     
     public function tramo(){
 		return $this->belongsTo('AsignacionFamiliar', 'tramo_id');
-	}              
+	}            
+    
+    public function resumen($anio)
+    {
+        $desde = $anio . '-01-01';
+        $hasta = $anio . '-12-01';
+        $datos = array();
+        $id = $this->trabajador->id;
+        $liquidaciones = Liquidacion::where('trabajador_id', $id)->where('mes', '<=', $hasta)->where('mes', '>=', $desde)->get();
+        $lista = array();
+        $meses = Funciones::crearMesesAnio($anio);
+        $factores = FactorActualizacion::listaFactores($anio);
+        $totalSueldo = 0;
+        $totalCotizacionPrevisional = 0;
+        $totalRentaImponible = 0;
+        $totalImpuestoUnico = 0;
+        $totalMayorRetencion = 0;
+        $totalRentaTotal = 0;
+        $totalRentaNoGravada = 0;
+        $totalRebaja = 0;
+        $totalFactor = 0;
+        $totalRentaAfecta = 0;
+        $totalImpuestoUnicoRetenido = 0;
+        $totalMayorRetencionImpuesto = 0;
+        $totalRentaTotalExenta = 0;
+        $totalRentaTotalNoGravada = 0;
+        $totalRebajaZonasExtremas = 0;
+        $totalRentaImponibleActualizada = 0;
+        $actividad = '';
+    
+        if($liquidaciones->count()){
+            foreach($liquidaciones as $liquidacion){
+                $lista[$liquidacion['mes']] = $liquidacion;
+            }
+        }
+        
+        for($i=0; $i<12; $i++){     
+            $mes = '0';
+            $index = $meses[$i];
+            $miLiquidacion = isset($lista[$index]);
+            $sueldo = 0;
+            
+            $cotizacionPrevisional = 0;
+            $rentaImponible = 0;
+            $impuestoUnico = 0;
+            $mayorRetencion = 0;
+            $rentaTotal = 0;
+            $rentaNoGravada = 0;
+            $rebaja = 0;
+            $factor = 0;
+            $rentaAfecta = 0;
+            $impuestoUnicoRetenido = 0;
+            $mayorRetencionImpuesto = 0;
+            $rentaTotalExenta = 0;
+            $rentaTotalNoGravada = 0;
+            $rebajaZonasExtremas = 0;    
+            $rentaImponibleActualizada = 0;    
+            
+            if($miLiquidacion){
+                $mes = '1';
+                $cotizacion = ($lista[$index]['imponibles'] - $lista[$index]['base_impuesto_unico']);
+                $sueldo = $lista[$index]['imponibles'];
+                $cotizacionPrevisional = $cotizacion;
+                $rentaImponible = $lista[$index]['base_impuesto_unico'];
+                $impuestoUnico = $lista[$index]['impuesto_determinado'];
+                $mayorRetencion = 0;
+                $rentaTotal = 0;
+                $rentaNoGravada = $lista[$index]['no_imponibles'];
+                $rebaja = $lista[$index]['rebaja_zona'];
+                $factor = $factores[$i]['factor'];
+                $rentaAfecta = round($factor * $lista[$index]['base_impuesto_unico']);
+                $impuestoUnicoRetenido = round($factor * $lista[$index]['impuesto_determinado']);
+                $mayorRetencionImpuesto = 0;
+                $rentaTotalExenta = 0;
+                $rentaTotalNoGravada = round($factor * $lista[$index]['no_imponibles']);
+                $rebajaZonasExtremas = round($factor * $lista[$index]['rebaja_zona']);
+                $rentaImponibleActualizada = round($factor * $lista[$index]['imponibles']);
+            }
+            
+            $datos[$i] = array(                
+                'sueldo' => $sueldo,
+                'cotizacionPrevisional' => $cotizacionPrevisional,
+                'rentaImponible' => $rentaImponible,
+                'impuestoUnico' => $impuestoUnico,
+                'mayorRetencion' => $mayorRetencion,
+                'rentaTotal' => $rentaTotal,
+                'rentaNoGravada' => $rentaNoGravada,
+                'rebaja' => $rebaja,
+                'factor' => $factor,
+                'rentaAfecta' => $rentaAfecta,
+                'impuestoUnicoRetenido' => $impuestoUnicoRetenido,
+                'mayorRetencionImpuesto' => $mayorRetencionImpuesto,
+                'rentaTotalExenta' => $rentaTotalExenta,
+                'rentaTotalNoGravada' => $rentaTotalNoGravada,
+                'rebajaZonasExtremas' => $rebajaZonasExtremas,
+                'rentaImponibleActualizada' => $rentaImponibleActualizada,
+                'liquidacion' => $lista,
+                'meses' => $meses,
+                'index' => $meses[$i]
+            );            
+            
+            $totalSueldo += $sueldo;
+            $totalCotizacionPrevisional += $cotizacionPrevisional;
+            $totalRentaImponible += $rentaImponible;
+            $totalImpuestoUnico += $impuestoUnico;
+            $totalMayorRetencion += $mayorRetencion;
+            $totalRentaTotal += $rentaTotal;
+            $totalRentaNoGravada += $rentaNoGravada;
+            $totalRebaja += $rebaja;
+            $totalFactor += $factor;
+            $totalRentaAfecta += $rentaAfecta;
+            $totalImpuestoUnicoRetenido += $impuestoUnicoRetenido;
+            $totalMayorRetencionImpuesto += $mayorRetencionImpuesto;
+            $totalRentaTotalExenta += $rentaTotalExenta;
+            $totalRentaTotalNoGravada += $rentaTotalNoGravada;
+            $totalRebajaZonasExtremas += $rebajaZonasExtremas;     
+            $totalRentaImponibleActualizada += $rentaImponibleActualizada;     
+            
+            $actividad = $actividad . $mes;
+        }
+        
+        $datos[12] = array(
+            'sueldo' => $totalSueldo,
+            'cotizacionPrevisional' => $totalCotizacionPrevisional,
+            'rentaImponible' => $totalRentaImponible,
+            'impuestoUnico' => $totalImpuestoUnico,
+            'mayorRetencion' => $totalMayorRetencion,
+            'rentaTotal' => $totalRentaTotal,
+            'rentaNoGravada' => $totalRentaNoGravada,
+            'rebaja' => $totalRebaja,
+            'factor' => $totalFactor,
+            'rentaAfecta' => $totalRentaAfecta,
+            'impuestoUnicoRetenido' => $totalImpuestoUnicoRetenido,
+            'mayorRetencionImpuesto' => $totalMayorRetencionImpuesto,
+            'rentaTotalExenta' => $totalRentaTotalExenta,
+            'rentaTotalNoGravada' => $totalRentaTotalNoGravada,
+            'rebajaZonasExtremas' => $totalRebajaZonasExtremas,
+            'rentaImponibleActualizada' => $totalRentaImponibleActualizada,
+            'actividad' => $actividad
+        );
+        
+        return $datos;
+    }
     
     static function isGratificacionAnual()
     {
@@ -105,290 +243,9 @@ class FichaTrabajador extends Eloquent {
                 return true;
             }
         }
+        
         return false;
-    }
-    
-    public function totalCargasFamiliares()
-    {        
-        $totalCargasFamiliares = 0;
-        $cargas = $this->cargas;
-        if($cargas->count()){
-            foreach($cargas as $carga){
-                if($carga->es_carga){
-                    $totalCargasFamiliares++;
-                }
-            }
-        }
-        
-        return $totalCargasFamiliares;
-    }
-    
-    public function totalCargasAutorizadas()
-    {        
-        $totalCargasFamiliares = 0;
-        $cargas = $this->cargas;
-        
-        if($cargas->count()){
-            foreach($cargas as $carga){
-                if($carga->es_carga && $carga->es_autorizada==1){
-                    $totalCargasFamiliares++;
-                }
-            }
-        }
-        
-        return $totalCargasFamiliares;
-    }
-    
-    public function numeroCargasAutorizadas()
-    {        
-        $totalCargasFamiliares = $this->totalCargasAutorizadas();
-        
-        if($totalCargasFamiliares==0){
-            return '';
-        }
-        
-        return $totalCargasFamiliares;
-    }
-    
-    public function totalCargasPagar()
-    {        
-        $cargasFamiliares = array();
-        $finMes = \Session::get('mesActivo')->fechaRemuneracion;
-        
-        if($this->cargas->count()){
-            foreach($this->cargas as $carga){
-                if($carga->es_carga && $carga->es_autorizada==1){
-                    $cargasFamiliares[] = $carga;
-                }
-            }
-        }
-        
-        return $cargasFamiliares;
-    }
-    
-    public function totalGrupoFamiliar()
-    {        
-        $totalGrupoFamiliar = 0;
-        $cargas = $this->cargas;
-        
-        if($cargas->count()){
-            $totalGrupoFamiliar = $cargas->count();
-        }
-        
-        return $totalGrupoFamiliar;
-    }
-    
-    public function comprobarApvs($apvs)
-    {
-        $idFicha = $this->id;
-        $misApvs = $this->misApvs();
-        $update = array();
-        $create = array();
-        $destroy = array();
-        
-        if($misApvs){
-            foreach($apvs as $apv)
-            {
-                $isUpdate = false;
-
-                if(isset($apv['id'])){  
-                    foreach($misApvs as $miApv)
-                    {
-                        if($apv['id'] == $miApv['id']){
-                            $update[] = array(
-                                'id' => $apv['id'],
-                                'sid' => $apv['sid'],
-                                'afp_id' => $apv['afp']['id'],
-                                'forma_pago' => $apv['formaPago']['id'],
-                                'moneda' => $apv['moneda'],
-                                'regimen' => $apv['regimen'],
-                                'monto' => $apv['monto']
-                            );
-                            $isUpdate = true;
-                        }                    
-                        if($isUpdate){
-                            break;
-                        }
-                    }
-                }else{
-                    $create[] = array(
-                        'afp_id' => $apv['afp']['id'],
-                        'forma_pago' => $apv['formaPago']['id'],
-                        'moneda' => $apv['moneda'],                        
-                        'regimen' => $apv['regimen'],
-                        'monto' => $apv['monto']
-                    );
-                }
-            }
-
-            foreach($misApvs as $miApv)
-            {
-                $isApv = false;
-                foreach($apvs as $apv)
-                {
-                    if(isset($apv['id'])){
-                        if($miApv['id'] == $apv['id']){
-                            $isApv = true;                        
-                        }
-                    }
-                }
-                if(!$isApv){
-                    $destroy[] = array(
-                        'id' => $miApv['id'],
-                        'sid' => $miApv['sid']
-                    );
-                }
-            }
-        }else{
-            foreach($apvs as $apv){
-                $create[] = array(
-                    'afp_id' => $apv['afp']['id'],
-                    'forma_pago' => $apv['formaPago']['id'],
-                    'moneda' => $apv['moneda'],
-                    'regimen' => $apv['regimen'],
-                    'monto' => $apv['monto']
-                );
-            }                
-        }
-        
-        
-        $datos = array(
-            'create' => $create,
-            'update' => $update,
-            'destroy' => $destroy
-        );
-        
-        return $datos;
-    }
-    
-    public function totalApv()
-    {
-        $idFicha = $this->id;
-        $apvs = $this->misApvs();
-        $monto = 0;
-        
-        if($apvs){
-            foreach($apvs as $apv){
-                $monto += $apv['montoPesos'];
-            }
-        }
-        
-        return $monto;
-    }
-    
-    public function misCargas()
-    {        
-        $misCargas = Carga::where('ficha_trabajador_id', $this->id)->get();
-        $listaCargas = array();
-        
-        if( $misCargas ){
-            foreach($misCargas as $carga){
-                $listaCargas[] = array(
-                    'id' => $carga->id,
-                    'sid' => $carga->sid,
-                    'created_at' => $carga->created_at,
-                    'parentesco' => $carga->parentesco,
-                    'tipo' => $carga->tipoCarga,
-                    'esCarga' => $carga->es_carga ? true : false,
-                    'esAutorizada' => $carga->es_autorizada ? true : false,
-                    'rut' => $carga->rut,
-                    'rutFormato' => Funciones::formatear_rut($carga->rut),
-                    'nombreCompleto' => $carga->nombre_completo,
-                    'fechaNacimiento' => $carga->fecha_nacimiento,
-                    'fechaAutorizacion' => $carga->fecha_autorizacion,
-                    'sexo' => $carga->sexo
-                );
-            }
-        }
-        
-        return $listaCargas;
-    }
-    
-    public function cargasFamiliares()
-    {        
-        $cargas = $this->totalCargasPagar();
-        $mes = \Session::get('mesActivo')->mes;
-        $monto = 0;
-        $cargasSimples = 0;
-        $cargasMaternales = 0;
-        $cargasInvalidas = 0;
-        $isCargas = false;
-        $idTramo = $this->tramo_id;
-        if($idTramo && $cargas){
-            $tramo = AsignacionFamiliar::where('tramo', $idTramo)->where('mes', $mes)->first();
-            $monto = $tramo->monto;
-            $monto = ( count($cargas) * $monto );
-            $isCargas = true;
-        }
-        foreach($cargas as $carga){
-            if($carga->tipo_carga_id==3){
-                $cargasInvalidas++;
-            }else if($carga->tipo_carga_id==2){
-                $cargasMaternales++;
-            }else if($carga->tipo_carga_id==1){
-                $cargasSimples++;
-            }
-        }
-        
-        $cargasFamiliares = array(
-            'cantidad' => count($cargas),
-            'cantidadSimples' => $cargasSimples,
-            'cantidadMaternales' => $cargasMaternales,
-            'cantidadInvalidas' => $cargasInvalidas,
-            'monto' => $monto,
-            'isCargas' => $isCargas
-        );
-        
-        return $cargasFamiliares;
-    }
-    
-    public function asignacionRetroactiva()
-    {
-        $monto = 0;
-        $mes = \Session::get('mesActivo')->id;
-        $id = $this->trabajador_id;
-        $asignacionesRetroactivas = Haber::where('trabajador_id', $id)->where('tipo_haber_id', 3)->where('mes_id', $mes)->get();
-        
-        if($asignacionesRetroactivas->count()){
-            foreach($asignacionesRetroactivas as $asignacionRetroactiva){
-                $monto = ($monto + Funciones::convertir($asignacionRetroactiva->monto, $asignacionRetroactiva->moneda));
-            }
-        }
-        
-        return $monto;
-    }
-    
-    public function reintegroCargasFamiliares()
-    {
-        return '';
-    }
-    
-    public function solicitudTrabajadorJoven()
-    {
-        return 'N';
-    }
-    
-    public function asignacionFamiliar()
-    {
-        $monto = $this->cargasFamiliares()['monto'];
-        if($monto==0){
-            return '';
-        }
-        
-        return $monto;
-    }
-    
-    public function isCargas()
-    {
-        $isCargas = false;
-        $idTrabajador = $this->id;
-        $cargas = $this->misCargas();
-        if($cargas){
-            $isCargas = true;
-        }
-        
-        return $isCargas;
-    }        
+    }      
     
     public function vigenciaContrato()
     {
@@ -423,155 +280,7 @@ class FichaTrabajador extends Eloquent {
         }
         return $miTramo;
     }
-    
-    public function miGrupoFamiliar()
-    {        
-        $idFicha = $this->id;
-        $misCargas = Carga::where('ficha_trabajador_id', $idFicha)->orderBy('es_carga', 'DESC')->get();
-        $listaCargas = array();
-        
-        if( $misCargas->count() ){
-            foreach($misCargas as $carga){
-                $listaCargas[] = array(
-                    'id' => $carga->id,
-                    'sid' => $carga->sid,
-                    'created_at' => $carga->created_at,
-                    'parentesco' => $carga->parentesco,
-                    'esCarga' => $carga->es_carga ? true : false,
-                    'esAutorizada' => $carga->es_autorizada ? true : false,
-                    'rut' => $carga->rut,
-                    'rutFormato' => Funciones::formatear_rut($carga->rut),
-                    'nombreCompleto' => $carga->nombre_completo,
-                    'fechaNacimiento' => $carga->fecha_nacimiento,
-                    'sexo' => $carga->sexo
-                );
-            }
-        }
-        
-        return $listaCargas;
-    }
-    
-    
-    
-    public function comprobarCargas($cargas)
-    {
-        $idFicha = $this->id;
-        $misCargas = $this->miGrupoFamiliar($idFicha);
-        $update = array();
-        $create = array();
-        $destroy = array();
-        
-        if($misCargas){
-            foreach($cargas as $carga)
-            {
-                $isUpdate = false;
-
-                if(isset($carga['id'])){  
-                    foreach($misCargas as $miCarga)
-                    {
-                        if($carga['id'] == $miCarga['id']){
-                            $update[] = array(
-                                'id' => $carga['id'],
-                                'sid' => $carga['sid'],
-                                'tipo' => $carga['tipo']['id'],
-                                'esCarga' => $carga['esCarga'],
-                                'rut' => $carga['rut'],
-                                'nombreCompleto' => $carga['nombreCompleto'],
-                                'sexo' => $carga['sexo'],
-                                'fechaNacimiento' => $carga['fechaNacimiento'],
-                                'parentesco' => $carga['parentesco']
-                            );
-                            $isUpdate = true;
-                        }                    
-                        if($isUpdate){
-                            break;
-                        }
-                    }
-                }else{
-                    $create[] = array(
-                        'esCarga' => $carga['esCarga'],
-                        'rut' => $carga['rut'],
-                        'tipo' => $carga['tipo']['id'],
-                        'nombreCompleto' => $carga['nombreCompleto'],
-                        'fechaNacimiento' => $carga['fechaNacimiento'],
-                        'sexo' => $carga['sexo'],
-                        'parentesco' => $carga['parentesco']
-                    );
-                }
-            }
-
-            foreach($misCargas as $miCarga)
-            {
-                $isCarga = false;
-                foreach($cargas as $carga)
-                {
-                    if(isset($carga['id'])){
-                        if($miCarga['id'] == $carga['id']){
-                            $isCarga = true;                        
-                        }
-                    }
-                }
-                if(!$isCarga){
-                    $destroy[] = array(
-                        'id' => $miCarga['id'],
-                        'sid' => $miCarga['sid']
-                    );
-                }
-            }
-        }else{
-            foreach($cargas as $carga){
-                $create[] = array(
-                    'esCarga' => $carga['esCarga'],
-                    'rut' => $carga['rut'],
-                    'tipo' => $carga['tipo']['id'],
-                    'nombreCompleto' => $carga['nombreCompleto'],
-                    'fechaNacimiento' => $carga['fechaNacimiento'],
-                    'sexo' => $carga['sexo'],
-                    'parentesco' => $carga['parentesco']
-                );
-            }
-        }
-        
-        
-        $datos = array(
-            'create' => $create,
-            'update' => $update,
-            'destroy' => $destroy
-        );
-        
-        return $datos;
-    }
-    
-    public function misApvs()
-    {        
-        $misApvs = Apv::where('ficha_trabajador_id', $this->id)->get();
-        $listaApvs = array();
-        
-        if( $misApvs ){
-            foreach($misApvs as $apv){
-                $listaApvs[] = array(
-                    'id' => $apv->id,
-                    'sid' => $apv->sid,
-                    'moneda' => $apv->moneda,
-                    'numeroContrato' => $apv->numero_contrato,
-                    'monto' => $apv->monto,
-                    'regimen' => strtoupper($apv->regimen),
-                    'montoPesos' => Funciones::convertir($apv->monto, $apv->moneda),
-                    'afp' => array(
-                        'id' => $apv->afp->id,
-                        'nombre' => $apv->afp->glosa
-                    ),
-                    'formaPago' => array(
-                        'id' => $apv->formaPago->id,
-                        'nombre' => $apv->formaPago->glosa
-                    )
-                );
-            }
-        }
-        
-        return $listaApvs;
-    }
-    
+                    
     public function nombreCompleto()
     {
         $nombres = $this->nombres;
@@ -616,6 +325,65 @@ class FichaTrabajador extends Eloquent {
         
         return $codigo;
     }        
+    
+    public function miSeccion()
+    {
+        $seccion = $this->seccion;
+        if($seccion){
+            if($seccion->codigo){
+                return $seccion->codigo;
+            }else{
+                return $seccion->nombre;
+            }
+        }
+        
+        return "";
+    }
+    
+    public function miTienda()
+    {
+        $tienda = $this->tienda;
+        if($tienda){
+            if($tienda->codigo){
+                return $tienda->codigo;
+            }else{
+                return $tienda->nombre;
+            }
+        }
+        
+        return null;
+    }
+    
+    public function hasta($fichas)
+    {
+        $fichas = array_reverse($fichas->toArray());
+        $ultimaFicha = null;
+        
+        if($this->id==$fichas[0]['id']){
+            return null;
+        }
+        
+        foreach($fichas as $ficha){
+            if($this->id == $ficha['id']){
+                $fecha = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($ultimaFicha['fecha'])));
+                return $fecha;
+            }
+            $ultimaFicha = $ficha;
+        }
+    }
+    
+    public function periodo($index, $desde, $hasta)
+    {
+        if($desde==$hasta){
+            return ($index + 1) . '° - ' . Funciones::obtenerMesAnioTextoAbr($desde);
+        }
+        if($hasta){
+            $hasta = Funciones::obtenerMesAnioTextoAbr($hasta);
+        }else{
+            $hasta = '∞';
+        }
+        return ($index + 1) . '° - ' . Funciones::obtenerMesAnioTextoAbr($desde) . ' - ' . $hasta;
+    }
     
     public function tipoTrabajador($recaudador=null)
     {        

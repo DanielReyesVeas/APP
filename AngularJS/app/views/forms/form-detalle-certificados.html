@@ -30,7 +30,8 @@
               <td>{{ dato.fecha | date : "dd-MM-y" }}</td>
               <td>{{ dato.tipo.nombre }}</td>
               <td>
-                <a href="javascript:void(0);" ng-click="detalle(dato, trabajador.sid)"><i class="fa fa-search"></i></a>
+                <a href="javascript:void(0);" ng-click="detalle(dato, trabajador.sid)"><i class="fa fa-window-restore"></i></a>
+                <a href="{{ constantes.URL }}/stories/{{ dato.documento.nombre }}" download="{{ dato.documento.alias }}"><i class="fa fa-download"></i></a>
                 <a href="javascript:void(0);" ng-if="accesos.eliminar && accesos.abierto" confirmation-click="eliminar(dato, trabajador.sid)" confirmation-needed="El Certificado seleccionado será eliminado del sistema. ¿Desea continuar?"><i class="fa fa-trash"></i></a>
               </td>
             </tr>

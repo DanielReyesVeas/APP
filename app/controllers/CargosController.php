@@ -13,7 +13,7 @@ class CargosController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cargos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cargos');
         $cargos = Cargo::all();
         $listaCargos=array();
         if( $cargos->count() ){
@@ -135,9 +135,25 @@ class CargosController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        Cargo::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $cargo = Cargo::whereSid($sid)->first();
+        
+        $errores = $cargo->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#cargos', $cargo->id, $cargo->nombre, 'Delete');       
+            $cargo->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){

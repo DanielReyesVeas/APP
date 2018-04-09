@@ -1,13 +1,21 @@
 <?php
 
-use Illuminate\Database\Eloquent\SoftDeletingTrait;
+//use Illuminate\Database\Eloquent\SoftDeletingTrait;
 
 class Trabajador extends Eloquent {
     
-    use SoftDeletingTrait;
+    //use SoftDeletingTrait;
     
     protected $table = 'trabajadores';
-    protected $dates = array('deleted_at');
+    //protected $dates = array('deleted_at');
+    protected $miFicha = null;
+    protected $miRentaImponible=null;
+    protected $miTotalSalud=null;
+    protected $miSueldo = null;
+    protected $miGratificacion = null;
+    protected $miMiSemanaCorrida = null;
+    protected $miMisDescuentos = null;
+    protected $miMisHaberes = null;
 
     public function contrato(){
         return $this->hasMany('Contrato', 'trabajador_id');
@@ -77,35 +85,55 @@ class Trabajador extends Eloquent {
         return $this->hasMany('Finiquito','trabajador_id');
     }
     
-    public function fichaTrabajador()
-    {
-        return $this->hasMany('FichaTrabajador', 'trabajador_id');
+    public function cargas(){
+        return $this->hasMany('Carga','trabajador_id');
     }
     
-    static function centralizar($fecha, $empresa_id)
+    public function apvs(){
+        return $this->hasMany('Apv','trabajador_id');
+    }
+    
+    public function fichaTrabajador()
     {
+        return $this->hasMany('FichaTrabajador', 'trabajador_id')->orderBy('fecha');
+    }
+    
+    public function fichaTrabajodorUltima()
+    {
+        return $this->hasOne('FichaTrabajador', 'trabajador_id')->orderBy('fecha', 'DESC');
+    }
+    
+    /*static function centralizar($fecha, $empresa_id)
+    {
+        $meses = Config::get('constants.meses');
         $empresa = Empresa::find($empresa_id);
         Config::set('database.default', $empresa->base_datos);
-        $mes = MesDeTrabajo::where('fecha_remuneracion', '2017/09/30')->first();
+        $mes = MesDeTrabajo::where('mes', $fecha)->first();
         $liquidaciones = Liquidacion::where('mes', $mes['mes'])->orderBy('trabajador_apellidos')->get();
         $lista = array();
         $listaCuentas = array();
-        $cuentas = Cuenta::all();
-        
-        if($cuentas->count()){
-            foreach($cuentas as $cuenta){
-                $listaCuentas[] = array(
-                    'id' => $cuenta->id,    
-                    'codigo' => $cuenta->codigo,    
-                    'nombre' => $cuenta->nombre,    
-                    'comportamiento' => $cuenta->comportamiento
-                );
+
+        $isCME = \Session::get('empresa')->isCME;
+        if(!$isCME) {
+            $cuentas = Cuenta::all();
+
+            if ($cuentas->count()) {
+                foreach ($cuentas as $cuenta) {
+                    $listaCuentas[] = array(
+                        'id' => $cuenta->id,
+                        'codigo' => $cuenta->codigo,
+                        'nombre' => $cuenta->nombre,
+                        'comportamiento' => $cuenta->comportamiento
+                    );
+                }
             }
+        }else{
+            $listaCuentas = Cuenta::listaCuentas();
         }
         
         foreach($liquidaciones as $liquidacion){
             $descuentos = array();
-            $detalles = $liquidacion->detallesLiquidacion($empresa->base_datos);
+            $detalles = $liquidacion->detallesLiquidacion($empresa->base_datos, $listaCuentas);
 
             $lista[] = array(
                 'idTrabajador' => $liquidacion->trabajador_id,
@@ -119,17 +147,63 @@ class Trabajador extends Eloquent {
                 'descuentos' => $detalles['descuentos'],
                 'aportes' => $detalles['aportes'],
                 'pais' => 'CHILE',
-                'canal' => $liquidacion->trabajador_seccion,
-                'tienda' => 'STGO CENTRO'
+                'canal' => $liquidacion->trabajador_seccion? $liquidacion->trabajador_seccion : '-',
+                'tienda' => $liquidacion->trabajador_tienda ? $liquidacion->trabajador_tienda : '-'
             );
         }
-        
+        $mes = $meses[ intval(date("m", strtotime($fecha)))-1 ]['value'];
         $datos = array(
             'general' => array(
                 'rut' => '112223334',
                 'nombre' => 'Usuario Admin',
-                'periodo' => '2017-09-01',
-                'cuentas' => $listaCuentas
+                'periodo' => $fecha,
+                'cuentas' => $listaCuentas,
+                'comentario' => 'Centralización '.$mes.' '.date("Y", strtotime($fecha))
+            ),
+            'detalle' => $lista                
+        );
+        
+        return $datos;
+    }*/
+    
+    static function centralizar($fecha, $empresa_id)
+    {
+        $meses = Config::get('constants.meses');
+        $empresa = Empresa::find($empresa_id);
+        Config::set('database.default', $empresa->base_datos);
+        $mes = MesDeTrabajo::where('mes', $fecha)->first();
+        $liquidaciones = Liquidacion::where('mes', $mes['mes'])->orderBy('trabajador_apellidos')->get();
+        $lista = array();
+
+        $listaCuentas = Cuenta::listaCuentas();
+        
+        foreach($liquidaciones as $liquidacion){
+            $descuentos = array();
+            $empleado = $liquidacion->trabajador->ficha();
+            $detalles = $liquidacion->detallesLiquidacion($empresa->base_datos, $listaCuentas, $empleado->centro_costo_id );
+            $lista[] = array(
+                'idTrabajador' => $liquidacion->trabajador_id,
+                'rut' => $liquidacion->trabajador_rut,
+                'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
+                'sueldoBase' => $liquidacion->sueldo_base,
+                'sueldo' => $liquidacion->sueldo,
+                'rentaImponible' => $liquidacion->renta_imponible,
+                'sueldoLiquido' => $liquidacion->sueldo_liquido,
+                'haberes' => $detalles['haberes'],
+                'descuentos' => $detalles['descuentos'],
+                'aportes' => $detalles['aportes'],
+                'centroCosto' => $empleado->centro_costo_id,
+                'nombreCentroCosto' => $empleado->centroCosto ? $empleado->centroCosto->nombre : ""
+            );
+        }
+        $mes = $meses[ intval(date("m", strtotime($fecha)))-1 ]['value'];
+        $datos = array(
+            'general' => array(
+                'rut' => '112223334',
+                'nombre' => 'Usuario Admin',
+                'periodo' => $fecha,
+                'cuentas' => $listaCuentas,
+                'comentario' => 'Centralización '.$mes.' '.date("Y", strtotime($fecha))
             ),
             'detalle' => $lista                
         );
@@ -139,52 +213,500 @@ class Trabajador extends Eloquent {
     
     public function ficha()
     {
-        $idMes = \Session::get('mesActivo')->id;
-        $mes = \Session::get('mesActivo')->mes;
-        $idTrabajador = $this->id;
-        $ficha = FichaTrabajador::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->first();
-        if(!$ficha){
+        if(!$this->miFicha){
+            $idMes = \Session::get('mesActivo')->id;
+            $mes = \Session::get('mesActivo')->mes;
+            $idTrabajador = $this->id;
             $ficha = FichaTrabajador::where('trabajador_id', $idTrabajador)->where('fecha', '<=', $mes)->orderBy('fecha', 'DESC')->first();
+            if(!$ficha){
+                $ficha = FichaTrabajador::where('trabajador_id', $idTrabajador)->where('fecha', '<=', $mes)->orderBy('fecha', 'DESC')->first();
+            }
+            if(!$ficha){
+                $ficha = null;
+            }
+
+            $this->miFicha = $ficha;
         }
-        if(!$ficha){
-            $ficha = null;
+        
+        return $this->miFicha;
+    }     
+    
+    public function ultimaFicha($ingresado=false)
+    {
+        $idTrabajador = $this->id;
+        $ficha = FichaTrabajador::where('trabajador_id', $idTrabajador)->orderBy('id', 'DESC')->first();
+        if($ficha){
+            if($ficha->estado=='Ingresado' || !$ingresado){
+                return $ficha;
+            }
         }
+
+        return null;
+    } 
+    
+    public function fichaAnual($anio)
+    {
+        $mes = $anio . '-12-01';
+        $idTrabajador = $this->id;
+        
+        $ficha = FichaTrabajador::where('trabajador_id', $idTrabajador)->where('fecha', '<=', $mes)->orderBy('fecha', 'DESC')->first();
         
         return $ficha;
-    }       
+    } 
     
-    public function crearUser($estado)
+    public function crearUser()
     {
-        $usuario = new User();
-        $usuario->sid = Funciones::generarSID();
-        $usuario->tipo = 2;
-        $usuario->funcionario_id = $this->id;
-        $usuario->username = $this->rut;
-        $usuario->password = Hash::make('1234');
-        $usuario->estado = $estado;
-        $usuario->perfil_id = 2;
-        $usuario->save();
-        
-        $empresa = \Session::get('empresa');
-        
-        $usuarioEmpresa = new UsuarioEmpresa();
-        $usuarioEmpresa->usuario_id = $usuario->id;
-        $usuarioEmpresa->empresa_id = $empresa->id;
-        $usuarioEmpresa->activo = $estado;
-        $usuarioEmpresa->documentos_empresa = true;
-        $usuarioEmpresa->cartas_notificacion = true;
-        $usuarioEmpresa->certificados = true;
-        $usuarioEmpresa->liquidaciones = true;
-        $usuarioEmpresa->solicitudes = true;
-        $usuarioEmpresa->save();
+        $user = new Usuario();
+        $user->sid = Funciones::generarSID();
+        $user->funcionario_id = $this->id;
+        $user->username = $this->rut;
+        $pass = $user->generarClave();
+        $user->password = Hash::make($pass);
+        $user->activo = 2;
+        $user->save();
+
+        $permiso = new Permiso();
+        $permiso->usuario_id = $user->id;
+        $permiso->documentos_empresa = 1;
+        $permiso->cartas_notificacion = 1;
+        $permiso->certificados = 1;
+        $permiso->liquidaciones = 1;
+        $permiso->solicitudes = 1;
+        $permiso->save();
         
         return;
     }    
+    
+    public function totalCargasFamiliares()
+    {        
+        $totalCargasFamiliares = 0;
+        $cargas = $this->cargas;
+        if($cargas->count()){
+            foreach($cargas as $carga){
+                if($carga->es_carga){
+                    $totalCargasFamiliares++;
+                }
+            }
+        }
+        
+        return $totalCargasFamiliares;
+    }
+    
+    public function totalCargasAutorizadas()
+    {        
+        $totalCargasFamiliares = 0;
+        $cargas = $this->cargas;
+        
+        if($cargas->count()){
+            foreach($cargas as $carga){
+                if($carga->es_carga && $carga->es_autorizada==1){
+                    $totalCargasFamiliares++;
+                }
+            }
+        }
+        
+        return $totalCargasFamiliares;
+    }
+    
+    public function numeroCargasAutorizadas()
+    {        
+        $totalCargasFamiliares = $this->totalCargasAutorizadas();
+        
+        if($totalCargasFamiliares==0){
+            return '';
+        }
+        
+        return $totalCargasFamiliares;
+    }
+    
+    public function totalCargasPagar()
+    {        
+        $cargasFamiliares = array();
+        $mes = \Session::get('mesActivo');
+        
+        if($this->cargas->count()){
+            foreach($this->cargas as $carga){
+                if(!$carga->fecha_pago_desde && !$carga->fecha_pago_hasta || 
+                   !$carga->fecha_pago_hasta && $carga->fecha_pago_desde && $carga->fecha_pago_desde <= $mes->mes || 
+                   !$carga->fecha_pago_desde && $carga->fecha_pago_hasta && $carga->fecha_pago_hasta >= $mes->mes || 
+                   $carga->fecha_pago_desde && $carga->fecha_pago_hasta && $carga->fecha_pago_desde <= $mes->mes && $carga->fecha_pago_hasta >= $mes->mes){
+                        $cargasFamiliares[] = $carga;
+                }
+            }
+        }
+        
+        return $cargasFamiliares;
+    }
+    
+    public function totalGrupoFamiliar()
+    {        
+        $totalGrupoFamiliar = 0;
+        $cargas = $this->cargas;
+        
+        if($cargas->count()){
+            $totalGrupoFamiliar = $cargas->count();
+        }
+        
+        return $totalGrupoFamiliar;
+    }
+    
+    public function misCargas()
+    {        
+        $misCargas = $this->cargas;
+        $listaCargas = array();
+        
+        if( $misCargas ){
+            foreach($misCargas as $carga){
+                $listaCargas[] = array(
+                    'id' => $carga->id,
+                    'sid' => $carga->sid,
+                    'created_at' => date('Y-m-d H:i:s', strtotime($carga->created_at)),
+                    'parentesco' => $carga->parentesco,
+                    'tipo' => $carga->tipoCarga,
+                    'esCarga' => $carga->es_carga ? true : false,
+                    'esAutorizada' => $carga->es_autorizada ? true : false,
+                    'rut' => $carga->rut,
+                    'rutFormato' => Funciones::formatear_rut($carga->rut),
+                    'nombreCompleto' => $carga->nombre_completo,
+                    'fechaNacimiento' => $carga->fecha_nacimiento,
+                    'fechaAutorizacion' => $carga->fecha_autorizacion,
+                    'sexo' => $carga->sexo
+                );
+            }
+        }
+        
+        return $listaCargas;
+    }
+    
+    public function cargasFamiliares()
+    {        
+        $cargas = $this->totalCargasPagar();
+        $mes = \Session::get('mesActivo')->mes;
+        $monto = 0;
+        $cargasSimples = 0;
+        $cargasMaternales = 0;
+        $cargasInvalidas = 0;
+        $isCargas = false;
+        $empleado = $this->ficha();
+        $idTramo = $empleado->tramo_id;
+        if($idTramo && $cargas){
+            $tramo = AsignacionFamiliar::where('tramo', $idTramo)->where('mes', $mes)->first();
+            $monto = $tramo->monto;
+            $monto = ( count($cargas) * $monto );
+            $isCargas = true;
+        }
+        foreach($cargas as $carga){
+            if($carga->tipo_carga_id==3){
+                $cargasInvalidas++;
+            }else if($carga->tipo_carga_id==2){
+                $cargasMaternales++;
+            }else if($carga->tipo_carga_id==1){
+                $cargasSimples++;
+            }
+        }
+        
+        $cargasFamiliares = array(
+            'cantidad' => count($cargas),
+            'cantidadSimples' => $cargasSimples,
+            'cantidadMaternales' => $cargasMaternales,
+            'cantidadInvalidas' => $cargasInvalidas,
+            'monto' => $monto,
+            'isCargas' => $isCargas
+        );
+        
+        return $cargasFamiliares;
+    }
+    
+    public function asignacionRetroactiva()
+    {
+        $monto = 0;
+        $mes = \Session::get('mesActivo')->id;
+        $id = $this->trabajador_id;
+        $asignacionesRetroactivas = Haber::where('trabajador_id', $id)->where('tipo_haber_id', 3)->where('mes_id', $mes)->get();
+        
+        if($asignacionesRetroactivas->count()){
+            foreach($asignacionesRetroactivas as $asignacionRetroactiva){
+                $monto = ($monto + Funciones::convertir($asignacionRetroactiva->monto, $asignacionRetroactiva->moneda));
+            }
+        }
+        
+        return $monto;
+    }
+    
+    public function reintegroCargasFamiliares()
+    {
+        return '';
+    }
+    
+    public function solicitudTrabajadorJoven()
+    {
+        return 'N';
+    }
+    
+    public function asignacionFamiliar()
+    {
+        $monto = $this->cargasFamiliares()['monto'];
+        if($monto==0){
+            return '';
+        }
+        
+        return $monto;
+    }
+    
+    public function isCargas()
+    {
+        $isCargas = false;
+        $cargas = $this->misCargas();
+        if($cargas){
+            $isCargas = true;
+        }
+        
+        return $isCargas;
+    }      
+    
+    public function miGrupoFamiliar()
+    {        
+        $misCargas = Carga::where('trabajador_id', $this->id)->orderBy('es_carga', 'DESC')->get();
+        $listaCargas = array();
+        
+        if( $misCargas->count() ){
+            foreach($misCargas as $carga){
+                if($carga->rut){
+                    $listaCargas[] = array(
+                        'id' => $carga->id,
+                        'sid' => $carga->sid,
+                        'created_at' => date('Y-m-d H:i:s', strtotime($carga->created_at)),
+                        'parentesco' => $carga->parentesco,
+                        'tipoCarga' => array(
+                            'id' => $carga->tipoCarga->id,
+                            'nombre' => $carga->tipoCarga->nombre
+                        ),
+                        'esCarga' => $carga->es_carga ? true : false,
+                        'esAutorizada' => $carga->es_autorizada ? true : false,
+                        'rut' => $carga->rut,
+                        'rutFormato' => Funciones::formatear_rut($carga->rut),
+                        'nombreCompleto' => $carga->nombre_completo,
+                        'fechaNacimiento' => $carga->fecha_nacimiento,
+                        'fechaAutorizacion' => $carga->fecha_autorizacion,
+                        'fechaPagoDesde' => $carga->fecha_pago_desde,
+                        'fechaPagoHasta' => $carga->fecha_pago_hasta,
+                        'sexo' => $carga->sexo
+                    );
+                }
+            }
+        }
+        
+        return $listaCargas;
+    }
+    
+    public function miGrupo()
+    {        
+        $misCargas = Carga::where('trabajador_id', $this->id)->orderBy('es_carga', 'DESC')->get();
+        $listaCargas = array();
+        
+        if( $misCargas->count() ){
+            foreach($misCargas as $carga){
+                if(!$carga->rut){
+                    $listaCargas[] = array(
+                        'id' => $carga->id,
+                        'sid' => $carga->sid,
+                        'fechaAutorizacion' => $carga->fecha_autorizacion,
+                        'fechaPagoDesde' => $carga->fecha_pago_desde,
+                        'fechaPagoHasta' => $carga->fecha_pago_hasta,
+                        'tipoCarga' => array(
+                            'id' => $carga->tipoCarga->id,
+                            'nombre' => $carga->tipoCarga->nombre
+                        ),
+                        'created_at' => date('Y-m-d H:i:s', strtotime($carga->created_at)),
+                        'esCarga' => $carga->es_carga ? true : false
+                    );
+                }
+            }
+        }
+        
+        return $listaCargas;
+    }
+    
+    public function misApvs()
+    {        
+        $misApvs = $this->apvs;
+        $listaApvs = array();
+        
+        if( $misApvs ){
+            foreach($misApvs as $apv){
+                $listaApvs[] = array(
+                    'id' => $apv->id,
+                    'sid' => $apv->sid,
+                    'moneda' => $apv->moneda,
+                    'numeroContrato' => $apv->numero_contrato,
+                    'monto' => $apv->monto,
+                    'regimen' => strtoupper($apv->regimen),
+                    'fechaPagoDesde' => $apv->fecha_pago_desde ? Funciones::obtenerMesAnioTextoAbr($apv->fecha_pago_desde) : '',
+                    'fechaPagoHasta' => $apv->fecha_pago_hasta ? Funciones::obtenerMesAnioTextoAbr($apv->fecha_pago_hasta) : '',
+                    'montoPesos' => Funciones::convertir($apv->monto, $apv->moneda),
+                    'afp' => array(
+                        'id' => $apv->afp->id,
+                        'nombre' => $apv->afp->glosa
+                    ),
+                    'formaPago' => array(
+                        'id' => $apv->formaPago->id,
+                        'nombre' => $apv->formaPago->glosa
+                    )
+                );
+            }
+        }
+        
+        return $listaApvs;
+    }
+    
+    public function misApvsPagar()
+    {        
+        $misApvs = $this->apvs;
+        $listaApvs = array();
+        
+        if( $misApvs ){
+            $mes = \Session::get('mesActivo');
+            foreach($misApvs as $apv){
+                if(!$apv->fecha_pago_desde && !$apv->fecha_pago_hasta || 
+                   !$apv->fecha_pago_hasta && $apv->fecha_pago_desde && $apv->fecha_pago_desde <= $mes->mes || 
+                   !$apv->fecha_pago_desde && $apv->fecha_pago_hasta && $apv->fecha_pago_hasta >= $mes->mes || 
+                    $apv->fecha_pago_desde && $apv->fecha_pago_hasta && $apv->fecha_pago_desde <= $mes->mes && $apv->fecha_pago_hasta >= $mes->mes){
+                    $listaApvs[] = array(
+                        'id' => $apv->id,
+                        'sid' => $apv->sid,
+                        'moneda' => $apv->moneda,
+                        'numeroContrato' => $apv->numero_contrato,
+                        'monto' => $apv->monto,
+                        'regimen' => strtoupper($apv->regimen),
+                        'fechaPagoDesde' => $apv->fecha_pago_desde ? Funciones::obtenerMesAnioTextoAbr($apv->fecha_pago_desde) : '',
+                        'fechaPagoHasta' => $apv->fecha_pago_hasta ? Funciones::obtenerMesAnioTextoAbr($apv->fecha_pago_hasta) : '',
+                        'montoPesos' => Funciones::convertir($apv->monto, $apv->moneda),
+                        'afp' => array(
+                            'id' => $apv->afp->id,
+                            'nombre' => $apv->afp->glosa
+                        ),
+                        'formaPago' => array(
+                            'id' => $apv->formaPago->id,
+                            'nombre' => $apv->formaPago->glosa
+                        )
+                    );
+                }
+            }
+        }
+        
+        return $listaApvs;
+    }
+    
+    public function misRegimenes()
+    {        
+        $misApvs = $this->apvs;
+        $listaApvs = array();
+        $regimen = '';
+        $regimenes = array();
+        
+        if( $misApvs ){
+            foreach($misApvs as $apv){
+                $regimenes[] = strtoupper($apv->regimen);
+            }
+            $regimen = implode(' , ', $regimenes);
+        }
+        
+        return $regimen;
+    }
+    
+    public function totalApv()
+    {
+        $apvs = $this->misApvs();
+        $monto = 0;
+        
+        if($apvs){
+            foreach($apvs as $apv){
+                $monto += $apv['montoPesos'];
+            }
+        }
+        
+        return $monto;
+    }
+    
+    public function totalApvPagar()
+    {
+        $apvs = $this->misApvsPagar();
+        $monto = 0;
+        
+        if($apvs){
+            foreach($apvs as $apv){
+                $monto += $apv['montoPesos'];
+            }
+        }
+        
+        return $monto;
+    }
+    
+    static function activos()
+    {
+        $finMes = \Session::get('mesActivo')->fechaRemuneracion;
+        $trabajadores = Trabajador::all();
+        
+        $listaTrabajadores=array();
+        if( $trabajadores->count() ){
+            foreach( $trabajadores as $trabajador ){
+                $empleado = $trabajador->ficha();
+                if($empleado){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes){
+                        $listaTrabajadores[]=array(
+                            'id' => $trabajador->id,
+                            'sid' => $trabajador->sid,
+                            'apellidos' => $empleado->apellidos,
+                            'nombreCompleto' => $empleado->nombreCompleto()
+                        );
+                    }
+                }
+            }
+        }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');        
+        
+        return $listaTrabajadores;        
+    }
+    
+    static function activosFiniquitados()
+    {
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
+        $trabajadores = Trabajador::all();
+        
+        $listaTrabajadores=array();
+        if( $trabajadores->count() ){
+            foreach( $trabajadores as $trabajador ){
+                $empleado = $trabajador->ficha();
+                if($empleado){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMesAnterior && $empleado->fecha_finiquito >= $mesAnterior){
+                        $listaTrabajadores[]=array(
+                            'id' => $trabajador->id,
+                            'sid' => $trabajador->sid,
+                            'apellidos' => $empleado->apellidos,
+                            'nombreCompleto' => $empleado->nombreCompleto()
+                        );
+                    }
+                }
+            }
+        }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');        
+        
+        return $listaTrabajadores;        
+    }
     
     public function semanaCorrida()
     {
         $mes = \Session::get('mesActivo')->mes;
         $semanaCorrida = SemanaCorrida::where('trabajador_id', $this->id)->where('mes', $mes)->first();
+        if(!$semanaCorrida){
+            $this->crearSemanaCorrida();
+            $semanaCorrida = SemanaCorrida::where('trabajador_id', $this->id)->where('mes', $mes)->first();
+        }
         $semanas = MesDeTrabajo::semanas();
         $datos = array();
         $datos[] = array('semana' => '1°', 'alias' => 'semana_1', 'comision' => $semanaCorrida->semana_1);
@@ -206,91 +728,128 @@ class Trabajador extends Eloquent {
     
     public function misHaberes()
     {
-        $idTrabajador = $this->id;
-        $listaHaberes = array();
-        $idMes = \Session::get('mesActivo')->id;
-        $mes = \Session::get('mesActivo')->mes;
-        $misHaberes = Haber::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->orWhere('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->get();
-        $diasTrabajados = $this->diasTrabajados();
-        
-        if( $misHaberes->count() ){
-            if($diasTrabajados<30){
-                foreach($misHaberes as $haber){
-                    $monto = Funciones::convertir($haber->monto, $haber->moneda);
-                    
-                    
-                    if($haber->tipoHaber->id==2){
-                        if($diasTrabajados<25){
-                            $monto = round(($monto / 30) * $diasTrabajados);                            
-                        }
-                    }else{
-                        if($haber->tipoHaber->proporcional_dias_trabajados){
-                            $monto = round(($monto / 30) * $diasTrabajados);                            
+        if(!$this->miMisHaberes){
+            $idTrabajador = $this->id;
+            $listaHaberes = array();
+            $idMes = \Session::get('mesActivo')->id;
+            $mes = \Session::get('mesActivo')->mes;
+            $misHaberes = Haber::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->orWhere('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->get();
+            $diasTrabajados = $this->diasTrabajados();
+
+            if( $misHaberes->count() ){
+                if($diasTrabajados<30){
+                    foreach($misHaberes as $haber){
+                        if($haber->permanente && !$haber->desde && !$haber->hasta || $haber->permanente && $haber->hasta && $haber->hasta >= $mes || $haber->permanente && $haber->desde && $haber->desde <= $mes || !$haber->permanente){
+                            $monto = Funciones::convertir($haber->monto, $haber->moneda);                                        
+                            if($haber->tipoHaber->id==2){
+                                if($diasTrabajados<25){
+                                    $monto = round(($monto / 30) * $diasTrabajados);                            
+                                }
+                            }else{
+                                if($haber->tipoHaber->proporcional_dias_trabajados){
+                                    $monto = round(($monto / 30) * $diasTrabajados);                            
+                                }
+                            }
+
+                            $listaHaberes[] = array(
+                                'id' => $haber->id,
+                                'sid' => $haber->sid,
+                                'moneda' => $haber->moneda,
+                                'monto' => $haber->monto,
+                                'montoPesos' => $monto,
+                                'mes' => Funciones::obtenerMesAnioTexto($haber->mes),
+                                'fechaIngreso' => date('Y-m-d H:i:s', strtotime($haber->created_at)),
+                                'tipo' => array(
+                                    'id' => $haber->tipoHaber->id,
+                                    'nombre' => $haber->tipoHaber->nombre,
+                                    'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
+                                    'imponible' => $haber->tipoHaber->imponible ? true : false,
+                                    'tributable' => $haber->tipoHaber->tributable ? true : false,
+                                    'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
+                                    'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
+                                    'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false,
+                                    'idCuenta' => $haber->tipoHaber->cuenta_id
+                                ),
+                                'desde' => Funciones::obtenerMesAnioTexto($haber->desde),
+                                'hasta' => Funciones::obtenerMesAnioTexto($haber->hasta),
+                                'porMes' => $haber->por_mes ? true : false,
+                                'rangoMeses' => $haber->rango_meses ? true : false,
+                                'permanente' => $haber->permanente ? true : false,
+                                'todosAnios' => $haber->todos_anios ? true : false
+                            );
                         }
                     }
-                    
-                    $listaHaberes[] = array(
-                        'id' => $haber->id,
-                        'sid' => $haber->sid,
-                        'moneda' => $haber->moneda,
-                        'monto' => $haber->monto,
-                        'montoPesos' => $monto,
-                        'mes' => array(
-                            'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
-                            'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
-                        ),
-                        'fechaIngreso' => $haber->created_at,
-                        'tipo' => array(
-                            'id' => $haber->tipoHaber->id,
-                            'nombre' => $haber->tipoHaber->nombre,
-                            'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
-                            'imponible' => $haber->tipoHaber->imponible ? true : false,
-                            'tributable' => $haber->tipoHaber->tributable ? true : false,
-                            'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
-                            'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
-                            'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false,
-                            'idCuenta' => $haber->tipoHaber->cuenta_id
-                        ),
-                        'desde' => $haber->desde,
-                        'hasta' => $haber->hasta,
-                        'porMes' => $haber->por_mes ? true : false,
-                        'rangoMeses' => $haber->rango_meses ? true : false,
-                        'permanente' => $haber->permanente ? true : false,
-                        'todosAnios' => $haber->todos_anios ? true : false
-                    );
+                }else{
+                    foreach($misHaberes as $haber){
+                        if($haber->permanente && !$haber->desde && !$haber->hasta || $haber->permanente && $haber->hasta && $haber->hasta >= $mes || $haber->permanente && $haber->desde && $haber->desde <= $mes || !$haber->permanente){
+                            $listaHaberes[] = array(
+                                'id' => $haber->id,
+                                'sid' => $haber->sid,
+                                'moneda' => $haber->moneda,
+                                'monto' => $haber->monto,
+                                'montoPesos' => Funciones::convertir($haber->monto, $haber->moneda),
+                                'mes' => Funciones::obtenerMesAnioTexto($haber->mes),
+                                'fechaIngreso' => date('Y-m-d H:i:s', strtotime($haber->created_at)),
+                                'tipo' => array(
+                                    'id' => $haber->tipoHaber->id,
+                                    'nombre' => $haber->tipoHaber->nombre,
+                                    'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
+                                    'imponible' => $haber->tipoHaber->imponible ? true : false,
+                                    'tributable' => $haber->tipoHaber->tributable ? true : false,
+                                    'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
+                                    'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
+                                    'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false,
+                                    'idCuenta' => $haber->tipoHaber->cuenta_id
+                                ),
+                                'desde' => Funciones::obtenerMesAnioTexto($haber->desde),
+                                'hasta' => Funciones::obtenerMesAnioTexto($haber->hasta),
+                                'porMes' => $haber->por_mes ? true : false,
+                                'rangoMeses' => $haber->rango_meses ? true : false,
+                                'permanente' => $haber->permanente ? true : false,
+                                'todosAnios' => $haber->todos_anios ? true : false
+                            );
+                        }
+                    }
                 }
-            }else{
-                foreach($misHaberes as $haber){
-                    $listaHaberes[] = array(
-                        'id' => $haber->id,
-                        'sid' => $haber->sid,
-                        'moneda' => $haber->moneda,
-                        'monto' => $haber->monto,
-                        'montoPesos' => Funciones::convertir($haber->monto, $haber->moneda),
-                        'mes' => array(
-                            'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
-                            'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
-                        ),
-                        'fechaIngreso' => $haber->created_at,
-                        'tipo' => array(
-                            'id' => $haber->tipoHaber->id,
-                            'nombre' => $haber->tipoHaber->nombre,
-                            'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
-                            'imponible' => $haber->tipoHaber->imponible ? true : false,
-                            'tributable' => $haber->tipoHaber->tributable ? true : false,
-                            'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
-                            'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
-                            'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false,
-                            'idCuenta' => $haber->tipoHaber->cuenta_id
-                        ),
-                        'desde' => $haber->desde,
-                        'hasta' => $haber->hasta,
-                        'porMes' => $haber->por_mes ? true : false,
-                        'rangoMeses' => $haber->rango_meses ? true : false,
-                        'permanente' => $haber->permanente ? true : false,
-                        'todosAnios' => $haber->todos_anios ? true : false
-                    );
-                }
+            }
+            $this->miMisHaberes = $listaHaberes;
+        }
+        
+        return $this->miMisHaberes;
+    }
+    
+    public function todosMisHaberes()
+    {
+        $listaHaberes = array();
+        $misHaberes = $this->haberes;
+        
+        if( $misHaberes->count() ){
+            foreach($misHaberes as $haber){
+                $listaHaberes[] = array(
+                    'id' => $haber->id,
+                    'sid' => $haber->sid,
+                    'moneda' => $haber->moneda,
+                    'monto' => $haber->monto,
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($haber->created_at)),
+                    'tipo' => array(
+                        'id' => $haber->tipoHaber->id,
+                        'nombre' => $haber->tipoHaber->nombre,
+                        'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
+                        'imponible' => $haber->tipoHaber->imponible ? true : false,
+                        'tributable' => $haber->tipoHaber->tributable ? true : false,
+                        'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
+                        'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
+                        'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false,
+                        'idCuenta' => $haber->tipoHaber->cuenta_id
+                    ),
+                    'mes' => $haber->mes ? Funciones::obtenerMesAnioTextoAbr($haber->mes) : '',
+                    'desde' => $haber->desde ? Funciones::obtenerMesAnioTextoAbr($haber->desde) : '',
+                    'hasta' => $haber->hasta ? Funciones::obtenerMesAnioTextoAbr($haber->hasta) : '',
+                    'porMes' => $haber->por_mes ? true : false,
+                    'rangoMeses' => $haber->rango_meses ? true : false,
+                    'permanente' => $haber->permanente ? true : false,
+                    'todosAnios' => $haber->todos_anios ? true : false
+                );
             }
         }
         
@@ -303,81 +862,85 @@ class Trabajador extends Eloquent {
         $listaHaberes = array();
         $idMes = \Session::get('mesActivo')->id;
         $mes = \Session::get('mesActivo')->mes;
-        $misHaberes = Haber::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->orWhere('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->get();
+        $misHaberes = Haber::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->orWhere('rango_meses', 1)->where('desde', '<=', $mes)->where('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->get();
         $diasTrabajados = $this->diasTrabajados();
         
         if( $misHaberes->count() ){
             if($diasTrabajados<30){
                 foreach($misHaberes as $haber){
-					if($haber->tipoHaber->imponible){
-						$monto = Funciones::convertir($haber->monto, $haber->moneda);
+                    if($haber->permanente && !$haber->desde && !$haber->hasta || $haber->permanente && $haber->hasta && $haber->hasta >= $mes && !$haber->desde || $haber->permanente && $haber->desde && $haber->desde <= $mes && !$haber->hasta || $haber->permanente && $haber->desde && $haber->desde <= $mes && $haber->hasta && $haber->hasta >= $mes || !$haber->permanente){
+                        if($haber->tipoHaber->imponible){
+                            $monto = Funciones::convertir($haber->monto, $haber->moneda);
 
-						if($haber->tipoHaber->proporcional_dias_trabajados){
-							$monto = round(($monto / 30) * $diasTrabajados);
-						}
-
-						$listaHaberes[] = array(
-							'id' => $haber->id,
-							'sid' => $haber->sid,
-							'moneda' => $haber->moneda,
-							'monto' => $haber->monto,
-							'montoPesos' => $monto,
-							'mes' => array(
-								'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
-								'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
-							),
-							'fechaIngreso' => $haber->created_at,
-							'tipo' => array(
-                                'id' => $haber->tipoHaber->id,
-                                'nombre' => $haber->tipoHaber->nombre,
-                                'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
-                                'imponible' => $haber->tipoHaber->imponible ? true : false,
-                                'tributable' => $haber->tipoHaber->tributable ? true : false,
-                                'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
-                                'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
-                                'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
-							),
-							'desde' => $haber->desde,
-							'hasta' => $haber->hasta,
-							'porMes' => $haber->por_mes ? true : false,
-							'rangoMeses' => $haber->rango_meses ? true : false,
-							'permanente' => $haber->permanente ? true : false,
-							'todosAnios' => $haber->todos_anios ? true : false
-						);
-					}
+                            if($haber->tipoHaber->proporcional_dias_trabajados){
+                                $monto = round(($monto / 30) * $diasTrabajados);
+                            }
+                            
+                            $listaHaberes[] = array(
+                                'id' => $haber->id,
+                                'sid' => $haber->sid,
+                                'moneda' => $haber->moneda,
+                                'monto' => $haber->monto,
+                                'montoPesos' => $monto,
+                                'mes' => array(
+                                    'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
+                                    'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
+                                ),
+                                'fechaIngreso' => date('Y-m-d H:i:s', strtotime($haber->created_at)),
+                                'tipo' => array(
+                                    'id' => $haber->tipoHaber->id,
+                                    'nombre' => $haber->tipoHaber->nombre,
+                                    'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
+                                    'imponible' => $haber->tipoHaber->imponible ? true : false,
+                                    'tributable' => $haber->tipoHaber->tributable ? true : false,
+                                    'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
+                                    'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
+                                    'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
+                                ),
+                                'desde' => $haber->desde,
+                                'hasta' => $haber->hasta,
+                                'porMes' => $haber->por_mes ? true : false,
+                                'rangoMeses' => $haber->rango_meses ? true : false,
+                                'permanente' => $haber->permanente ? true : false,
+                                'todosAnios' => $haber->todos_anios ? true : false
+                            );
+                        }
+                    }
                 }
             }else{
                 foreach($misHaberes as $haber){
-				  	if($haber->tipoHaber->imponible){
-						$listaHaberes[] = array(
-							'id' => $haber->id,
-							'sid' => $haber->sid,
-							'moneda' => $haber->moneda,
-							'monto' => $haber->monto,
-							'montoPesos' => Funciones::convertir($haber->monto, $haber->moneda),
-							'mes' => array(
-								'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
-								'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
-							),
-							'fechaIngreso' => $haber->created_at,
-							'tipo' => array(
-                                'id' => $haber->tipoHaber->id,
-                                'nombre' => $haber->tipoHaber->nombre,
-                                'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
-                                'imponible' => $haber->tipoHaber->imponible ? true : false,
-                                'tributable' => $haber->tipoHaber->tributable ? true : false,
-                                'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
-                                'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
-                                'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
-							),
-							'desde' => $haber->desde,
-							'hasta' => $haber->hasta,
-							'porMes' => $haber->por_mes ? true : false,
-							'rangoMeses' => $haber->rango_meses ? true : false,
-							'permanente' => $haber->permanente ? true : false,
-							'todosAnios' => $haber->todos_anios ? true : false
-						);
-					}
+                    if($haber->permanente && !$haber->desde && !$haber->hasta || $haber->permanente && $haber->hasta && $haber->hasta >= $mes && !$haber->desde || $haber->permanente && $haber->desde && $haber->desde <= $mes && !$haber->hasta || $haber->permanente && $haber->desde && $haber->desde <= $mes && $haber->hasta && $haber->hasta >= $mes || !$haber->permanente){
+                        if($haber->tipoHaber->imponible){
+                            $listaHaberes[] = array(
+                                'id' => $haber->id,
+                                'sid' => $haber->sid,
+                                'moneda' => $haber->moneda,
+                                'monto' => $haber->monto,
+                                'montoPesos' => Funciones::convertir($haber->monto, $haber->moneda),
+                                'mes' => array(
+                                    'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
+                                    'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
+                                ),
+                                'fechaIngreso' => date('Y-m-d H:i:s', strtotime($haber->created_at)),
+                                'tipo' => array(
+                                    'id' => $haber->tipoHaber->id,
+                                    'nombre' => $haber->tipoHaber->nombre,
+                                    'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
+                                    'imponible' => $haber->tipoHaber->imponible ? true : false,
+                                    'tributable' => $haber->tipoHaber->tributable ? true : false,
+                                    'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
+                                    'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
+                                    'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
+                                ),
+                                'desde' => $haber->desde,
+                                'hasta' => $haber->hasta,
+                                'porMes' => $haber->por_mes ? true : false,
+                                'rangoMeses' => $haber->rango_meses ? true : false,
+                                'permanente' => $haber->permanente ? true : false,
+                                'todosAnios' => $haber->todos_anios ? true : false
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -391,81 +954,85 @@ class Trabajador extends Eloquent {
         $listaHaberes = array();
         $idMes = \Session::get('mesActivo')->id;
         $mes = \Session::get('mesActivo')->mes;
-        $misHaberes = Haber::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->orWhere('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->get();
+        $misHaberes = Haber::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->orWhere('rango_meses', 1)->where('desde', '<=', $mes)->where('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->get();
         $diasTrabajados = $this->diasTrabajados();
         
         if( $misHaberes->count() ){
             if($diasTrabajados<30){
                 foreach($misHaberes as $haber){
-					if(!$haber->tipoHaber->imponible){
-						$monto = Funciones::convertir($haber->monto, $haber->moneda);
+                    if($haber->permanente && !$haber->desde && !$haber->hasta || $haber->permanente && $haber->hasta && $haber->hasta >= $mes && !$haber->desde || $haber->permanente && $haber->desde && $haber->desde <= $mes && !$haber->hasta || $haber->permanente && $haber->desde && $haber->desde <= $mes && $haber->hasta && $haber->hasta >= $mes || !$haber->permanente){
+                        if(!$haber->tipoHaber->imponible){
+                            $monto = Funciones::convertir($haber->monto, $haber->moneda);
 
-						if($haber->tipoHaber->proporcional_dias_trabajados){
-							$monto = round(($monto / 30) * $diasTrabajados);
-						}
+                            if($haber->tipoHaber->proporcional_dias_trabajados){
+                                $monto = round(($monto / 30) * $diasTrabajados);
+                            }
 
-						$listaHaberes[] = array(
-							'id' => $haber->id,
-							'sid' => $haber->sid,
-							'moneda' => $haber->moneda,
-							'monto' => $haber->monto,
-							'montoPesos' => $monto,
-							'mes' => array(
-								'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
-								'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
-							),
-							'fechaIngreso' => $haber->created_at,
-							'tipo' => array(
-                                'id' => $haber->tipoHaber->id,
-                                'nombre' => $haber->tipoHaber->nombre,
-                                'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
-                                'imponible' => $haber->tipoHaber->imponible ? true : false,
-                                'tributable' => $haber->tipoHaber->tributable ? true : false,
-                                'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
-                                'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
-                                'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
-							),
-							'desde' => $haber->desde,
-							'hasta' => $haber->hasta,
-							'porMes' => $haber->por_mes ? true : false,
-							'rangoMeses' => $haber->rango_meses ? true : false,
-							'permanente' => $haber->permanente ? true : false,
-							'todosAnios' => $haber->todos_anios ? true : false
-						);
-					}
+                            $listaHaberes[] = array(
+                                'id' => $haber->id,
+                                'sid' => $haber->sid,
+                                'moneda' => $haber->moneda,
+                                'monto' => $haber->monto,
+                                'montoPesos' => $monto,
+                                'mes' => array(
+                                    'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
+                                    'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
+                                ),
+                                'fechaIngreso' => date('Y-m-d H:i:s', strtotime($haber->created_at)),
+                                'tipo' => array(
+                                    'id' => $haber->tipoHaber->id,
+                                    'nombre' => $haber->tipoHaber->nombre,
+                                    'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
+                                    'imponible' => $haber->tipoHaber->imponible ? true : false,
+                                    'tributable' => $haber->tipoHaber->tributable ? true : false,
+                                    'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
+                                    'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
+                                    'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
+                                ),
+                                'desde' => $haber->desde,
+                                'hasta' => $haber->hasta,
+                                'porMes' => $haber->por_mes ? true : false,
+                                'rangoMeses' => $haber->rango_meses ? true : false,
+                                'permanente' => $haber->permanente ? true : false,
+                                'todosAnios' => $haber->todos_anios ? true : false
+                            );
+                        }
+                    }
                 }
             }else{
                 foreach($misHaberes as $haber){
-				  	if(!$haber->tipoHaber->imponible){
-						$listaHaberes[] = array(
-							'id' => $haber->id,
-							'sid' => $haber->sid,
-							'moneda' => $haber->moneda,
-							'monto' => $haber->monto,
-							'montoPesos' => Funciones::convertir($haber->monto, $haber->moneda),
-							'mes' => array(
-								'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
-								'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
-							),
-							'fechaIngreso' => $haber->created_at,
-							'tipo' => array(
-                                'id' => $haber->tipoHaber->id,
-                                'nombre' => $haber->tipoHaber->nombre,
-                                'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
-                                'imponible' => $haber->tipoHaber->imponible ? true : false,
-                                'tributable' => $haber->tipoHaber->tributable ? true : false,
-                                'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
-                                'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
-                                'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
-							),
-							'desde' => $haber->desde,
-							'hasta' => $haber->hasta,
-							'porMes' => $haber->por_mes ? true : false,
-							'rangoMeses' => $haber->rango_meses ? true : false,
-							'permanente' => $haber->permanente ? true : false,
-							'todosAnios' => $haber->todos_anios ? true : false
-						);
-					}
+                    if($haber->permanente && !$haber->desde && !$haber->hasta || $haber->permanente && $haber->hasta && $haber->hasta >= $mes && !$haber->desde || $haber->permanente && $haber->desde && $haber->desde <= $mes && !$haber->hasta || $haber->permanente && $haber->desde && $haber->desde <= $mes && $haber->hasta && $haber->hasta >= $mes || !$haber->permanente){
+                        if(!$haber->tipoHaber->imponible){
+                            $listaHaberes[] = array(
+                                'id' => $haber->id,
+                                'sid' => $haber->sid,
+                                'moneda' => $haber->moneda,
+                                'monto' => $haber->monto,
+                                'montoPesos' => Funciones::convertir($haber->monto, $haber->moneda),
+                                'mes' => array(
+                                    'id' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->id : "",
+                                    'nombre' => $haber->mesDeTrabajo ? $haber->mesDeTrabajo->nombre : ""
+                                ),
+                                'fechaIngreso' => date('Y-m-d H:i:s', strtotime($haber->created_at)),
+                                'tipo' => array(
+                                    'id' => $haber->tipoHaber->id,
+                                    'nombre' => $haber->tipoHaber->nombre,
+                                    'gratificacion' => $haber->tipoHaber->gratificacion ? true : false,
+                                    'imponible' => $haber->tipoHaber->imponible ? true : false,
+                                    'tributable' => $haber->tipoHaber->tributable ? true : false,
+                                    'proporcional' => $haber->tipoHaber->proporcional_dias_trabajados ? true : false,
+                                    'horasExtra' => $haber->tipoHaber->calcula_horas_extra ? true : false,
+                                    'semanaCorrida' => $haber->tipoHaber->calcula_semana_corrida ? true : false
+                                ),
+                                'desde' => $haber->desde,
+                                'hasta' => $haber->hasta,
+                                'porMes' => $haber->por_mes ? true : false,
+                                'rangoMeses' => $haber->rango_meses ? true : false,
+                                'permanente' => $haber->permanente ? true : false,
+                                'todosAnios' => $haber->todos_anios ? true : false
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -505,8 +1072,8 @@ class Trabajador extends Eloquent {
     
     public function misVacaciones()
     {
-        $idMes = \Session::get('mesActivo')->id;
-        $vacaciones = Vacaciones::where('trabajador_id', $this->id)->where('mes_id', $idMes)->first();
+        $mes = \Session::get('mesActivo')->mes;
+        $vacaciones = Vacaciones::where('trabajador_id', $this->id)->where('mes', $mes)->first();
         
         if($vacaciones){
             return $vacaciones->dias;
@@ -517,14 +1084,19 @@ class Trabajador extends Eloquent {
     
     public function mesActualVacaciones()
     {
-        $idMes = \Session::get('mesActivo')->id;
-        $vacaciones = Vacaciones::where('trabajador_id', $this->id)->where('mes_id', $idMes)->first();
-        $detalleVacaciones = array(
-            'id' => $vacaciones->id,
-            'sid' => $vacaciones->sid,
-            'dias' => $vacaciones->dias,
-            'mes' => $vacaciones->mes->nombre . " " . $vacaciones->mes->anioRemuneracion->anio
-        );
+        $mes = \Session::get('mesActivo')->mes;
+        $vacaciones = Vacaciones::where('trabajador_id', $this->id)->where('mes', $mes)->first();
+        $detalleVacaciones = array();
+        
+        if($vacaciones){
+            $detalleVacaciones = array(
+                'id' => $vacaciones->id,
+                'sid' => $vacaciones->sid,
+                'dias' => $vacaciones->dias,
+                'mes' => $vacaciones->mes,
+                'nombre' => $vacaciones->miMes->nombre . ' ' . $vacaciones->miMes->anioRemuneracion->anio
+            );
+        }
         
         return $detalleVacaciones;
     }
@@ -532,21 +1104,23 @@ class Trabajador extends Eloquent {
     public function miHistorialVacaciones()
     {
         $listaVacaciones = array();
-        $vacaciones = Vacaciones::where('trabajador_id', $this->id)->get();
+        $vacaciones = Vacaciones::where('trabajador_id', $this->id)->orderBy('mes')->get();
         $mes = \Session::get('mesActivo')->mes;
         
         if($vacaciones->count()){
             foreach($vacaciones as $vacacion){
-                if($vacacion->mes->mes < $mes){
+                if($vacacion->miMes){
                     $listaVacaciones[] = array(
                         'id' => $vacacion->id,
                         'sid' => $vacacion->sid,
                         'mes' => array(
-                            'id' => $vacacion->mes->id,
-                            'mes' => $vacacion->mes->mes,
-                            'nombre' => $vacacion->mes->nombre . " " . $vacacion->mes->anioRemuneracion->anio
+                            'id' => $vacacion->miMes->id,
+                            'mes' => $vacacion->miMes->mes,
+                            'nombre' => $vacacion->miMes->nombre . ' ' . $vacacion->miMes->anioRemuneracion->anio
                         ),
-                        'dias' => $vacacion->dias
+                        'dias' => $vacacion->dias,
+                        'tomaVacaciones' => $vacacion->tomaVacacionesMes(),
+                        'totalDevengadas' => $vacacion->totalDevengadas()
                     );
                 }
             }
@@ -555,7 +1129,7 @@ class Trabajador extends Eloquent {
         return $listaVacaciones;
     }
     
-    static function calcularVacaciones($mes)
+    static function calcularVacaciones($mes=null)
     {
         $trabajadores = Trabajador::all();
         if(!$mes){
@@ -579,7 +1153,79 @@ class Trabajador extends Eloquent {
         return;
     }
     
-    static function crearSemanasCorridas($mes)
+    public function recalcularVacaciones($dias, $desde=null)
+    {
+        $mes = \Session::get('mesActivo');
+        $id = $this->id;       
+        $fichas = FichaTrabajador::where('trabajador_id', $id)->orderBy('fecha', 'DESC')->first();        
+        $fin = MesDeTrabajo::orderBy('mes', 'DESC')->first();
+        
+        if($desde){
+            $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($desde)));
+            $dias = (Vacaciones::where('trabajador_id', $id)->where('mes', $mesAnterior)->first()['dias'] + 1.25);
+            $inicio = $desde;
+            DB::table('vacaciones')->where('trabajador_id', $id)->where('mes', '>=', $desde)->delete();
+        }else{
+            $inicio = $fichas['fecha_reconocimiento'];          
+            DB::table('vacaciones')->where('trabajador_id', $id)->delete();
+        }
+        
+        if(count($fichas)){
+            $fichasTrabajador = FichaTrabajador::where('trabajador_id', $id)->get(); 
+            foreach($fichasTrabajador as $fichaTrabajador){
+                $fichaTrabajador->vacaciones = $dias;
+                $fichaTrabajador->save();
+            }
+            $inicio = Funciones::primerDia($inicio);
+            $this->recalcularMisVacaciones($inicio, $fin->mes, $dias);
+            return;
+        }
+        
+        return;
+    }
+    
+    public function diasVacaciones($mes){
+        $dias = TomaVacaciones::where('trabajador_id', $this->id)->where('mes', $mes)->get();
+        $diasVacaciones = 0;
+        
+        if($dias->count()){
+            foreach($dias as $dia){
+                $diasVacaciones = ($diasVacaciones + $dia->dias);        
+            }
+        }
+        
+        return $diasVacaciones;
+    }
+    
+    public function recalcularMisVacaciones($desde, $hasta, $dias)
+    {
+        $i = 0;
+        $dias = $dias;
+        $fecha = date('Y-m-d', strtotime('+' . $i . ' month', strtotime($desde)));
+        $primerMes = MesDeTrabajo::orderBy('mes')->first();
+        do{            
+            $fecha = date('Y-m-d', strtotime('+' . $i . ' month', strtotime($desde)));
+            $diasVacaciones = $this->diasVacaciones($fecha);
+            if($diasVacaciones>0){
+                $dias = ($dias - $diasVacaciones);
+            }
+            if(true){
+                $vacaciones = new Vacaciones();
+                $vacaciones->sid = Funciones::generarSID();
+                $vacaciones->trabajador_id = $this->id;
+                $vacaciones->mes = $fecha;
+                $vacaciones->dias = $dias;
+                $vacaciones->save();
+                $dias = ($dias + 1.25);
+            }
+            $i++;
+            
+        }while($fecha!=$hasta); 
+        
+        return $dias;
+    }
+    
+    static function crearSemanasCorridas($mes=null)
     {
         $trabajadores = Trabajador::all();
         if(!$mes){
@@ -628,18 +1274,67 @@ class Trabajador extends Eloquent {
 
     public function misDescuentos()
     {        
-        $idTrabajador = $this->id;
+        if( !$this->miMisDescuentos ){
+            $idTrabajador = $this->id;
+            $listaDescuentos = array();
+            $idMes = \Session::get('mesActivo')->id;
+            $mes = \Session::get('mesActivo')->mes;
+            $misDescuentos = Descuento::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->orWhere('rango_meses', 1)->where('desde', '<=', $mes)->where('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->get();
+
+            if( $misDescuentos->count() ){
+                foreach($misDescuentos as $descuento){
+                    if($descuento->permanente && !$descuento->desde && !$descuento->hasta || $descuento->permanente && $descuento->hasta && $descuento->hasta >= $mes && !$descuento->desde || $descuento->permanente && $descuento->desde && $descuento->desde <= $mes && !$descuento->hasta || $descuento->permanente && $descuento->desde && $descuento->desde <= $mes && $descuento->hasta && $descuento->hasta >= $mes || !$descuento->permanente){
+                        if($descuento->tipoDescuento->estructuraDescuento->id==3){                        
+                            $nombre = 'APVC AFP ' . $descuento->tipoDescuento->nombreAfp();
+                        }else if($descuento->tipoDescuento->estructuraDescuento->id==7){                        
+                            $nombre = 'Cuenta de Ahorro AFP ' . $descuento->tipoDescuento->nombreAfp();
+                        }else{                    
+                            $nombre = $descuento->tipoDescuento->nombre;
+                        }
+                        $listaDescuentos[] = array(
+                            'id' => $descuento->id,
+                            'sid' => $descuento->sid,
+                            'moneda' => $descuento->moneda,
+                            'monto' => $descuento->monto,
+                            'montoPesos' => Funciones::convertir($descuento->monto, $descuento->moneda),
+                            'fechaIngreso' => date('Y-m-d H:i:s', strtotime($descuento->created_at)),
+                            'tipo' => array(
+                                'id' => $descuento->tipoDescuento->id,
+                                'nombre' => $nombre,
+                                'idCuenta' => $descuento->tipoDescuento->cuenta_id,
+                                'estructura' => array(
+                                    'id' => $descuento->tipoDescuento->estructuraDescuento->id,
+                                    'nombre' => $descuento->tipoDescuento->estructuraDescuento->nombre
+                                ),
+                                'afp' => array(
+                                    'id' => $descuento->tipoDescuento->afp_id ? $descuento->tipoDescuento->afp->id : '',
+                                    'nombre' => $descuento->tipoDescuento->afp_id ? $descuento->tipoDescuento->afp->glosa : ''
+                                ),
+                                'formaPago' => array(
+                                    'id' => $descuento->tipoDescuento->forma_pago ? $descuento->tipoDescuento->formaPago->id : '',
+                                    'nombre' => $descuento->tipoDescuento->forma_pago ? $descuento->tipoDescuento->formaPago->glosa : ''
+                                )
+                            ),
+                            'porMes' => $descuento->por_mes ? true : false,
+                            'rangoMeses' => $descuento->rango_meses ? true : false,
+                            'permanente' => $descuento->permanente ? true : false
+                        );
+                    }
+                }
+            }
+            $this->miMisDescuentos = $listaDescuentos;
+        }
+        
+        return $this->miMisDescuentos;
+    }
+        
+    public function todosMisDescuentos()
+    {        
         $listaDescuentos = array();
-        $idMes = \Session::get('mesActivo')->id;
-        $mes = \Session::get('mesActivo')->mes;
-        $misDescuentos = Descuento::where('trabajador_id', $idTrabajador)->where('mes_id', $idMes)->orWhere('desde', '<=', $mes)->where('hasta', '>=', $mes)->where('trabajador_id', $idTrabajador)->orWhere('permanente', 1)->where('trabajador_id', $idTrabajador)->get();
-        
-        //$misDescuentos = Descuento::where('trabajador_id', $idTrabajador)->get();
-        
+        $misDescuentos = $this->descuentos;
+                
         if( $misDescuentos->count() ){
             foreach($misDescuentos as $descuento){
-                //if($descuento->permanente==1 || $descuento->mes_id == $idMes){
-                    //if($descuento->desde <= $mes && $descuento->hasta >= $mes){
                 if($descuento->tipoDescuento->estructuraDescuento->id==3){                        
                     $nombre = 'APVC AFP ' . $descuento->tipoDescuento->nombreAfp();
                 }else if($descuento->tipoDescuento->estructuraDescuento->id==7){                        
@@ -653,7 +1348,7 @@ class Trabajador extends Eloquent {
                     'moneda' => $descuento->moneda,
                     'monto' => $descuento->monto,
                     'montoPesos' => Funciones::convertir($descuento->monto, $descuento->moneda),
-                    'fechaIngreso' => $descuento->created_at,
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($descuento->created_at)),
                     'tipo' => array(
                         'id' => $descuento->tipoDescuento->id,
                         'nombre' => $nombre,
@@ -670,14 +1365,56 @@ class Trabajador extends Eloquent {
                             'id' => $descuento->tipoDescuento->forma_pago ? $descuento->tipoDescuento->formaPago->id : '',
                             'nombre' => $descuento->tipoDescuento->forma_pago ? $descuento->tipoDescuento->formaPago->glosa : ''
                         )
-                    )
+                    ),
+                    'mes' => $descuento->mes ? Funciones::obtenerMesAnioTextoAbr($descuento->mes) : '',
+                    'desde' => $descuento->desde ? Funciones::obtenerMesAnioTextoAbr($descuento->desde) : '',
+                    'hasta' => $descuento->hasta ? Funciones::obtenerMesAnioTextoAbr($descuento->hasta) : '',
+                    'porMes' => $descuento->por_mes ? true : false,
+                    'rangoMeses' => $descuento->rango_meses ? true : false,
+                    'permanente' => $descuento->permanente ? true : false
                 );
-                   // }
-                //}
             }
         }
         
         return $listaDescuentos;
+    }
+    
+    public function prestamosCaja()
+    {
+        $prestamos = $this->misCuotasPrestamo();
+        $caja = 0;
+        $leasing = 0;
+        
+        if(count($prestamos)){
+            foreach($prestamos as $prestamo){
+                if($prestamo['prestamoCaja']){
+                    $caja = ($caja + $prestamo['montoCuotaPagar']);
+                }else if($prestamo['leasingCaja']){
+                    $leasing = ($leasing + $prestamo['montoCuotaPagar']);
+                }
+            }
+        }
+        
+        $descuentosCaja = $this->misDescuentos();
+            
+        if(count($descuentosCaja)){
+            foreach($descuentosCaja as $descuento){
+                if($descuento['tipo']['estructura']['id']==6){
+                    if($descuento['tipo']['nombre']=='Créditos Personales CCAF'){
+                        $caja = ($caja + $descuento['montoPesos']);
+                    }else if($descuento['tipo']['nombre']=='Descuento por Leasing CCAF'){
+                        $leasing = ($leasing + $descuento['montoPesos']);
+                    }
+                }
+            }
+        }
+        
+        $datos = array(
+            'caja' => $caja,
+            'leasing' => $leasing
+        );
+        
+        return $datos;            
     }
     
     public function misCuotasPrestamo()
@@ -689,6 +1426,7 @@ class Trabajador extends Eloquent {
         
         if( $misPrestamos->count() ){
             foreach($misPrestamos as $prestamo){
+                $cuotaPagar = $prestamo->cuotaPagar();
                 $listaPrestamos[] = array(
                     'id' => $prestamo->id,
                     'sid' => $prestamo->sid,
@@ -699,7 +1437,10 @@ class Trabajador extends Eloquent {
                     'cuotas' => $prestamo->cuotas,
                     'primeraCuota' => $prestamo->primera_cuota,
                     'ultimaCuota' => $prestamo->ultima_cuota,
-                    'cuotaPagar' => $prestamo->cuotaPagar()
+                    'prestamoCaja' => $prestamo->prestamo_caja ? true : false,
+                    'leasingCaja' => $prestamo->leasing_caja ? true : false,
+                    'numeroCuotaPagar' => $cuotaPagar->numero,
+                    'montoCuotaPagar' => $cuotaPagar->monto
                 );
             }
         }
@@ -720,7 +1461,7 @@ class Trabajador extends Eloquent {
                     'moneda' => $descuento->moneda,
                     'monto' => $descuento->monto,
                     'montoPesos' => Funciones::convertir($descuento->monto, $descuento->moneda),
-                    'fechaIngreso' => $descuento->created_at,
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($descuento->created_at)),
                     'tipo' => array(
                         'id' => $descuento->tipoDescuento->id,
                         'nombre' => $descuento->tipoDescuento->nombre
@@ -730,160 +1471,7 @@ class Trabajador extends Eloquent {
         }
         
         return $listaDescuentos;
-    }
-    
-    public function comprobarHaberes($haberes)
-    {
-        $idTrabajador = $this->id;
-        $misHaberes = $this->misHaberesPermanentes($idTrabajador);
-        $update = array();
-        $create = array();
-        $destroy = array();
-        
-        if($misHaberes){
-            foreach($haberes as $haber)
-            {
-                $isUpdate = false;
-                
-                if(isset($haber['id'])){    
-                    foreach($misHaberes as $miHaber)
-                    {
-
-                        if($haber['id'] == $miHaber['id']){
-                            $update[] = array(
-                                'id' => $haber['id'],
-                                'sid' => $haber['sid'],
-                                'tipo_haber_id' => $haber['tipo']['id'],
-                                'moneda' => $haber['moneda'],
-                                'monto' => $haber['monto']
-                            );
-                            $isUpdate = true;
-                        }                        
-                        if($isUpdate){
-                            break;
-                        }
-                    }
-                }else{
-                    $create[] = array(
-                        'tipo_haber_id' => $haber['tipo']['id'],
-                        'moneda' => $haber['moneda'],
-                        'monto' => $haber['monto']
-                    );
-                }
-            }
-
-            foreach($misHaberes as $miHaber)
-            {
-                $isHaber = false;
-                foreach($haberes as $haber)
-                {
-                    if(isset($haber['id'])){
-                        if($miHaber['id'] == $haber['id']){
-                            $isHaber = true;                        
-                        }
-                    }
-                }
-                if(!$isHaber){
-                    $destroy[] = array(
-                        'id' => $miHaber['id'],
-                        'sid' => $miHaber['sid']
-                    );
-                }
-            }
-        }else{
-            foreach($haberes as $haber){
-                $create[] = array(
-                    'tipo_haber_id' => $haber['tipo']['id'],
-                    'moneda' => $haber['moneda'],
-                    'monto' => $haber['monto']
-                );
-            }
-        }
-        
-        $datos = array(
-            'create' => $create,
-            'update' => $update,
-            'destroy' => $destroy
-        );
-        
-        return $datos;
-    }
-    
-    public function comprobarDescuentos($descuentos)
-    {
-        $idTrabajador = $this->id;
-        $misDescuentos = $this->misDescuentosPermanentes($idTrabajador);
-        $update = array();
-        $create = array();
-        $destroy = array();
-        
-        if($misDescuentos){
-            foreach($descuentos as $descuento)
-            {
-                $isUpdate = false;
-
-                if(isset($descuento['id'])){  
-                    foreach($misDescuentos as $miDescuento)
-                    {
-                        if($descuento['id'] == $miDescuento['id']){
-                            $update[] = array(
-                                'id' => $descuento['id'],
-                                'tipo_descuento_id' => $descuento['tipo']['id'],
-                                'sid' => $descuento['sid'],
-                                'moneda' => $descuento['moneda'],
-                                'monto' => $descuento['monto']
-                            );
-                            $isUpdate = true;
-                        }                    
-                        if($isUpdate){
-                            break;
-                        }
-                    }
-                }else{
-                    $create[] = array(
-                        'tipo_descuento_id' => $descuento['tipo']['id'],
-                        'moneda' => $descuento['moneda'],
-                        'monto' => $descuento['monto']
-                    );
-                }
-            }
-
-            foreach($misDescuentos as $miDescuento)
-            {
-                $isDescuento = false;
-                foreach($descuentos as $descuento)
-                {
-                    if(isset($descuento['id'])){
-                        if($miDescuento['id'] == $descuento['id']){
-                            $isDescuento = true;                        
-                        }
-                    }
-                }
-                if(!$isDescuento){
-                    $destroy[] = array(
-                        'id' => $miDescuento['id'],
-                        'sid' => $miDescuento['sid']
-                    );
-                }
-            }
-        }else{
-            foreach($descuentos as $descuento){
-                $create[] = array(
-                    'tipo_descuento_id' => $descuento['tipo']['id'],
-                    'moneda' => $descuento['moneda'],
-                    'monto' => $descuento['monto']
-                );
-            }
-        }
-        
-        $datos = array(
-            'create' => $create,
-            'update' => $update,
-            'destroy' => $destroy
-        );
-        
-        return $datos;
-    }        
+    }            
     
     public function misPrestamos()
     {        
@@ -894,7 +1482,7 @@ class Trabajador extends Eloquent {
             foreach($misPrestamos as $prestamo){
                 $listaPrestamos[] = array(
                     'id' => $prestamo->id,
-                    'created_at' => $prestamo->created_at,
+                    'created_at' => date('Y-m-d H:i:s', strtotime($prestamo->created_at)),
                     'glosa' => $prestamo->glosa,
                     'nombreLiquidacion' => $prestamo->nombre_liquidacion,
                     'monto' => $prestamo->monto,
@@ -935,7 +1523,7 @@ class Trabajador extends Eloquent {
                     'sid' => $inasistencia->sid,
                     'idTrabajador' => $inasistencia->trabajador_id,
                     'idMes' => $inasistencia->mes_id,
-                    'fechaIngreso' => $inasistencia->created_at->format('d M Y'),
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($inasistencia->created_at)),
                     'desde' => $inasistencia->desde,
                     'hasta' => $inasistencia->hasta,
                     'dias' => $inasistencia->dias,
@@ -990,7 +1578,7 @@ class Trabajador extends Eloquent {
                     'sid' => $licencia->sid,
                     'idTrabajador' => $licencia->trabajador_id,
                     'idMes' => $licencia->mes_id,
-                    'fechaIngreso' => $licencia->created_at->format('d M Y'),
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($licencia->created_at)),
                     'desde' => $licencia->desde,
                     'hasta' => $licencia->hasta,
                     'dias' => $licencia->dias,
@@ -1019,7 +1607,7 @@ class Trabajador extends Eloquent {
         $totalCuotasPrestamos = 0;
         if($cuotas){
             foreach($cuotas as $cuota){
-                $totalCuotasPrestamos += $cuota['cuotaPagar']->monto;
+                $totalCuotasPrestamos += $cuota['montoCuotaPagar'];
             }
         }
         
@@ -1051,7 +1639,7 @@ class Trabajador extends Eloquent {
     
     public function sueldoCalcularHorasExtra()
     {
-        $sueldo = $this->sueldo();
+        $sueldo = $this->sueldoBase();
         $haberes = $this->haberesCalculaHorasExtra();
         
         return ($sueldo + $haberes);
@@ -1107,9 +1695,9 @@ class Trabajador extends Eloquent {
                     'sid' => $horaExtra->sid,
                     'idTrabajador' => $horaExtra->trabajador_id,
                     'idMes' => $horaExtra->mes_id,
-                    'fechaIngreso' => $horaExtra->created_at->format('Y-m-d'),
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($horaExtra->created_at)),
                     'fecha' => $horaExtra->fecha,
-                    'jornada' => $horaExtra->jornada,
+                    'factor' => $horaExtra->factor,
                     'cantidad' => $horaExtra->cantidad,
                     'observacion' => $horaExtra->observacion
                 );
@@ -1166,7 +1754,12 @@ class Trabajador extends Eloquent {
                 $listaCertificados[] = array(
                     'id' => $certificado->id,
                     'sid' => $certificado->sid,
-                    'documentoSid' => $certificado->documento->sid,
+                    'documento' => array(
+                        'id' => $certificado->documento->id,
+                        'sid' => $certificado->documento->sid,
+                        'alias' => $certificado->documento->alias,
+                        'nombre' => $certificado->documento->nombre
+                    ),
                     'fecha' => $certificado->fecha,
                     'nombre' => $certificado->documento->nombre,
                     'tipo' => array(
@@ -1191,11 +1784,12 @@ class Trabajador extends Eloquent {
                 $listaCartasNotificacion[] = array(
                     'id' => $cartaNotificacion->id,
                     'sid' => $cartaNotificacion->sid,
-                    'documentoSid' => $cartaNotificacion->documento,
                     'fecha' => $cartaNotificacion->fecha,
                     'documento' => array(
                         'id' => $cartaNotificacion->documento->id,
-                        'sid' => $cartaNotificacion->documento->sid
+                        'sid' => $cartaNotificacion->documento->sid,
+                        'alias' => $cartaNotificacion->documento->alias,
+                        'nombre' => $cartaNotificacion->documento->nombre
                     ),
                     'tipo' => array(
                         'id' => $cartaNotificacion->plantillaCartaNotificacion->id,
@@ -1222,7 +1816,7 @@ class Trabajador extends Eloquent {
                     'nombre' => $contrato->nombre,
                     'alias' => $contrato->alias,
                     'descripcion' => $contrato->descripcion ? $contrato->descripcion : "",
-                    'fecha' => $contrato->created_at,
+                    'fecha' => date('Y-m-d H:i:s', strtotime($contrato->created_at)),
                     'tipo' => array(
                         'id' => $contrato->tipoDocumento->id,
                         'sid' => $contrato->tipoDocumento->sid,
@@ -1233,6 +1827,31 @@ class Trabajador extends Eloquent {
         }
         
         return $listaContratos;
+    }
+    
+    public function misFichas()
+    {        
+        $fichas = $this->fichaTrabajador;
+        $listaFichas = array();
+        
+        if($fichas->count()){
+            foreach($fichas as $key => $ficha){
+                $desde = $ficha->fecha;
+                $hasta = $ficha->hasta($fichas);
+                $listaFichas[] = array(
+                    'id' => $ficha->id,
+                    'fechaDesde' => $ficha->fecha,
+                    'fechaHasta' => $hasta,
+                    'desde' => Funciones::obtenerMesAnioTextoAbr($desde),
+                    'hasta' => $hasta ? Funciones::obtenerMesAnioTextoAbr($hasta) : '∞',
+                    'periodo' => $ficha->periodo($key, $desde, $hasta),
+                    'fechaCreacion' => date('Y-m-d H:i:s', strtotime($ficha->created_at)),
+                    'estado' => $ficha->estado
+                );
+            }
+        }
+        
+        return $listaFichas;
     }
     
     public function misDocumentos()
@@ -1249,7 +1868,8 @@ class Trabajador extends Eloquent {
                     'nombre' => $documento->nombre,
                     'alias' => $documento->alias,
                     'descripcion' => $documento->descripcion ? $documento->descripcion : "",
-                    'fecha' => $documento->created_at,
+                    'fecha' => date('Y-m-d H:i:s', strtotime($documento->created_at)),
+                    'extension' =>$documento->extension(),
                     'tipo' => array(
                         'id' => $documento->tipoDocumento->id,
                         'sid' => $documento->tipoDocumento->sid,
@@ -1277,7 +1897,7 @@ class Trabajador extends Eloquent {
         $vacaciones = new Vacaciones();
         $vacaciones->sid = Funciones::generarSID();
         $vacaciones->trabajador_id = $idTrabajador;
-        $vacaciones->mes_id = $idMes;
+        $vacaciones->mes = $mes->mes;
         $vacaciones->dias = $vacas;
         $vacaciones->save(); 
 
@@ -1293,12 +1913,12 @@ class Trabajador extends Eloquent {
     public function asignarVacaciones($dias=0)
     {
         $idTrabajador = $this->id;
-        $idMes = \Session::get('mesActivo')->id;        
+        $mes = \Session::get('mesActivo')->mes;        
         
         $vacaciones = new Vacaciones();
         $vacaciones->sid = Funciones::generarSID();
         $vacaciones->trabajador_id = $idTrabajador;
-        $vacaciones->mes_id = $idMes;
+        $vacaciones->mes = $mes;
         $vacaciones->dias = $dias;
         $vacaciones->save(); 
 
@@ -1384,37 +2004,84 @@ class Trabajador extends Eloquent {
         $mes = \Session::get('mesActivo')->mes;
         $empresa = \Session::get('empresa');
         $factorIMM = $empresa->tope_gratificacion;
-        $rmi = RentaMinimaImponible::where('mes', $mes)->where('nombre', 'Trab. Dependientes e Independientes')->first()->valor;
-        $tope = (( $factorIMM * $rmi ) / 12 );
+        $rentaMin = RentaMinimaImponible::where('mes', $mes)->where('nombre', 'Trab. Dependientes e Independientes')->first();
+        if( $rentaMin ){
+            $rmi = $rentaMin->valor;
+            $tope = (( $factorIMM * $rmi ) / 12 );
+        }else{
+            $tope = 0;
+        }
         
         return round($tope);
+    }
+    
+    public function tramosHorasExtra()
+    {
+        $ficha = $this->ficha();
+        $jornada = $ficha->tipoJornada;
+        $tramos = array();
+        
+        if($jornada){
+            $tramos = $jornada->tramos();
+        }
+        
+        return $tramos;
     }
     
     public function diasTrabajados()
     {        
         $mes = \Session::get('mesActivo');
+        $empresa = \Session::get('empresa');
         $empleado = $this->ficha();
         $diasTrabajados = 30;
+        $diaIngreso = 0;
+        $diaFiniquito = 0;
         $inasistencias = $this->totalInasistencias();
         $licencias = $this->totalDiasLicencias();
+        $licencias30 = $empresa->licencias_30 ? true : false;
+        $ingreso30 = $empresa->ingresos_30 ? true : false;
+        $finiquito30 = $empresa->finiquitos_30 ? true : false;
         
+        if($inasistencias>0){
+            $diasMes = (int) date('d', strtotime($mes->fechaRemuneracion));
+            if($inasistencias==$diasMes){
+                return 0;
+            }
+            if($inasistencias>30){
+                $inasistencias = 30;
+            }
+        }
+        
+        if($licencias>0){
+            if(!$licencias30){
+                $diasTrabajados = (int) date('d', strtotime($mes->fechaRemuneracion));
+            }
+        }
+
         if($empleado->fecha_ingreso>$mes->mes){
-            $diaIngreso = (int) date('d', strtotime($empleado->fecha_ingreso));
-            $diasTrabajados = $diasTrabajados - ($diaIngreso - 1);
+            $diaIngreso = (( (int) date('d', strtotime($empleado->fecha_ingreso) )) - 1);
+            if(!$ingreso30){
+                $diasTrabajados = (int) date('d', strtotime($mes->fechaRemuneracion));
+            }
         }
         
         if($empleado->fecha_finiquito){
-            $diasTrabajados = (int) date('d', strtotime($empleado->fecha_finiquito));
+            if($empleado->fecha_finiquito<$mes->mes){
+                return 0;
+            }else{                
+                $diaFiniquito = (int) date('d', strtotime($empleado->fecha_finiquito));
+                if(!$finiquito30){
+                    $diasTrabajados = (int) date('d', strtotime($mes->fechaRemuneracion));
+                }
+                $diaFiniquito = ($diasTrabajados - $diaFiniquito);
+            }
         }
         
-        if($inasistencias>30){
-            $inasistencias = 30;
-        }
-        if($licencias>0){
-            $diasTrabajados = (int) date('d', strtotime($mes->fechaRemuneracion));
-        }
+        $diasTrabajados = ($diasTrabajados - $inasistencias - $licencias - $diaIngreso - $diaFiniquito);
         
-        $diasTrabajados = ($diasTrabajados - $inasistencias - $licencias);
+        if($diasTrabajados<0){
+            $diasTrabajados = 0;
+        }
         
         return $diasTrabajados;
     }
@@ -1431,6 +2098,9 @@ class Trabajador extends Eloquent {
         }
         
         if($empleado->fecha_finiquito){
+            if($empleado->fecha_finiquito<$mes->mes){
+                return 0;
+            }
             $diasTrabajados = (int) date('d', strtotime($empleado->fecha_finiquito));
         }
         
@@ -1441,23 +2111,32 @@ class Trabajador extends Eloquent {
     
     public function diasDescontados()
     {
-        $diasTrabajados = $this->diasTrabajados();
-        $dias = 0;
-        $diasCalendario = 0;
-        $monto = 0;
+        $mes = \Session::get('mesActivo');
+        $empleado = $this->ficha();
+        $diasDescontados = 0;
+        $diasMes = (int) date('d', strtotime($mes->fechaRemuneracion));
+        $sueldoDiario = $this->sueldoDiario();
         
-        if($diasTrabajados<30){
-            $mes = \Session::get('mesActivo');
-            $diasMes = (int) date('d', strtotime($mes->fechaRemuneracion));
-            $sueldoDiario = $this->sueldoDiario();
-            $dias = (30 - $diasTrabajados);
-            $diasCalendario = ($diasMes - $diasTrabajados);
-            $monto = ($sueldoDiario * $dias);
+        if($empleado->fecha_ingreso>$mes->mes){
+            $diaIngreso = (int) date('d', strtotime($empleado->fecha_ingreso));
+            $diasDescontados += ($diaIngreso - 1);
+        }
+        
+        if($empleado->fecha_finiquito){
+            $diaIngreso = (int) date('d', strtotime($empleado->fecha_finiquito));
+            $diasDescontados += ($diasMes - $diaIngreso);
+        }
+        
+        $diasDescontados += ($this->totalInasistencias() + $this->totalDiasLicencias());
+        $monto = ($sueldoDiario * $diasDescontados);
+        
+        if($diasDescontados>30){
+            $diasDescontados=30;
         }
         
         $datos = array(
-            'dias' => $dias,
-            'diasCalendario' => $diasCalendario,
+            'dias' => $diasDescontados,
+            'diasCalendario' => $diasDescontados,
             'monto' => $monto
         );
         
@@ -1474,21 +2153,27 @@ class Trabajador extends Eloquent {
 
     public function sueldo()
     {        
-        $dias_trabajados = $this->diasTrabajados();
-        $sueldo = ($this->sueldoDiario() * $dias_trabajados);
+        if(!$this->miSueldo){
+            $diasTrabajados = $this->diasTrabajados();
+            $sueldo = ($this->sueldoDiario() * $diasTrabajados);
+            $this->miSueldo = round($sueldo);  
+        }
         
-        return round($sueldo);
+        return $this->miSueldo;
     }
     
     public function miSemanaCorrida()
-    {        
-        $semanaCorrida = $this->ficha()->semana_corrida ? true : false;
-        $total = 0;
-        if($semanaCorrida){
-            $total = $this->totalSemanaCorrida();
+    {     
+        if(!$this->miMiSemanaCorrida){
+            $semanaCorrida = $this->ficha()->semana_corrida ? true : false;
+            $total = 0;
+            if($semanaCorrida){
+                $total = $this->totalSemanaCorrida();
+            }
+            $this->miMiSemanaCorrida = $total;
         }
         
-        return $total;
+        return $this->miMiSemanaCorrida;
     }
     
     public function miSemanaCorridas()
@@ -1514,13 +2199,24 @@ class Trabajador extends Eloquent {
         $fechasFeriados = $this->totalFeriados($feriados);
         $fechasInasistencias = $this->totalFaltas($inasistencias);
         $fechasLicencias = $this->totalFaltas($licencias);
-        
-        $montoSemana1 = ($semanaCorrida['semanas'][0]['comision'] / (5 - ($fechasLicencias->semana_1 + $fechasFeriados->semana_1)));
-        $montoSemana2 = ($semanaCorrida['semanas'][1]['comision'] / (5 - ($fechasLicencias->semana_2 + $fechasFeriados->semana_2)));
-        $montoSemana3 = ($semanaCorrida['semanas'][2]['comision'] / (5 - ($fechasLicencias->semana_3 + $fechasFeriados->semana_3)));
-        $montoSemana4 = ($semanaCorrida['semanas'][3]['comision'] / (5 - ($fechasLicencias->semana_4 + $fechasFeriados->semana_4)));
-        $montoSemana5 = ($semanaCorrida['semanas'][4]['comision'] / (5 - ($fechasLicencias->semana_5 + $fechasFeriados->semana_5)));
-        
+
+        $montoSemana1=$montoSemana2=$montoSemana3=$montoSemana4=$montoSemana5=0;
+        if( 5 - ($fechasLicencias->semana_1 + $fechasFeriados->semana_1) > 0 ){        
+            $montoSemana1 = ($semanaCorrida['semanas'][0]['comision'] / (5 - ($fechasLicencias->semana_1 + $fechasFeriados->semana_1)));
+        }
+        if( 5 - ($fechasLicencias->semana_2 + $fechasFeriados->semana_2) > 0){
+            $montoSemana2 = ($semanaCorrida['semanas'][1]['comision'] / (5 - ($fechasLicencias->semana_2 + $fechasFeriados->semana_2)));
+        }
+        if( 5 - ($fechasLicencias->semana_3 + $fechasFeriados->semana_3) > 0){
+            $montoSemana3 = ($semanaCorrida['semanas'][2]['comision'] / (5 - ($fechasLicencias->semana_3 + $fechasFeriados->semana_3)));
+        }
+        if( 5 - ($fechasLicencias->semana_4 + $fechasFeriados->semana_4) > 0){
+            $montoSemana4 = ($semanaCorrida['semanas'][3]['comision'] / (5 - ($fechasLicencias->semana_4 + $fechasFeriados->semana_4)));
+        }
+        if( 5 - ($fechasLicencias->semana_5 + $fechasFeriados->semana_5) > 0){
+            $montoSemana5 = ($semanaCorrida['semanas'][4]['comision'] / (5 - ($fechasLicencias->semana_5 + $fechasFeriados->semana_5)));
+        }
+
         $semana1 = ($montoSemana1 + ($montoSemana1 * $fechasFeriados->semana_1) + $semanaCorrida['semanas'][0]['comision']);
         $semana2 = ($montoSemana1 + ($montoSemana2 * $fechasFeriados->semana_2) + $semanaCorrida['semanas'][1]['comision']);
         $semana3 = ($montoSemana1 + ($montoSemana3 * $fechasFeriados->semana_3) + $semanaCorrida['semanas'][2]['comision']);
@@ -1544,12 +2240,25 @@ class Trabajador extends Eloquent {
         $fechasFeriados = $this->totalFeriados($feriados);
         $fechasInasistencias = $this->totalFaltas($inasistencias);
         $fechasLicencias = $this->totalFaltas($licencias);
-        
-        $montoSemana1 = ($semanaCorrida['semanas'][0]['comision'] / (5 - ($fechasLicencias->semana_1 + $fechasFeriados->semana_1)));
-        $montoSemana2 = ($semanaCorrida['semanas'][1]['comision'] / (5 - ($fechasLicencias->semana_2 + $fechasFeriados->semana_2)));
-        $montoSemana3 = ($semanaCorrida['semanas'][2]['comision'] / (5 - ($fechasLicencias->semana_3 + $fechasFeriados->semana_3)));
-        $montoSemana4 = ($semanaCorrida['semanas'][3]['comision'] / (5 - ($fechasLicencias->semana_4 + $fechasFeriados->semana_4)));
-        $montoSemana5 = ($semanaCorrida['semanas'][4]['comision'] / (5 - ($fechasLicencias->semana_5 + $fechasFeriados->semana_5)));
+       
+
+        $montoSemana1=$montoSemana2=$montoSemana3=$montoSemana4=$montoSemana5=0;
+        if( 5 - ($fechasLicencias->semana_1 + $fechasFeriados->semana_1) > 0 ){        
+            $montoSemana1 = ($semanaCorrida['semanas'][0]['comision'] / (5 - ($fechasLicencias->semana_1 + $fechasFeriados->semana_1)));
+        }
+        if( 5 - ($fechasLicencias->semana_2 + $fechasFeriados->semana_2) > 0){
+            $montoSemana2 = ($semanaCorrida['semanas'][1]['comision'] / (5 - ($fechasLicencias->semana_2 + $fechasFeriados->semana_2)));
+        }
+        if( 5 - ($fechasLicencias->semana_3 + $fechasFeriados->semana_3) > 0){
+            $montoSemana3 = ($semanaCorrida['semanas'][2]['comision'] / (5 - ($fechasLicencias->semana_3 + $fechasFeriados->semana_3)));
+        }
+        if( 5 - ($fechasLicencias->semana_4 + $fechasFeriados->semana_4) > 0){
+            $montoSemana4 = ($semanaCorrida['semanas'][3]['comision'] / (5 - ($fechasLicencias->semana_4 + $fechasFeriados->semana_4)));
+        }
+        if( 5 - ($fechasLicencias->semana_5 + $fechasFeriados->semana_5) > 0){
+            $montoSemana5 = ($semanaCorrida['semanas'][4]['comision'] / (5 - ($fechasLicencias->semana_5 + $fechasFeriados->semana_5)));
+        }
+
         
         $semana1 = ($montoSemana1 + ($montoSemana1 * $fechasFeriados->semana_1) + $semanaCorrida['semanas'][0]['comision']);
         $semana2 = ($montoSemana1 + ($montoSemana2 * $fechasFeriados->semana_2) + $semanaCorrida['semanas'][1]['comision']);
@@ -1650,7 +2359,24 @@ class Trabajador extends Eloquent {
         if( $misHaberes){
             foreach($misHaberes as $haber){
                 if($haber['tipo']['imponible']){
-                    $monto = Funciones::convertir($haber['monto'], $haber['moneda']);                 
+                    $monto = $haber['montoPesos'];                 
+                    $imponibles += $monto;
+                }
+            }
+        }
+        
+        return $imponibles;
+    }
+    
+    public function otrosImponibles()
+    {        
+        $imponibles = 0;
+        $misHaberes = $this->misHaberes();
+        
+        if( $misHaberes){
+            foreach($misHaberes as $haber){
+                if($haber['tipo']['imponible']){
+                    $monto = $haber['montoPesos'];                 
                     $imponibles += $monto;
                 }
             }
@@ -1667,13 +2393,44 @@ class Trabajador extends Eloquent {
         if( $misHaberes){
             foreach($misHaberes as $haber){
                 if(!$haber['tipo']['imponible']){
-                    $monto = Funciones::convertir($haber['monto'], $haber['moneda']);
+                    $monto = $haber['montoPesos'];
                     $noImponibles += $monto;
                 }
             }
         }
         
         return $noImponibles;
+    }
+    
+    public function isActivo($anio)
+    {
+        $ficha = $this->ficha();
+        if($ficha->estado!='En Creación'){
+            $fechas = Funciones::obtenerRangoFechas($anio->anio);
+            $periodoActual = ($ficha->fecha_ingreso <= $fechas['hasta']);        
+            if($periodoActual){
+                if($ficha->estado=='Finiquitado'){
+                    if($ficha->fecha_finiquito<=$fechas['desde']){
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    public function isActividad($anio)
+    {
+        $fechas = Funciones::obtenerRangoFechas($anio->anio);
+        $liquidaciones = DB::table('liquidaciones')->where('trabajador_id', $this->id)->where('mes', '>=', $fechas['desde'])->where('mes', '<', $fechas['hasta'])->get();
+        
+        if($liquidaciones){
+            return true;
+        }
+        
+        return false;
     }
     
     public function sumaImponibles()
@@ -1689,21 +2446,71 @@ class Trabajador extends Eloquent {
     
     public function rentaImponible()
     {        
+        if(!$this->miRentaImponible){
+            $mes = \Session::get('mesActivo');
+            $empleado = $this->ficha();
+            $rentaImponible = $this->totalImponibles();
+            $todosImponibles = $this->todosImponibles();
+            $diasTrabajados = $this->diasTrabajados();
+
+            if($empleado->prevision_id==8 || $empleado->prevision_id==10){
+                $rentaImp = RentaTopeImponible::where('mes', $mes->mes)->where('nombre', 'Para afiliados a una AFP')->first();
+
+                $topeImponible = $rentaImp? $rentaImp->valor : 0;
+
+            }else if($empleado->prevision_id==9){
+                $rentaImp = RentaTopeImponible::where('mes', $mes->mes)->where('nombre', 'Para afiliados al IPS (ex INP)')->first();
+                $topeImponible = $rentaImp? $rentaImp->valor : 0;
+            }
+            $valorTope = Funciones::convertirUF($topeImponible);
+
+            if($empleado->estado=='Ingresado'){
+                if($diasTrabajados==0){
+                    $diasMes = (int) date('d', strtotime($mes->fechaRemuneracion));
+                    if($this->totalDiasLicencias()==$diasMes){
+                        $rentaImponible = $this->totalImponibles();
+                    }   
+                }else{
+                    if($this->totalDiasLicencias()){
+                        if($todosImponibles > $valorTope && $diasTrabajados < 30){
+                            $rentaImponible = (($valorTope / 30) * $diasTrabajados);
+                        }else{
+                            if($rentaImponible > $valorTope){
+                                $rentaImponible = $valorTope;
+                            }
+                        }
+                    }else{
+                        if($rentaImponible > $valorTope){
+                            $rentaImponible = $valorTope;
+                        }
+                    }
+                }
+            }else{
+                if($rentaImponible > $valorTope){
+                    $rentaImponible = $valorTope;
+                }   
+            }  
+            $this->miRentaImponible = round($rentaImponible);
+        }
+        
+        return $this->miRentaImponible;
+    }
+    
+    public function rentaImponibleSalud()
+    {        
         $mes = \Session::get('mesActivo')->mes;
         $empleado = $this->ficha();
         $rentaImponible = $this->totalImponibles();
         
-        if($empleado->prevision_id!=10){
-            if($empleado->prevision_id==8){
-                $topeImponible = RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para afiliados a una AFP')->first()->valor;
-            }else if($empleado->prevision_id==9){
-                $topeImponible = RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para afiliados al IPS (ex INP)')->first()->valor;
-            }
-            $valorTope = Funciones::convertirUF($topeImponible);
-            
-            if($rentaImponible > $valorTope){
-                $rentaImponible = $valorTope;
-            }
+        if($empleado->prevision_id==8 || $empleado->prevision_id==10){
+            $topeImponible = RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para afiliados a una AFP')->first()->valor;
+        }else if($empleado->prevision_id==9){
+            $topeImponible = RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para afiliados al IPS (ex INP)')->first()->valor;
+        }
+        $valorTope = Funciones::convertirUF($topeImponible);
+
+        if($rentaImponible > $valorTope){
+            $rentaImponible = $valorTope;
         }
         
         return round($rentaImponible);
@@ -1746,6 +2553,8 @@ class Trabajador extends Eloquent {
         $idAfp = $empleado->afp_id;
         $empresa = \Session::get('empresa');
         $sis = $empresa->sis ? true : false;
+        $socio = (strtolower($empleado->tipo_trabajador)=='socio') ? true : false;
+        $pagaSis = 'empresa';
         $tasaTrabajador = 0;
         $tasa = 0;
         $tasaSis = 0;
@@ -1754,15 +2563,21 @@ class Trabajador extends Eloquent {
         if($empleado->prevision_id==8){
             $tasa = TasaCotizacionObligatorioAfp::where('afp_id', $idAfp)->where('mes', $mes)->first()['tasa_afp'];
             $tasaTrabajador = $tasa;
-            $tasaSis = TasaCotizacionObligatorioAfp::where('afp_id', $idAfp)->where('mes', $mes)->first()['sis'];
-            if($sis){
-                $tasaEmpleador = $tasaSis;
+            if($empleado->tipo_id==11){
+                $tasaSis = TasaCotizacionObligatorioAfp::where('afp_id', $idAfp)->where('mes', $mes)->first()['sis'];
+            }
+            if($socio){
+                $pagaSis = 'empleado'; 
             }else{
-                $tasaTrabajador += $tasaSis;
+                if($sis){
+                    $tasaEmpleador = $tasaSis;
+                }else{
+                    $pagaSis = 'empleado';
+                }
             }
         }else if($empleado->prevision_id==9){
             $mes = '2017-01-01';
-            $tasa = TasaCajasExRegimen::where('caja_id', 1)->where('mes', $mes)->first()['tasa'];
+            $tasa = TasaCajasExRegimen::where('caja_id', 9)->where('mes', $mes)->first()['tasa'];
             $tasaTrabajador = $tasa;
         }
         
@@ -1770,7 +2585,8 @@ class Trabajador extends Eloquent {
             'tasaTrabajador' => $tasaTrabajador,
             'tasaEmpleador' => $tasaEmpleador,
             'tasaObligatoria' => $tasa,
-            'tasaSis' => $tasaSis
+            'tasaSis' => $tasaSis,
+            'pagaSis' => $pagaSis
         );
         
         return $datos;
@@ -1839,9 +2655,9 @@ class Trabajador extends Eloquent {
                 if($descuento['tipo']['estructura']['id']==3){
                     $idAfp = TipoDescuento::find($descuento['tipo']['id'])->nombre;
                     $datos = array(
-                        'monto' => $descuento['monto'],
+                        'monto' => $descuento['montoPesos'],
                         'moneda' => $descuento['moneda'],
-                        'cotizacionTrabajador' => $descuento['montoPesos'],
+                        'cotizacionTrabajador' => $descuento['monto'],
                         'cotizacionEmpleador' => 0,
                         'numeroContrato' => '',
                         'idAfp' => $idAfp,
@@ -1856,24 +2672,49 @@ class Trabajador extends Eloquent {
     }
     
     public function totalAfp()
-    {        
-        $diasTrabajados = $this->diasTrabajados(); 
+    {                
+        $diasLicencia = $this->totalLicencias(); 
         $tasa = $this->tasaAfp();
         $rentaImponible = $this->rentaImponible();
         $totalTrabajador = (($tasa['tasaTrabajador'] * $rentaImponible ) / 100);
         $totalEmpleador = (( $tasa['tasaEmpleador'] * $rentaImponible ) / 100);
         $cotizacion = (( $tasa['tasaObligatoria'] * $rentaImponible ) / 100);
-        $sis = (( $tasa['tasaSis'] * $rentaImponible ) / 100);
+        if($diasLicencia){
+            $mesActual = \Session::get('mesActivo')->mes;
+            $sis = $this->sisAnterior($mesActual);
+        }else{
+            $sis = (( $tasa['tasaSis'] * $rentaImponible ) / 100);
+        }
         
         $datos = array(
             'totalTrabajador' => round($totalTrabajador),
             'totalEmpleador' => round($totalEmpleador),
             'cotizacion' => round($cotizacion),
             'sis' => round($sis),
-            'cuentaAhorroVoluntario' => $this->cuentaAhorroVoluntario()
+            'porcentajeSis' => $tasa['tasaSis'],
+            'porcentajeCotizacion' => $tasa['tasaObligatoria'],
+            'cuentaAhorroVoluntario' => $this->cuentaAhorroVoluntario(),
+            'pagaSis' => $tasa['pagaSis']
         );
         
         return $datos;
+    }
+    
+    public function sisAnterior($mesActual)
+    {
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mesActual)));
+        $liquidacionAnterior = Liquidacion::where('trabajador_id', $this->id)->where('mes', $mesAnterior)->first();
+        if($liquidacionAnterior){
+            if($liquidacionAnterior->dias_trabajados==30){
+                if($liquidacionAnterior->detalleAfp){
+                    return $liquidacionAnterior->miDetalleAfp()['sis'];
+                }
+            }else{
+                return $this->sisAnterior($mesAnterior);
+            }
+        }
+        
+        return 0;
     }
     
     public function movimientoPersonal()
@@ -1891,11 +2732,15 @@ class Trabajador extends Eloquent {
         $rut = '';
         $digito = '';
         $licencias = $this->misLicencias();
+        $inasistencias = $this->misInasistencias();
         
         if($fechaReconocimiento>=$mes && $fechaReconocimiento<=$fechaRemuneracion){
             if($tipoContrato==1){
                 $codigo = 1;
+                $fechaDesde = $fechaReconocimiento;
             }else if($tipoContrato==2){
+                $fechaDesde = $fechaReconocimiento;
+                $fechaHasta = $empleado->fecha_vencimiento;
                 $codigo = 7;
             }
             $fechaDesde = $fechaReconocimiento;
@@ -1908,6 +2753,14 @@ class Trabajador extends Eloquent {
             $codigo = 3;
             $fechaDesde = $licencias[0]['desde'];
             $fechaHasta = $licencias[0]['hasta'];
+        }else if(count($inasistencias)){
+            if($inasistencias[0]['motivo']=='Permiso sin goce de sueldo'){
+                $codigo = 4;  
+            }else{
+                $codigo = 11;                  
+            }            
+            $fechaDesde = $inasistencias[0]['desde'];
+            $fechaHasta = $inasistencias[0]['hasta'];
         }
         
         $datos = array(
@@ -1925,12 +2778,13 @@ class Trabajador extends Eloquent {
     {        
         $ficha = $this->ficha();
         $monto = $ficha->monto_colacion;
+        $proporcional = $ficha->proporcional_colacion;
         $totalColacion = 0;
         
-        if($monto){
+        if($monto>0){
             $totalColacion = Funciones::convertir($monto, $ficha->moneda_colacion);
             $diasTrabajados = $this->diasTrabajados();
-            if($diasTrabajados < 30){
+            if($diasTrabajados < 30 && $proporcional==1){
                 $totalColacion = (($totalColacion / 30) * $diasTrabajados);
             }
         }        
@@ -1943,11 +2797,12 @@ class Trabajador extends Eloquent {
         $ficha = $this->ficha();
         $monto = $ficha->monto_movilizacion;
         $totalMovilizacion = 0;
+        $proporcional = $ficha->proporcional_movilizacion;
         
-        if($monto){
+        if($monto>0){
             $totalMovilizacion = Funciones::convertir($monto, $ficha->moneda_movilizacion);
             $diasTrabajados = $this->diasTrabajados();
-            if($diasTrabajados < 30){
+            if($diasTrabajados < 30 && $proporcional==1){
                 $totalMovilizacion = (($totalMovilizacion / 30) * $diasTrabajados);
             }
         }        
@@ -1959,12 +2814,13 @@ class Trabajador extends Eloquent {
     {        
         $ficha = $this->ficha();
         $monto = $ficha->monto_viatico;
+        $proporcional = $ficha->proporcional_viatico;
         $totalViatico = 0;
         
-        if($monto){
+        if($monto>0){
             $totalViatico = Funciones::convertir($monto, $ficha->moneda_viatico);
             $diasTrabajados = $this->diasTrabajados();
-            if($diasTrabajados < 30){
+            if($diasTrabajados < 30 && $proporcional==1){
                 $totalViatico = (($totalViatico / 30) * $diasTrabajados);
             }
         }        
@@ -1977,78 +2833,103 @@ class Trabajador extends Eloquent {
         $empresa = \Session::get('empresa');
         $rentaImponible = $this->rentaImponible();
         $totalMutual = 0;        
+        $porcentajeMutual = $empresa->porcentajeMutual();
         
-        $fijo = $empresa->tasa_fija_mutual;
-        $adicional = $empresa->tasa_adicional_mutual;
-        $totalMutual = round((($rentaImponible * $fijo) + ($rentaImponible * $adicional)) / 100);
+        $totalMutual = round((($rentaImponible * $porcentajeMutual['fijo']) + ($rentaImponible * $porcentajeMutual['adicional']) + ($rentaImponible * $porcentajeMutual['extraordinaria']) + ($rentaImponible * $porcentajeMutual['sanna'])) / 100);
         
         return $totalMutual;
     }
     
+    public function totalMutuales()
+    {   
+        $empresa = \Session::get('empresa');
+        $rentaImponible = $this->rentaImponible();
+        $totalMutual = 0;        
+        $porcentajeMutual = $empresa->porcentajeMutual();
+        
+        $totalMutual = round((($rentaImponible * $porcentajeMutual['fijo']) + ($rentaImponible * $porcentajeMutual['adicional'])) / 100);
+        return $porcentajeMutual;
+    }
+    
     public function totalSalud()
     {        
-        $idSalud = $this->ficha()->isapre->id;
-        $rentaImponible = $this->rentaImponible();
-        $adicional = 0;
-        $montoSalud = ( $rentaImponible * 0.07 );
-        $excedente = 0;
-        $montoCaja = 0;
-        $montoFonasa = 0;
-        $empresa = \Session::get('empresa');
-        $bool = false;        
-        
-        if($this->sueldo()>0 && $idSalud!=240){
-            $diasTrabajados = $this->diasTrabajados(); 
-            if($idSalud!=246){
-                $cotizacionSalud = $this->ficha()->cotizacion_isapre; 
-
-                if($cotizacionSalud == 'UF'){
-                    $totalSalud = Funciones::convertirUF($this->ficha()->monto_isapre);
-                    $adicional = ($totalSalud - $montoSalud);
-                }else if($cotizacionSalud == '7%'){
-                    $uf = Funciones::convertirUF($this->ficha()->monto_isapre);
-                    $totalSalud = ( $rentaImponible * 0.07 );
-                    $adicional = ($totalSalud - $montoSalud);
-                }else if($cotizacionSalud == '7% + UF'){
-                    $uf = Funciones::convertirUF($this->ficha()->monto_isapre);
-                    $base = ( $rentaImponible * 0.07 );
-                    $totalSalud = ($base + $uf);
-                    $adicional = ($totalSalud - $montoSalud);
-                }else{
-                    $totalSalud = $this->ficha()->monto_isapre;
-                    $adicional = ($totalSalud - $montoSalud);
-                }            
-                if($adicional<0){
-                    $excedente = ($adicional * -1);
-                    $adicional = 0;
-                    $totalSalud = $montoSalud;
-                }
-            }else{
-                $totalSalud = $montoSalud;  
-                if($empresa->caja_id!=257){
-                    $montoFonasa = ( $rentaImponible * 0.064 );
-                    $montoCaja = ( $rentaImponible * 0.006 );
-                }else{
-                    $montoFonasa = ( $rentaImponible * 0.07 );                    
-                }  
-            }                        
-        }else{
-            $montoSalud = 0;
+        if(!$this->miTotalSalud){
+            $empleado =  $this->ficha();
+            $idSalud = $empleado->isapre->id;
+            $rentaImponible = $this->rentaImponible();
             $adicional = 0;
+            $montoSalud = round( $rentaImponible * 0.07 );
             $excedente = 0;
-            $totalSalud = 0;
+            $montoCaja = 0;
+            $montoFonasa = 0;
+            $empresa = \Session::get('empresa');
+            $bool = false;        
+
+            if($this->rentaImponible()>0 && $idSalud!=240){
+                $diasTrabajados = $this->diasTrabajados(); 
+                if($idSalud!=246){
+                    $cotizacionSalud = $empleado->cotizacion_isapre; 
+                    if($cotizacionSalud == 'UF'){
+                        $totalSalud = Funciones::convertirUF($empleado->monto_isapre);
+                        if($empleado->estado=='Ingresado' && $diasTrabajados < 30){
+                            $totalSalud = (($totalSalud / 30) * $diasTrabajados);
+                        }
+                        $adicional = ($totalSalud - $montoSalud);
+                    }else if($cotizacionSalud == '7%'){
+                        $uf = Funciones::convertirUF($empleado->monto_isapre);
+                        $totalSalud = round( $rentaImponible * 0.07 );
+                        $adicional = ($totalSalud - $montoSalud);
+                    }else if($cotizacionSalud == '7% + UF'){
+                        $uf = Funciones::convertirUF($empleado->monto_isapre);
+                        if($empleado->estado=='Ingresado' && $diasTrabajados < 30){
+                            $uf = (($uf / 30) * $diasTrabajados);
+                        }
+                        $base = round( $rentaImponible * 0.07 );
+                        $totalSalud = ($base + $uf);
+                        $adicional = ($totalSalud - $montoSalud);
+                    }else{
+                        $totalSalud = $empleado->monto_isapre;
+                        if($empleado->estado=='Ingresado' && $diasTrabajados < 30){
+                            $totalSalud = (($totalSalud / 30) * $diasTrabajados);
+                        }
+                        $adicional = ($totalSalud - $montoSalud);
+                    }            
+                    if($adicional<0){
+                        $excedente = ($adicional * -1);
+                        $adicional = 0;
+                        $totalSalud = $montoSalud;
+                    }
+                }else{
+                    $totalSalud = $montoSalud;  
+                    if($empresa->caja_id!=257){
+                        $montoFonasa = round( $rentaImponible * 0.064 );
+                        $montoCaja = round( $rentaImponible * 0.006 );
+                    }else{
+                        $montoFonasa = round( $rentaImponible * 0.07 );                    
+                    }  
+                }                        
+            }else{
+                $montoSalud = 0;
+                $adicional = 0;
+                $excedente = 0;
+                $totalSalud = 0;
+            }
+            
+            $datos = array(
+                'obligatorio' => round($montoSalud),
+                'montoFonasa' => round($montoFonasa),
+                'montoCaja' => round($montoCaja),
+                'adicional' => round($adicional),
+                'excedente' => round($excedente),
+                'total' => round($totalSalud)
+            );
+            
+            $this->miTotalSalud = $datos;
         }
         
-        $datos = array(
-            'obligatorio' => round($montoSalud),
-            'montoFonasa' => round($montoFonasa),
-            'montoCaja' => round($montoCaja),
-            'adicional' => round($adicional),
-            'excedente' => round($excedente),
-            'total' => round($totalSalud)
-        );
         
-        return $datos;
+        
+        return $this->miTotalSalud;
     }
   
     public function antiguedad()
@@ -2057,6 +2938,23 @@ class Trabajador extends Eloquent {
       $finMes = $mes->fechaRemuneracion;
       $empleado = $this->ficha();
       $fechaReconocimiento = $empleado->fecha_reconocimiento;
+      $fechaReconocimiento = new DateTime($fechaReconocimiento);
+      $fecha = new DateTime($finMes);
+      $diff = $fechaReconocimiento->diff($fecha);
+      $anios = $diff->y;
+      
+      return $anios;
+    }
+    
+    public function antiguedadCesantia()
+    {
+      $mes = \Session::get('mesActivo');
+      $finMes = $mes->fechaRemuneracion;
+      $empleado = $this->ficha();
+      $fechaReconocimiento = $empleado->fecha_reconocimiento_cesantia;
+      if(!$fechaReconocimiento){
+          $fechaReconocimiento = $empleado->fecha_reconocimiento;
+      }
       $fechaReconocimiento = new DateTime($fechaReconocimiento);
       $fecha = new DateTime($finMes);
       $diff = $fechaReconocimiento->diff($fecha);
@@ -2079,6 +2977,14 @@ class Trabajador extends Eloquent {
       return $meses;
     }
     
+    public function rentaImponibleSC()
+    {
+        $mes = \Session::get('mesActivo')->mes;
+        $tope = RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para Seguro de Cesantía')->first()->valor;
+        
+        return $rentaImponible;
+    }
+    
     public function totalSeguroCesantia()
     {        
         $mes = \Session::get('mesActivo')->mes;
@@ -2086,10 +2992,10 @@ class Trabajador extends Eloquent {
         $totalSeguroCesantiaEmpleador = 0;
         $empleado = $this->ficha();
         $afcTrabajador = 0;
+        $rentaImponible = 0;
         $afcEmpleador = 0;
         
-        if($empleado->seguro_desempleo){
-            $diasTrabajados = $this->diasTrabajados();            
+        if($empleado->seguro_desempleo && strtolower($empleado->tipo_trabajador)=='normal'){
             if($empleado->tipoContrato['id']==2){
               $indefinido = false;
             }else{
@@ -2097,14 +3003,32 @@ class Trabajador extends Eloquent {
             }  
             
             $rentaImponible = $this->sumaImponibles();
+            $todosImponibles = $this->todosImponibles();
+            $diasTrabajados = $this->diasTrabajados();
             $topeSeguro = RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para Seguro de Cesantía')->first()->valor;
             $topeSeguroPesos = Funciones::convertirUF($topeSeguro);        
-
-            if($rentaImponible > $topeSeguroPesos){
-              $rentaImponible = $topeSeguroPesos;
+            
+            if($empleado->estado=='Ingresado'){
+                if($this->totalDiasLicencias()){
+                    if($todosImponibles > $topeSeguroPesos && $diasTrabajados < 30){
+                        $rentaImponible = (($topeSeguroPesos / 30) * $diasTrabajados);
+                    }else{
+                        if($rentaImponible > $topeSeguroPesos){
+                            $rentaImponible = $topeSeguroPesos;
+                        }
+                    }
+                }else{
+                    if($rentaImponible > $topeSeguroPesos){
+                        $rentaImponible = $topeSeguroPesos;
+                    }
+                }
+            }else{
+                if($rentaImponible > $topeSeguroPesos){
+                    $rentaImponible = $topeSeguroPesos;
+                }   
             }
             
-            if($this->antiguedad()<11){                          
+            if($this->antiguedadCesantia()<11){                          
               
               if($rentaImponible > 0){
                   if($indefinido){
@@ -2140,10 +3064,28 @@ class Trabajador extends Eloquent {
             'afc' => $afcTrabajador,
             'afcEmpleador' => $afcEmpleador,
             'total' => $totalSeguroCesantiaTrabajador,
-            'totalEmpleador' => $totalSeguroCesantiaEmpleador
+            'totalEmpleador' => $totalSeguroCesantiaEmpleador,
+            'rentaImponible' => $rentaImponible
         );
         
         return $datos;
+    }
+    
+    public function licenciasAdicional()
+    {
+        $licencias = $this->misLicencias();
+        $datos = array();
+        if(count($licencias)>1){
+            foreach($licencias as $licencia){
+                $datos[] = array(
+                    'desde' => $licencia['desde'],
+                    'hasta' => $licencia['hasta']
+                );
+            }
+            unset($datos[0]);
+            return $datos;
+        }
+        return false;
     }
     
     public function isLiquidacion($mes=null)
@@ -2161,12 +3103,33 @@ class Trabajador extends Eloquent {
         return $isLiquidacion;
     }
     
+    public function declaracion($anio)
+    {
+        $declaracion = DeclaracionTrabajador::where('trabajador_id', $this->id)->where('anio_id', $anio->id)->first();
+        if($declaracion){
+            $datos = array(
+                'id' => $declaracion->id,
+                'sid' => $declaracion->sid,
+                'folio' => $declaracion->folio,
+                'nombre' => $declaracion->nombre_archivo
+            );
+            
+            return $datos;
+        }
+        
+        return null;
+    }
+    
     public function totalDescuentosPrevisionales()
     {                           
-        $totalAfp = $this->totalAfp()['totalTrabajador'];
+        $totalAfp = $this->totalAfp();
         $totalSalud = $this->totalSalud();
         $totalSeguroCesantia = $this->totalSeguroCesantia();        
-        $totalDescuentos = ( $totalAfp + $totalSalud['total'] + $totalSeguroCesantia['total']);
+        $sis = 0;
+        if($totalAfp['pagaSis']=='empleado'){
+            $sis = $totalAfp['sis'];
+        }
+        $totalDescuentos = ( $totalAfp['totalTrabajador'] + $totalSalud['obligatorio'] + $totalSalud['adicional'] + $totalSeguroCesantia['total'] + $sis);
         
         return $totalDescuentos;
     }
@@ -2178,7 +3141,7 @@ class Trabajador extends Eloquent {
         $mes = \Session::get('mesActivo')->mes;
         $descuentos = $this->misDescuentos();
         $cuotas = $this->totalCuotasPrestamos();
-        $apvs = $empleado->totalApv();
+        $apvs = $this->totalApvPagar();
         $sumaDescuentos = 0;
         
         if($descuentos){
@@ -2203,7 +3166,7 @@ class Trabajador extends Eloquent {
         
         if($descuentos){
             foreach($descuentos as $desc){
-                if($desc['tipo']['id']==4){
+                if($desc['tipo']['estructura']['id']==2){
                     $sumaAnticipos += $desc['montoPesos'];
                 }
             }
@@ -2212,28 +3175,59 @@ class Trabajador extends Eloquent {
         return $sumaAnticipos;
     }        
     
+    public function zonaImpuestoUnico()
+    {
+        $empresa = \Session::get('empresa');
+        
+        if($empresa->impuesto_unico=='e'){
+            return $empresa->zona;
+        }else{
+            $ficha = $this->ficha();
+            $zona = $ficha->zonaImpuestoUnico ? $ficha->zonaImpuestoUnico->porcentaje : 0;
+            return $zona;            
+        }
+    }
+    
     public function baseImpuestoUnico()
     {        
         $rentaImponibleTributable = $this->rentaImponibleTributable();
-        $baseImpuestoUnico = 0;
+        $baseImpuestoUnico = 1;
         $mes = \Session::get('mesActivo')->mes;
-        $zona = \Session::get('empresa')->zona;
+        $zona = $this->zonaImpuestoUnico();
+        $sis = 0;
         
         if($rentaImponibleTributable > 0){
-            $topeImponible = Funciones::convertirUF(RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para afiliados a una AFP')->first()->valor);
+            $rentaImp = RentaTopeImponible::where('mes', $mes)->where('nombre', 'Para afiliados a una AFP')->first();
+            if($rentaImp){
+                $topeImponible = Funciones::convertirUF($rentaImp->valor);
+            }else{
+                $topeImponible = 0;
+            }
+
+            
             $topeImponible = ($topeImponible * 0.07);
             $salud = $this->totalSalud()['total'];
-            $totalDescuentosPrevisionales = $this->totalDescuentosPrevisionales();
+            $afp = $this->totalAfp();
+            $totalAfp = $afp['totalTrabajador'];
+            
+            if($afp['pagaSis']=='empleado'){
+                $sis = $afp['sis'];
+            }
+            
+            $totalSeguroCesantia = $this->totalSeguroCesantia()['total'];       
+            $totalDescuentosPrevisionales = ($totalAfp + $salud + $totalSeguroCesantia);
             $apvsRegimenB = $this->totalApvsRegimenB();
             if($salud>$topeImponible){
                 $resto = ($salud - $topeImponible);
                 $totalDescuentosPrevisionales = ($totalDescuentosPrevisionales - $resto);
             }
 
-            $baseImpuestoUnico = ($rentaImponibleTributable - $totalDescuentosPrevisionales - $apvsRegimenB);
+            $baseImpuestoUnico = ($rentaImponibleTributable - $totalDescuentosPrevisionales - $apvsRegimenB - $sis);
             $baseImpuestoUnico = round($baseImpuestoUnico - ($baseImpuestoUnico * ($zona / 100)));
-        }else{
-            $baseImpuestoUnico = 1;
+            
+            if($baseImpuestoUnico<1){
+                $baseImpuestoUnico = 1;
+            }
         }
         
         return $baseImpuestoUnico;
@@ -2244,11 +3238,10 @@ class Trabajador extends Eloquent {
         $mes = \Session::get('mesActivo')->mes;
         $tramos = TablaImpuestoUnico::where('mes', $mes)->get();
         $factor = 0;
+        $baseImpuestoUnico = $this->baseImpuestoUnico();
         foreach($tramos as $tramo){
             $desde = Funciones::convertirUTM($tramo->imponible_mensual_desde, false);
             $hasta = Funciones::convertirUTM($tramo->imponible_mensual_hasta, false);
-            $baseImpuestoUnico = $this->baseImpuestoUnico();
-
             if($baseImpuestoUnico > $desde && $baseImpuestoUnico <= $hasta){
                 $factor = $tramo;
                 break;
@@ -2260,8 +3253,7 @@ class Trabajador extends Eloquent {
     
     public function totalApvsRegimenB()
     {
-        $empleado = $this->ficha();
-        $apvs = $empleado->misApvs();
+        $apvs = $this->misApvsPagar();
         $totalRebajar = 0;
         if($apvs){
             foreach($apvs as $apv){
@@ -2315,8 +3307,8 @@ class Trabajador extends Eloquent {
     {        
         $empleado = $this->ficha();
         $noImponibles = $this->sumaNoImponibles();
-        $permanentes = ($empleado->monto_colacion + $empleado->monto_viatico + $empleado->monto_movilizacion);
-        $cargasFamiliares = $empleado->cargasFamiliares()['monto'];
+        $permanentes = ($this->totalColacion() + $this->totalViatico() + $this->totalMovilizacion());
+        $cargasFamiliares = $this->cargasFamiliares()['monto'];
         $total = ($noImponibles + $permanentes + $cargasFamiliares);
         
         return $total;
@@ -2333,7 +3325,27 @@ class Trabajador extends Eloquent {
         $total = ($imponibles + $sueldo + $gratificacion + $horasExtra + $semanaCorrida);
         
         return $total;
-    }    
+    }   
+    
+    public function todosImponibles()
+    {        
+        $gratificacion = $this->gratificacion();
+        $imponibles = $this->imponibles();
+        $sueldo = $this->sueldoBase();
+        $horasExtra = $this->horasExtraPagar()['total'];
+        $semanaCorrida = $this->miSemanaCorrida();
+        
+        $total = ($imponibles + $sueldo + $gratificacion + $horasExtra + $semanaCorrida);
+        
+        return $total;
+    } 
+    
+    public function sueldoBase()
+    {
+        $empleado = $this->ficha();
+        
+        return Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo);
+    }
     
     public function remuneracionAnualTrabajador()
     {
@@ -2356,10 +3368,16 @@ class Trabajador extends Eloquent {
         if( $misHaberes){
             foreach($misHaberes as $haber){
                 if($haber['tipo']['gratificacion']){
-                    $monto = Funciones::convertir($haber['monto'], $haber['moneda']);                 
+                    $monto = $haber['montoPesos'];                 
                     $haberesGratificacion += $monto;
                 }
             }
+        }
+        
+        $horasExtra = TipoHaber::find(7);
+        if($horasExtra->gratificacion){
+            $totalHorasExtra = $this->horasExtraPagar()['total'];
+            $haberesGratificacion += $totalHorasExtra;
         }
         
         return $haberesGratificacion;
@@ -2377,57 +3395,110 @@ class Trabajador extends Eloquent {
     {
         $empresa = \Session::get('empresa');
         $tipoGratificacion = '';
-        
-        if($empresa->gratificacion=='e'){
-            $tipoGratificacion = $empresa->tipo_gratificacion;
+        $empleado = $this->ficha();
+        if($empleado->gratificacion_especial){
+            $tipoGratificacion = 'es';
         }else{
-            $empleado = $this->ficha();
-            $tipoGratificacion = $empleado->gratificacion;
+            if($empresa->gratificacion=='e'){
+                $tipoGratificacion = $empresa->tipo_gratificacion;
+            }else{
+                $tipoGratificacion = $empleado->gratificacion;
+            }
         }
-        
+                
         return $tipoGratificacion;
+    }
+    
+    public function gratificacionProporcional()
+    {
+        $tipoGratificacion = $this->tipoGratificacion();
+        $proporcionalInasistencias = false;
+        $proporcionalLicencias = false;
+        
+        if($tipoGratificacion=='m'){        
+            $empresa = \Session::get('empresa');
+            if($empresa->gratificacion=='e'){
+                $proporcionalInasistencias = $empresa->gratificacion_proporcional_inasistencias ? true : false;
+                $proporcionalLicencias = $empresa->gratificacion_proporcional_licencias ? true : false;
+            }else{
+                $empleado = $this->ficha();
+                $proporcionalInasistencias = $empleado->gratificacion_proporcional_inasistencias ? true : false;
+                $proporcionalLicencias = $empleado->gratificacion_proporcional_licencias ? true : false;
+            }
+        }
+        $datos = array(
+            'licencias' => $proporcionalLicencias,
+            'inasistencias' => $proporcionalInasistencias
+        );
+        
+        return $datos;
     }
     
     public function gratificacion()
     {
-        $gratificacion = 0;
-        $baseGratificacion = $this->baseGratificacion();
-        $diasTrabajados = $this->diasTrabajados();
-        $tipoGratificacion = $this->tipoGratificacion();        
-            
-        if($baseGratificacion > 0){
-            if($tipoGratificacion=='m'){
-                $gratificacion = (($baseGratificacion) * 0.25);
-                $topeGratificacion = $this->topeGratificacion();
-                if($gratificacion > $topeGratificacion){
-                    $gratificacion = $topeGratificacion;
-                }  
-                if($diasTrabajados<30){
-                    $gratificacion = (($gratificacion / 30) * $diasTrabajados);
-                }
-            }else{
-                $mes = \Session::get('mesActivo');
-                $mesActual = $mes->mes;
-                $anio = AnioRemuneracion::find($mes->idAnio);
-                $gratificacion = 1;
-                if($anio->gratificacion==$mesActual){
-                    $gratificacion = 2;
-                    $utilidad = $anio->utilidad;
-                    $antiguedad = $this->antiguedadMeses();
-                    if($utilidad){
-                        $remuneracionAnualDevengada = Liquidacion::remuneracionAnualDevengada();
-                        $remuneracionAnualTrabajador = $this->remuneracionAnualTrabajador();
-                        $factor = ($utilidad / $remuneracionAnualDevengada);
-                        $gratificacion = ($factor * $remuneracionAnualTrabajador);
-                        if($antiguedad<12){
-                            $gratificacion = (($gratificacion / 12) * $antiguedad);
+        if(!$this->miGratificacion){
+            $gratificacion = 0;
+            $empleado = $this->ficha();
+
+            if(strtolower($empleado->tipo_trabajador)=='normal'){
+                $baseGratificacion = $this->baseGratificacion();
+                $diasTrabajados = $this->diasTrabajados();
+                $tipoGratificacion = $this->tipoGratificacion();        
+                $proporcional = $this->gratificacionProporcional();
+                $empresa = \Session::get('empresa');
+
+                if($empresa->rut=='965799206'){
+                    if($this->id==9){
+                        $mes = \Session::get('mesActivo')->id;
+                        if($mes==92 || $mes==93){
+                            return 0;
                         }
                     }
                 }
-            }
-        }                      
+
+                if($baseGratificacion > 0){
+                    if($tipoGratificacion=='es'){
+                        $gratificacion = Funciones::convertir($empleado->monto_gratificacion, $empleado->moneda_gratificacion);
+                    }else if($tipoGratificacion=='m'){
+                        $gratificacion = (($baseGratificacion) * 0.25);
+                        $topeGratificacion = $this->topeGratificacion();
+                        if($gratificacion > $topeGratificacion){
+                            $gratificacion = $topeGratificacion;
+                        }  
+                        if($proporcional['licencias']){
+                            if($this->totalDiasLicencias()>0){
+                                $gratificacion = round(($gratificacion / 30) * $diasTrabajados); 
+                            }
+                        }else if($proporcional['inasistencias']){
+                            if($this->totalInasistencias()>0){
+                                $gratificacion = round(($gratificacion / 30) * $diasTrabajados);    
+                            }   
+                        }
+                    }else{
+                        $mes = \Session::get('mesActivo');
+                        $mesActual = $mes->mes;
+                        $anio = AnioRemuneracion::find($mes->idAnio);
+                        $gratificacion = 0;
+                        if($anio->gratificacion==$mesActual){
+                            $utilidad = $anio->utilidad;
+                            $antiguedad = $this->antiguedadMeses();
+                            if($utilidad){
+                                $remuneracionAnualDevengada = Liquidacion::remuneracionAnualDevengada();
+                                $remuneracionAnualTrabajador = $this->remuneracionAnualTrabajador();
+                                $factor = ($utilidad / $remuneracionAnualDevengada);
+                                $gratificacion = ($factor * $remuneracionAnualTrabajador);
+                                if($antiguedad<12){
+                                    $gratificacion = (($gratificacion / 12) * $antiguedad);
+                                }
+                            }
+                        }
+                    }
+                }
+            } 
+            $this->miGratificacion = round($gratificacion);
+        }
         
-        return round($gratificacion);
+        return $this->miGratificacion;
     }
     
     public function sueldoLiquido()
@@ -2439,9 +3510,7 @@ class Trabajador extends Eloquent {
         $otrosDescuentos = $this->totalOtrosDescuentos();
         $sueldoLiquido = 0;
         
-        if($this->sueldo()){
-            $sueldoLiquido = ( $imponibles + $noImponibles - $descuentosPrevisionales - $descuentosTributarios - $otrosDescuentos );
-        }
+        $sueldoLiquido = ( $imponibles + $noImponibles - $descuentosPrevisionales - $descuentosTributarios - $otrosDescuentos );
         
         return round($sueldoLiquido);
     }
@@ -2452,18 +3521,6 @@ class Trabajador extends Eloquent {
         $fichas = FichaTrabajador::where('trabajador_id', $idTrabajador)->get();
         if($fichas->count()){
             foreach($fichas as $ficha){
-                $apvs = $ficha->apvs;
-                if($apvs->count()){
-                    foreach($apvs as $apv){
-                        $apv->delete();
-                    }
-                }
-                $cargas = $ficha->cargas;
-                if($cargas->count()){
-                    foreach($cargas as $carga){
-                        $carga->delete();
-                    }
-                }
                 $ficha->delete();
             }
         }
@@ -2509,6 +3566,12 @@ class Trabajador extends Eloquent {
                 $vacacion->delete();
             }
         }
+        $tomasVacaciones = TomaVacaciones::where('trabajador_id', $idTrabajador)->get();
+        if($tomasVacaciones->count()){
+            foreach($tomasVacaciones as $tomaVacaciones){
+                $tomaVacaciones->delete();
+            }
+        }
         $prestamos = Prestamo::where('trabajador_id', $idTrabajador)->get();
         if($prestamos->count()){
             foreach($prestamos as $prestamo){
@@ -2521,66 +3584,127 @@ class Trabajador extends Eloquent {
                 $documento->eliminarDocumento();
             }
         }
+        $apvs = Apv::where('trabajador_id', $idTrabajador)->get();
+        if($apvs->count()){
+            foreach($apvs as $apv){
+                $apv->delete();
+            }
+        }
+        $cargas = Carga::where('trabajador_id', $idTrabajador)->get();
+        if($cargas->count()){
+            foreach($cargas as $carga){
+                $carga->delete();
+            }
+        }
+        $secciones = Seccion::where('encargado_id', $idTrabajador)->get();
+        if($secciones->count()){
+            foreach($secciones as $seccion){
+                $seccion->encargado_id = NULL;
+                $seccion->save();
+            }
+        }
+        $usuario = DB::table('usuarios')->where('funcionario_id', $idTrabajador)->first();
+        if($usuario){
+            DB::table('permisos')->where('usuario_id', $usuario->id)->delete();
+            DB::table('usuarios')->where('id', $usuario->id)->delete();
+        }
+    }
+    
+    
+    /*  PORTAL_EMPLEADOS    */
+        
+    
+    public function validar($datos)
+    {
+        $trabajadores = Trabajador::where('rut', $datos['rut'])->get();
+
+        if($trabajadores->count()){
+            if($this->id){
+                foreach($trabajadores as $trabajador){
+                    if($trabajador['rut']==$datos['rut'] && $trabajador['id']!=$this->id){
+                        $errores = new stdClass();
+                        $errores->rut = array('El RUT ya se encuentra registrado');
+                        return $errores;
+                    }
+                }
+            }else{
+                foreach($trabajadores as $trabajador){
+                    if($trabajador['rut']==$datos['rut']){
+                        $errores = new stdClass();
+                        $errores->rut = array('El RUT ya se encuentra registrado');
+                        return $errores;
+                    }
+                }
+            }
+        }
+        
+        return;
     }
 
     static function errores($datos)
-    {         
-        $rules = array(
-            /*'rut' => 'required',
-            'nombres' => 'required',
-            'apellidos' => 'required',
-            'nacionalidad' => 'required',
-            'sexo' => 'required',
-            'estado_civil' => 'required',
-            'fecha_nacimiento' => 'required',
-            'direccion' => 'required',
-            'comuna_id' => 'required',
-            'celular' => 'required',
-            'email' => 'required',
-            'cargo' => 'required',
-            'seccion_id' => 'required',
-            'tipo_cuenta' => 'required',
-            'banco' => 'required',
-            'numero_cuenta' => 'required',
-            'fecha_ingreso' => 'required',
-            'fecha_reconocimiento' => 'required',
-            'tipo_contrato' => 'required',
-            'tipo_jornada' => 'required',
-            'semana_corrida' => 'required',
-            'moneda_sueldo' => 'required',
-            'sueldo_base' => 'required',
-            'tipo_trabajador' => 'required',
-            'gratificacion_mensual' => 'required',
-            'gratificacion_anual' => 'required',
-            'moneda_colacion' => 'required',
-            'colacion' => 'required',
-            'moneda_movilizacion' => 'required',
-            'movilizacion' => 'required',
-            'moneda_viatico' => 'required',
-            'viatico' => 'required',
-            'afp' => 'required',
-            'seguro_desempleo' => 'required',
-            'isapre' => 'required',
-            'cotizacion_isapre' => 'required',
-            'monto_isapre' => 'required',
-            'sindicato' => 'required',
-            'moneda_sindicato' => 'required',
-            'monto_sindicato' => 'required'
-            */    
-        );
-
+    {
+        if($datos['id']){
+            $rules =    array(
+                'rut' => 'required|unique:trabajadores,rut,'.$datos['id']
+            );
+        }else{
+            $rules =    array(
+                'rut' => 'required|unique:trabajadores,rut'
+            );
+        }
+                
         $message = array(
-            'trabajador.required' => 'Obligatorio!'
+            'rut.required' => 'Obligario!',
+            'nombres.required' => 'Obligario!',
+            'apellidos.required' => 'Obligario!',
+            'nacionalidad.required' => 'Obligario!',
+            'sexo.required' => 'Obligario!',
+            'estado_civil.required' => 'Obligario!',
+            'fecha_nacimiento.required' => 'Obligario!',
+            'direccion.required' => 'Obligario!',
+            'comuna_id.required' => 'Obligario!',
+            'celular.required' => 'Obligario!',
+            'email.required' => 'Obligario!',
+            'cargo.required' => 'Obligario!',
+            'seccion_id.required' => 'Obligario!',
+            'tipo_cuenta.required' => 'Obligario!',
+            'banco.required' => 'Obligario!',
+            'numero_cuenta.required' => 'Obligario!',
+            'fecha_ingreso.required' => 'Obligario!',
+            'fecha_reconocimiento.required' => 'Obligario!',
+            'tipo_contrato.required' => 'Obligario!',
+            'tipo_jornada.required' => 'Obligario!',
+            'semana_corrida.required' => 'Obligario!',
+            'moneda_sueldo.required' => 'Obligario!',
+            'sueldo_base.required' => 'Obligario!',
+            'tipo_trabajador.required' => 'Obligario!',
+            'gratificacion_mensual.required' => 'Obligario!',
+            'gratificacion_anual.required' => 'Obligario!',
+            'moneda_colacion.required' => 'Obligario!',
+            'colacion.required' => 'Obligario!',
+            'moneda_movilizacion.required' => 'Obligario!',
+            'movilizacion.required' => 'Obligario!',
+            'moneda_viatico.required' => 'Obligario!',
+            'viatico.required' => 'Obligario!',
+            'afp.required' => 'Obligario!',
+            'seguro_desempleo.required' => 'Obligario!',
+            'isapre.required' => 'Obligario!',
+            'cotizacion_isapre.required' => 'Obligario!',
+            'monto_isapre.required' => 'Obligario!',
+            'sindicato.required' => 'Obligario!',
+            'moneda_sindicato.required' => 'Obligario!',
+            'monto_sindicato.requiredo' => 'Obligario!',
+            'rut.unique' => 'El RUT ya se encuentra registrado!'
         );
 
         $verifier = App::make('validation.presence');
-        $verifier->setConnection("principal");
+        //$verifier->setConnection("principal");
 
         $validation = Validator::make($datos, $rules, $message);
         $validation->setPresenceVerifier($verifier);
 
         if($validation->fails()){
-            return $validation->messages();
+            return $validation->getMessageBag()->toArray();
         }else{
             return false;
         }

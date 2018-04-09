@@ -20,8 +20,20 @@ angular.module('angularjsApp')
                     }
                 );
             },
-            calcular : function(){
-              return $resource(constantes.URL + 'vacaciones/calculo/obtener',
+            recalcular : function(){
+              return $resource(constantes.URL + 'vacaciones/recalculo/obtener',
+                {},
+                { post : { 'method': 'POST' } }
+              );
+            },
+            eliminarTomaVacaciones : function(){
+              return $resource(constantes.URL + 'vacaciones/toma-vacaciones/eliminar',
+                {},
+                { post : { 'method': 'POST' } }
+              );
+            },
+            tomaVacaciones : function(){
+              return $resource(constantes.URL + 'vacaciones/toma-vacaciones/obtener',
                 {},
                 { post : { 'method': 'POST' } }
               );

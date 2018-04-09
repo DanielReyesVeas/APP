@@ -147,6 +147,7 @@ angular.module('angularjsApp')
       $scope.trabajador = angular.copy(objeto);
       $scope.isEdit = false;
       $scope.titulo = 'Ingreso Inasistencia';
+      $scope.inasistencia = { desde : fecha.fechaActiva(), hasta : fecha.fechaActiva() };
     }
 
     $scope.motivos = [
@@ -155,10 +156,16 @@ angular.module('angularjsApp')
     ];
 
     $scope.guardar = function(inasist, trabajador){
-      
+      console.log(inasist)
       $rootScope.cargando=true;
       var mes = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
       var response;
+      if(inasist.desde==fecha.fechaActiva()){
+        inasist.desde = fecha.convertirFecha(fecha.convertirFechaFormato(inasist.desde));
+      }
+      if(inasist.hasta==fecha.fechaActiva()){
+        inasist.hasta = fecha.convertirFecha(fecha.convertirFechaFormato(inasist.hasta));
+      }
       var Inasistencia = { idTrabajador : trabajador.id, idMes : mes.id, desde : inasist.desde, hasta : inasist.hasta, dias : inasist.dias, motivo : inasist.motivo, observacion : inasist.observacion };
 
       if( $scope.inasistencia.sid ){
@@ -187,36 +194,13 @@ angular.module('angularjsApp')
     }
     
     // Fecha
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
 
     $scope.dateOptions = {
-      //dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: fecha.convertirFecha(mesActual.fechaRemuneracion),
       minDate: fecha.convertirFecha(mesActual.mes),
       startingDay: 1
     };  
-
-    function disabled(data) {
-      var date = data.date,
-        mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
 
     $scope.openFechaHasta = function() {
       $scope.popupFechaHasta.opened = true;
@@ -226,32 +210,14 @@ angular.module('angularjsApp')
       $scope.popupFechaDesde.opened = true;
     };
 
-    $scope.setDate = function(year, month, day) {
-      $scope.fecha = new Date(year, month, day);
-    };
-
     $scope.format = ['dd-MMMM-yyyy'];
 
     $scope.popupFechaHasta = {
       opened: false
     };
+
     $scope.popupFechaDesde = {
       opened: false
     };
-
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
 
   });

@@ -49,6 +49,12 @@ angular.module('angularjsApp')
           },
           doc: function () {
             return doc;          
+          },
+          menu: function () {
+            return '#asociar-documentos';          
+          },
+          submenu: function () {
+            return 'Documentos Trabajadores';          
           }
         }
       });
@@ -238,6 +244,12 @@ angular.module('angularjsApp')
           },
           doc: function () {
             return doc;          
+          },
+          menu: function () {
+            return '#asociar-documentos';          
+          },
+          submenu: function () {
+            return 'Documentos Trabajadores';          
           }
         }
       });
@@ -268,8 +280,8 @@ angular.module('angularjsApp')
     };
 
     $scope.eliminar = function(doc){
-      $rootScope.cargando=true;
-      $scope.result = documento.datos().delete({ sid: doc.sid });
+      var obj = { sid: doc.sid, menu : '#asociar-documentos', submenu : 'Documentos Trabajador' };
+      $scope.result = documento.eliminarDocumento().post({}, obj);
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
@@ -279,7 +291,7 @@ angular.module('angularjsApp')
     };
 
   })
-  .controller('FormDocumentosCtrl', function ($scope, $uibModalInstance, $rootScope, trabajador, tiposDoc, doc, $uibModal, constantes, Upload, documento, Notification, $filter) {
+  .controller('FormDocumentosCtrl', function ($scope, $uibModalInstance, $rootScope, trabajador, tiposDoc, menu, submenu, doc, $uibModal, constantes, Upload, documento, Notification, $filter) {
     $scope.trabajador = angular.copy(trabajador);
     $scope.tiposDocumento = angular.copy(tiposDoc);
 
@@ -337,7 +349,7 @@ angular.module('angularjsApp')
         var file = file;
         Upload.upload({
           url: constantes.URL + 'documentos/archivo/subir',
-          data: { file : file, idTrabajador : $scope.trabajador.id, idTipoDocumento : $scope.documento.tipo.id, descripcion : $scope.documento.descripcion }
+          data: { file : file, idTrabajador : $scope.trabajador.id, menu: menu, submenu: submenu, idTipoDocumento : $scope.documento.tipo.id, descripcion : $scope.documento.descripcion }
         }).success(function (data){
           $scope.dynamic=0;
           if( data.success ){
@@ -356,7 +368,7 @@ angular.module('angularjsApp')
     };
 
     $scope.modificar = function () {
-      var doc = { idTipoDocumento : $scope.documento.tipo.id, descripcion : $scope.documento.descripcion };
+      var doc = { idTipoDocumento : $scope.documento.tipo.id, menu: menu, submenu: submenu, descripcion : $scope.documento.descripcion };
       $rootScope.cargando=true;
       var response;
       response = documento.datos().update({sid:$scope.documento.sid}, doc);

@@ -4,8 +4,8 @@ class Apv extends Eloquent {
     
     protected $table = 'apvs';
     
-    public function fichaTrabajador(){
-        return $this->belongsTo('FichaTrabajador','ficha_trabajador_id');
+    public function trabajador(){
+        return $this->belongsTo('Trabajador','trabajador_id');
     }
     
     public function afp(){

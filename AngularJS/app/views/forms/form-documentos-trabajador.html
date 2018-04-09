@@ -20,10 +20,10 @@
             <tr>
               <th class="col-sm-1">#</th>
               <th class="col-sm-2">Nombre</th>
-              <th class="col-sm-3">Tipo Documento</th>
+              <th class="col-sm-2">Tipo</th>
               <th class="col-sm-3">Descripción</th>
               <th class="col-sm-2">Fecha</th>
-              <th class="col-sm-1"></th>
+              <th class="col-sm-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -32,10 +32,11 @@
               <td>{{ dato.alias }}</td>
               <td>{{ dato.tipo.nombre }}</td>
               <td><span ng-if="dato.descripcion">{{ dato.descripcion }}</span></td>
-              <td>{{ dato.fecha.date | date : "dd-MM-y" }}</td>
+              <td>{{ dato.fecha | date : "dd-MM-y" }}</td>
               <td>
                 <a href="javascript:void(0);" ng-if="accesos.editar && accesos.abierto" ng-click="editar(dato)"><i class="fa fa-pencil"></i></a>
-                <a href="javascript:void(0);" ng-if="accesos.ver" ng-click="frame(dato)"><i class="fa fa-search"></i></a>
+                <a href="javascript:void(0);" ng-if="dato.extension=='pdf'" ng-if="accesos.ver" ng-click="frame(dato)"><i class="fa fa-window-restore"></i></a>
+                <a href="{{ constantes.URL }}/stories/{{ dato.nombre }}" download="{{ dato.alias }}" ng-if="accesos.ver"><i class="fa fa-download"></i></a>
                 <a href="javascript:void(0);" ng-if="accesos.eliminar && accesos.abierto" confirmation-click="eliminar(dato)" confirmation-needed="El Documento seleccionado será eliminado del sistema. ¿Desea continuar?"><i class="fa fa-trash"></i></a>
               </td>
             </tr>

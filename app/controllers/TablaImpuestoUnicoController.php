@@ -12,7 +12,7 @@ class TablaImpuestoUnicoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tabla-impuesto-unico');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tabla-impuesto-unico');
         $mes = \Session::get('mesActivo')->mes;
         $tablaImpuestoUnico = TablaImpuestoUnico::where('mes', $mes)->orderBy('tramo')->get();
         

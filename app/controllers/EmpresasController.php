@@ -136,6 +136,12 @@ class EmpresasController extends \BaseController {
                 $empresa->gratificacion =  $datos['gratificacion'];
                 $empresa->tipo_gratificacion =  $datos['tipo_gratificacion'];
                 $empresa->tope_gratificacion =  $datos['tope_gratificacion'];
+                $empresa->gratificacion_proporcional_inasistencias =  $datos['gratificacion_proporcional_inasistencias'];
+                $empresa->gratificacion_proporcional_licencias =  $datos['gratificacion_proporcional_licencias'];
+                $empresa->salud_completa =  $datos['salud_completa'];
+                $empresa->licencias_30 =  $datos['licencias_30'];
+                $empresa->ingresos_30 =  $datos['ingresos_30'];
+                $empresa->finiquitos_30 =  $datos['finiquitos_30'];
                 $empresa->zona =  $datos['zona'];
                 $empresa->codigo_caja =  $datos['codigo_caja'];
                 $empresa->sis =  $datos['sis'];
@@ -149,6 +155,10 @@ class EmpresasController extends \BaseController {
                 $empresa->contador_nombre =  $datos['contador_nombre'];
                 $empresa->contador_rut =  $datos['contador_rut'];
                 $empresa->numero_registro =  $datos['numero_registro'];
+                $empresa->cme =  $datos['cme'];
+                $empresa->centro_costo =  $datos['centro_costo'];
+                $empresa->niveles_centro_costo =  $datos['niveles_centro_costo'];
+                $empresa->impuesto_unico =  $datos['impuesto_unico'];
 
                 if($datos['logo']){
                     $extension = substr($datos['logo'], 0, 16);
@@ -380,6 +390,7 @@ c139f46406b37dedd4062fea30a5ccec
 
                 // actualizamos en la tabla variables el valor del anio inicial
                 DB::raw(DB::select("TRUNCATE TABLE " . $nombreBaseDatos . ".variables_sistema"));
+                
                 $SQL="INSERT INTO " . $nombreBaseDatos . ".variables_sistema (id, variable, valor1, valor2, valor3, valor4, valor5, created_at, updated_at) VALUES (1, 'anio_inicial', '" . $datos['anioInicial'] . "', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00');";
                 DB::raw(DB::select($SQL));
                 $SQL="INSERT INTO " . $nombreBaseDatos . ".variables_sistema (id, variable, valor1, valor2, valor3, valor4, valor5, created_at, updated_at) VALUES (2, 'mes_inicial', '" . $datos['mesInicial']['fecha'] . "', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00');";
@@ -391,17 +402,40 @@ c139f46406b37dedd4062fea30a5ccec
                 $meses = Funciones::crearMesesSQL($datos['mesInicial']['id']);
                 
                 DB::raw(DB::select("TRUNCATE TABLE " . $nombreBaseDatos . ".anios_remuneraciones"));
-                $SQL="INSERT INTO " . $nombreBaseDatos . ".anios_remuneraciones (id, anio, enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre, gratificacion, pagar, created_at, updated_at, deleted_at) VALUES (1, '" . $datos['anioInicial'] . "', " . $meses . ", NULL, 0 , '0000-00-00 00:00:00', '0000-00-00 00:00:00', NULL);";
+                $sid = Funciones::generarSID();
+                $SQL="INSERT INTO " . $nombreBaseDatos . ".anios_remuneraciones (id, sid, anio, enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre, gratificacion, pagar, created_at, updated_at, deleted_at) VALUES (1, '" . $sid . "', '" . $datos['anioInicial'] . "', " . $meses . ", NULL, 0 , '0000-00-00 00:00:00', '0000-00-00 00:00:00', NULL);";
                 DB::raw(DB::select($SQL));
                 
                 DB::raw(DB::select("TRUNCATE TABLE " . $nombreBaseDatos . ".meses_de_trabajo"));
                 $sid = Funciones::generarSID();
                 $fechaRemuneracion = Funciones::obtenerFechaRemuneracion($datos['mesInicial']['mes'], $datos['anioInicial']);
-                $SQL="INSERT INTO " . $nombreBaseDatos . ".meses_de_trabajo (id, sid, mes, nombre, fecha_remuneracion, anio_id, created_at, updated_at, deleted_at) VALUES (1, '".$sid."', '".$datos['mesInicial']['fecha']."', '".$datos['mesInicial']['mes']."', '".$fechaRemuneracion."', 1, '0000-00-00 00:00:00', '0000-00-00 00:00:00', NULL);";
+                $SQL="INSERT INTO " . $nombreBaseDatos . ".meses_de_trabajo (sid, mes, nombre, fecha_remuneracion, anio_id, created_at, updated_at, deleted_at) VALUES ('".$sid."', '".$datos['mesInicial']['fecha']."', '".$datos['mesInicial']['mes']."', '".$fechaRemuneracion."', 1, '0000-00-00 00:00:00', '0000-00-00 00:00:00', NULL);";
+                DB::raw(DB::select($SQL));                
+                
+                if($datos['centro_costo']){
+                    $i = 1;
+                    foreach($datos['centros_costo'] as $centro){
+                        $SQL="INSERT INTO " . $nombreBaseDatos . ".variables_sistema (variable, valor1, valor2, valor3, valor4, valor5, created_at, updated_at) VALUES ('centro_costo', " . $i . ", '" . $centro['nombre'] . "', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00');";
+                        DB::raw(DB::select($SQL));
+                        $i++;
+                    }
+                }
+                
+                if($datos['zonas']){
+                    foreach($datos['zonas'] as $zona){
+                        $sid = Funciones::generarSID();
+                        $SQL="INSERT INTO " . $nombreBaseDatos . ".zonas_impuesto_unico (sid, nombre, porcentaje, created_at, updated_at) VALUES ('" . $sid . "', '" . $zona['nombre'] . "', '" . $zona['porcentaje'] . "', '0000-00-00 00:00:00', '0000-00-00 00:00:00');";
+                        DB::raw(DB::select($SQL));
+                    }
+                }
+                
+                $SQL="INSERT INTO " . $nombreBaseDatos . ".cajas (caja_id, codigo, anio_id, created_at, updated_at) VALUES ('" . $datos['caja_id'] . "','" . $datos['codigo_caja'] . "', '1', '0000-00-00 00:00:00', '0000-00-00 00:00:00');";
                 DB::raw(DB::select($SQL));
-
-
-
+                
+                $SQL="INSERT INTO " . $nombreBaseDatos . ".mutuales (mutual_id, tasa_fija, tasa_adicional, extraordinaria, sanna, codigo, anio_id, created_at, updated_at) VALUES ('" . $datos['mutual_id'] . "','" . $datos['tasa_fija_mutual'] . "','" . $datos['extraordinaria'] . "','" . $datos['sanna'] . "','" . $datos['tasa_adicional_mutual'] . "', '" . $datos['codigo_mutual'] . "', '1', '0000-00-00 00:00:00', '0000-00-00 00:00:00');";
+                DB::raw(DB::select($SQL));     
+                
+                ValorIndicador::crearIndicadores($datos['mesInicial']['fecha'], $fechaRemuneracion);
 
                 $modMenu=false;
                 $menuArray=array();
@@ -411,8 +445,8 @@ c139f46406b37dedd4062fea30a5ccec
                     // si es uno se tiene que habilitar el menu del usuario ya que no cuenta con las opciones
 
                     $menuController = new MenuController();
-                    if (Auth::user()->id > 1) {
-                        $empresas = Auth::user()->listaEmpresasPerfil();
+                    if (Auth::usuario()->user()->id > 1) {
+                        $empresas = Auth::usuario()->user()->listaEmpresasPerfil();
                         $listaEmpresas = array();
                         if (!in_array(100000, $empresas)) {
                             $empresas = Empresa::whereIn('id', $empresas)->orderBy('razon_social', 'ASC')->get();
@@ -536,54 +570,66 @@ c139f46406b37dedd4062fea30a5ccec
 	 */
 	public function show($id)
 	{
-     //   Config::set('database.default', 'principal' );
-        $empresa = Empresa::find($id);
+        $datosEmpresa = array();
+        $anios = array();
+        
+        if($id){
+            $empresa = Empresa::find($id);     
+            $anios = $empresa->aniosEmpresa();
 
-
-        $datos=array(
-            'id' => $empresa->id,
-            'razonSocial' => $empresa->razon_social,
-            'nombreFantasia' => $empresa->nombre_fantasia,
-            'rut' => $empresa->rut,
-            'direccion' => $empresa->direccion,
-            'comuna' => array(
-                'id' => $empresa->comuna->id,
-                'nombre' => $empresa->comuna->localidad()
-            ),
-            'mutual' => array(
-                'id' => $empresa->mutual->id,
-                'nombre' => $empresa->mutual->glosa
-            ),
-            'codigoMutual' => $empresa->codigo_mutual ? $empresa->codigo_mutual : "",
-            'tasaFijaMutual' => $empresa->tasa_fija_mutual,
-            'gratificacion' => $empresa->gratificacion,
-            'tipoGratificacion' => $empresa->tipo_gratificacion,
-            'topeGratificacion' => $empresa->tope_gratificacion,
-            'zona' => $empresa->zona,
-            'tasaAdicionalMutual' => $empresa->tasa_adicional_mutual,
-            'caja' => array(
-                'id' => $empresa->caja->id,
-                'nombre' => $empresa->caja->nombre
-            ),
-            'codigoCaja' => $empresa->codigo_caja ? $empresa->codigo_caja : "",
-            'sis' => $empresa->sis ? true : false,
-            'telefono' => $empresa->telefono,
-            'fax' => $empresa->fax,
-            'representanteNombre' => $empresa->representante_nombre,
-            'representanteRut' => $empresa->representante_rut,
-            'representanteDireccion' => $empresa->representante_direccion,
-            'representanteComuna' => array(
-                'id' => $empresa->comunaRepresentante->id,
-                'nombre' => $empresa->comunaRepresentante->localidad()
-            ),
-            'actividadEconomica' => $empresa->actividad_economica,
-            'codigoActividad' => $empresa->codigo_actividad,
-            'gerenteGeneral' => $empresa->gerente_general,
-            'contadorNombre' => $empresa->contador_nombre,
-            'contadorRut' => $empresa->contador_rut,
-            'numeroRegistro' => $empresa->numero_registro,
-            'logo' => $empresa->logo
+            $datosEmpresa = array(
+                'id' => $empresa->id,
+                'razonSocial' => $empresa->razon_social,
+                'nombreFantasia' => $empresa->nombre_fantasia,
+                'rut' => $empresa->rut,
+                'direccion' => $empresa->direccion,
+                'comuna' => array(
+                    'id' => $empresa->comuna->id,
+                    'nombre' => $empresa->comuna->localidad()
+                ),
+                'mutuales' => $empresa->mutuales(),
+                'cajas' => $empresa->cajas(),
+                'gratificacion' => $empresa->gratificacion,
+                'tipoGratificacion' => $empresa->tipo_gratificacion,
+                'topeGratificacion' => $empresa->tope_gratificacion,
+                'proporcionalInasistencias' => $empresa->gratificacion_proporcional_inasistencias ? true : false,
+                'proporcionalLicencias' => $empresa->gratificacion_proporcional_licencias ? true : false,
+                'saludCompleta' => $empresa->salud_completa ? true : false,
+                'ingresos30' => $empresa->ingresos_30 ? true : false,
+                'finiquitos30' => $empresa->finiquitos_30 ? true : false,
+                'licencias30' => $empresa->licencias_30 ? true : false,
+                'zona' => $empresa->zona,
+                'sis' => $empresa->sis ? true : false,
+                'telefono' => $empresa->telefono,
+                'fax' => $empresa->fax,
+                'representanteNombre' => $empresa->representante_nombre,
+                'representanteRut' => $empresa->representante_rut,
+                'representanteDireccion' => $empresa->representante_direccion,
+                'representanteComuna' => array(
+                    'id' => $empresa->comunaRepresentante->id,
+                    'nombre' => $empresa->comunaRepresentante->localidad()
+                ),
+                'actividadEconomica' => $empresa->actividad_economica,
+                'codigoActividad' => $empresa->codigo_actividad,
+                'gerenteGeneral' => $empresa->gerente_general,
+                'contadorNombre' => $empresa->contador_nombre,
+                'contadorRut' => $empresa->contador_rut,
+                'numeroRegistro' => $empresa->numero_registro,
+                'logo' => $empresa->logo,
+                'cme' => $empresa->cme ? true : false,
+                'centroCosto' => $empresa->centro_costo ? true : false,
+                'nivelesCentroCosto' => $empresa->niveles_centro_costo,
+                'impuestoUnico' => $empresa->impuesto_unico,
+                'zonasImpuestoUnico' => $empresa->misZonas(),
+                'centrosCosto' => $empresa->misCentrosCosto()
+            );
+        }
+        
+        $datos = array(
+            'datos' => $datosEmpresa,
+            'anios' => $anios
         );
+        
         return Response::json($datos);
 	}
 
@@ -621,6 +667,12 @@ c139f46406b37dedd4062fea30a5ccec
             $empresa->gratificacion =  $datos['gratificacion'];
             $empresa->tipo_gratificacion =  $datos['tipo_gratificacion'];
             $empresa->tope_gratificacion =  $datos['tope_gratificacion'];
+            $empresa->gratificacion_proporcional_inasistencias =  $datos['gratificacion_proporcional_inasistencias'];
+            $empresa->gratificacion_proporcional_licencias =  $datos['gratificacion_proporcional_licencias'];
+            $empresa->salud_completa =  $datos['salud_completa'];
+            $empresa->licencias_30 =  $datos['licencias_30'];
+            $empresa->ingresos_30 =  $datos['ingresos_30'];
+            $empresa->finiquitos_30 =  $datos['finiquitos_30'];
             $empresa->zona =  $datos['zona'];
             $empresa->representante_nombre =  $datos['representante_nombre'];
             $empresa->representante_rut =  $datos['representante_rut'];
@@ -632,8 +684,47 @@ c139f46406b37dedd4062fea30a5ccec
             $empresa->contador_nombre =  $datos['contador_nombre'];
             $empresa->contador_rut =  $datos['contador_rut'];
             $empresa->numero_registro =  $datos['numero_registro'];
+            $empresa->cme =  $datos['cme'];
+            $empresa->centro_costo =  $datos['centro_costo'];
+            $empresa->niveles_centro_costo =  $datos['niveles_centro_costo'];
+            $empresa->impuesto_unico =  $datos['impuesto_unico'];
+            
+            if($datos['centro_costo']){
+                $empresa->updateCentrosCosto($datos['centros_costo']);
+            }
 
-
+            $zonas = $empresa->comprobarZonas($datos['zonas']);
+            
+            if($zonas['create']){
+                foreach($zonas['create'] as $zona){
+                    $nuevaZona = new ZonaImpuestoUnico();
+                    $nuevaZona->sid = Funciones::generarSID();
+                    $nuevaZona->nombre = $zona['nombre'];
+                    $nuevaZona->porcentaje = $zona['porcentaje'];
+                    $nuevaZona->save();
+                }
+            }
+            
+            if($zonas['update']){
+                foreach($zonas['update'] as $zona){
+                    $nuevaZona = ZonaImpuestoUnico::find($zona['id']);
+                    $nuevaZona->nombre = $zona['nombre'];
+                    $nuevaZona->porcentaje = $zona['porcentaje'];
+                    $nuevaZona->save();
+                }
+            }
+            
+            if($zonas['destroy']){
+                foreach($zonas['destroy'] as $zona){
+                    $nuevaZona = ZonaImpuestoUnico::find($zona['id']);
+                    $nuevaZona->delete();
+                }
+            }
+            
+            $empresa->actualizarCajas($datos['cajas']);
+            $empresa->actualizarMutuales($datos['mutuales']);
+            
+            
             if($datos['logo']){
                 $extension = substr($datos['logo'], 0, 16);
                 $tipo="jpg";
@@ -718,11 +809,13 @@ c139f46406b37dedd4062fea30a5ccec
                 }
 
 
-
-
                 if( $empresa->logo ){
-                    unlink('stories/'. $empresa->logo );
-                    unlink('stories/min_'. $empresa->logo );
+                    if(file_exists('stories/'. $empresa->logo)){
+                        unlink('stories/'. $empresa->logo );
+                    }
+                    if(file_exists('stories/min_'. $empresa->logo)){
+                        unlink('stories/min_'. $empresa->logo );
+                    }
                 }
 
                 $empresa->logo = $png_url;
@@ -734,7 +827,8 @@ c139f46406b37dedd4062fea30a5ccec
                 'mensaje' => "La Información fue actualizada correctamente",
                 'crear' => false,
                 'editar' => true,
-                'id' => $empresa->id
+                'id' => $empresa->id,
+                'zonas' => $zonas
             );
         }else{
             $respuesta=array(
@@ -773,11 +867,15 @@ c139f46406b37dedd4062fea30a5ccec
             'fax' => Input::get('fax'),
             'sis' => Input::get('sis'),
             'mutual_id' => Input::get('mutual')['id'],
-            'codigo_mutual' => Input::get('codigoMutual'),
-            'tasa_fija_mutual' => Input::get('tasaFijaMutual'),
-            'tasa_adicional_mutual' => Input::get('tasaAdicionalMutual'),
+            'mutuales' => Input::get('mutuales'),
+            'codigo_mutual' => Input::get('mutual')['codigo'],
+            'tasa_fija_mutual' => Input::get('mutual')['tasaFija'],
+            'extraordinaria' => Input::get('mutual')['extraordinaria'],
+            'sanna' => Input::get('mutual')['sanna'],
+            'tasa_adicional_mutual' => Input::get('mutual')['tasaAdicional'],
+            'cajas' => Input::get('cajas'),
             'caja_id' => Input::get('caja')['id'],
-            'codigo_caja' => Input::get('codigoCaja'),
+            'codigo_caja' => Input::get('caja')['codigo'],
             'representante_nombre' => Input::get('representanteNombre'),
             'representante_rut' => Input::get('representanteRut'),
             'representante_direccion' => Input::get('representanteDireccion'),
@@ -795,7 +893,19 @@ c139f46406b37dedd4062fea30a5ccec
             'tipo_gratificacion' => Input::get('tipoGratificacion'),
             'gratificacion' => Input::get('gratificacion'),
             'tope_gratificacion' => Input::get('topeGratificacion'),
-            'zona' => Input::get('zona')
+            'gratificacion_proporcional_inasistencias' => Input::get('proporcionalInasistencias'),
+            'gratificacion_proporcional_licencias' => Input::get('proporcionalLicencias'),
+            'salud_completa' => Input::get('saludCompleta'),
+            'licencias_30' => Input::get('licencias30'),
+            'ingresos_30' => Input::get('ingresos30'),
+            'finiquitos_30' => Input::get('finiquitos30'),
+            'zona' => Input::get('zona'),
+            'cme' => Input::get('cme'),
+            'centro_costo' => Input::get('centroCosto'),
+            'centros_costo' => Input::get('centrosCosto'),
+            'niveles_centro_costo' => Input::get('nivelesCentroCosto'),
+            'impuesto_unico' => Input::get('impuestoUnico'),
+            'zonas' => Input::get('zonasImpuestoUnico')
         );
         return $datos;
     }

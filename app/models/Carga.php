@@ -5,20 +5,22 @@ class Carga extends Eloquent {
     protected $table = 'cargas_familiares';
     
     public function trabajador(){
-        return $this->belongsTo('FichaTrabajador','ficha_trabajador_id');
+        return $this->belongsTo('Trabajador','trabajador_id');
     }
     
     public function tipoCarga(){
         return $this->belongsTo('TipoCarga','tipo_carga_id');
     }
     
-    public function trabajadorCarga(){        
-        if( $this->trabajador ){
-            $trabajador = $this->trabajador;
+    public function trabajadorCarga(){    
+        $trabajador = $this->trabajador;
+        $empleado = $trabajador->ficha();
+        if($trabajador){
             $datosTrabajador = array(
                 'id' => $trabajador->id,
+                'idFicha' => $empleado->id,
                 'sid' => $trabajador->sid,
-                'nombreCompleto' => $trabajador->nombres . " " . $trabajador->apellidos,
+                'nombreCompleto' => $empleado->nombreCompleto(),
                 'rutFormato' => Funciones::formatear_rut($trabajador->rut)
             );        
         }

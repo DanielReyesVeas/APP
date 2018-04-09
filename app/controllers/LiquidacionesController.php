@@ -16,7 +16,7 @@ class LiquidacionesController extends \BaseController {
         $mes = \Session::get('mesActivo')->mes;
         $liquidaciones = Liquidacion::where('mes', $mes)->get();
         $listaLiquidaciones=array();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#nomina-bancaria');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#nomina-bancaria');
         
         if( $liquidaciones->count() ){
             foreach( $liquidaciones as $liquidacion ){
@@ -28,6 +28,7 @@ class LiquidacionesController extends \BaseController {
                     'idTrabajador' => $liquidacion->trabajador_id,
                     'sid' => $liquidacion->sid,
                     'rutFormato' => $liquidacion->trabajador->rut_formato(),
+                    'apellidos' => $liquidacion->trabajador_apellidos,
                     'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
                     'cargo' => array(
                         'nombre' => $liquidacion->trabajador_cargo
@@ -41,13 +42,13 @@ class LiquidacionesController extends \BaseController {
                     ),
                     'numeroCuenta' => $liquidacion->trabajador->ficha()->numero_cuenta,
                     'tipoCuenta' => array(
-                        'id' => $liquidacion->trabajador->ficha()->tipoCuenta->id,
-                        'nombre' => $liquidacion->trabajador->ficha()->tipoCuenta->nombre
+                        'id' => $liquidacion->trabajador->ficha()->tipoCuenta ? $liquidacion->trabajador->ficha()->tipoCuenta->id : "",
+                        'nombre' => $liquidacion->trabajador->ficha()->tipoCuenta ? $liquidacion->trabajador->ficha()->tipoCuenta->nombre : ""
                     ),
                     'banco' => array(
-                        'id' => $liquidacion->trabajador->ficha()->banco->id,
-                        'codigo' => $liquidacion->trabajador->ficha()->banco->codigo,
-                        'nombre' => $liquidacion->trabajador->ficha()->banco->nombre
+                        'id' => $liquidacion->trabajador->ficha()->banco ? $liquidacion->trabajador->ficha()->banco->id : "",
+                        'codigo' => $liquidacion->trabajador->ficha()->banco ? $liquidacion->trabajador->ficha()->banco->codigo : "",
+                        'nombre' => $liquidacion->trabajador->ficha()->banco ? $liquidacion->trabajador->ficha()->banco->nombre : ""
                     ),
                     'sueldoBasePesos' => $liquidacion->sueldo_base,
                     'sueldo' => $liquidacion->sueldo,
@@ -57,6 +58,7 @@ class LiquidacionesController extends \BaseController {
             }
         }
         
+        $listaLiquidaciones = Funciones::ordenar($listaLiquidaciones, 'apellidos');
         
         $datos = array(
             'datos' => $listaLiquidaciones,
@@ -166,6 +168,7 @@ class LiquidacionesController extends \BaseController {
             $liquidacion->colacion = $dato['colacion']['montoPesos'];
             $liquidacion->movilizacion = $dato['movilizacion']['montoPesos'];
             $liquidacion->viatico = $dato['viatico']['montoPesos'];
+            $liquidacion->centro_costo_id = $dato['centroCosto'];
             
             $liquidacion->save();
             $respuesta=array(
@@ -300,15 +303,20 @@ class LiquidacionesController extends \BaseController {
             foreach( $liquidaciones as $liquidacion ){
                 $totalApvs = $liquidacion->totalApvs();
                 $totalSalud = $liquidacion->totalSalud();
+                $otrosDescuentos = ($liquidacion->total_otros_descuentos - $totalApvs - $liquidacion->total_anticipos);
                 $sis = 0;
-                if(!$empresa->sis){
-                    $sis = $liquidacion->detalleAfp->sis;
+                $cotizacion = $liquidacion->detalleAfp ? $liquidacion->detalleAfp->cotizacion : 0;
+                if($liquidacion->detalleAfp){
+                    if($liquidacion->detalleAfp->paga_sis=='empleado'){
+                        $sis = $liquidacion->detalleAfp ? $liquidacion->detalleAfp->sis : 0;
+                    }
                 }
-                $totalAfp = ($liquidacion->detalleAfp->cotizacion + $sis);
+                $totalAfp = ($cotizacion + $sis);
                 $totalSeguroCesantia = $liquidacion->detalleSeguroCesantia ? $liquidacion->detalleSeguroCesantia->aporte_trabajador : 0;
                 $listaLiquidaciones[]=array(
                     'id' => $liquidacion->id,
                     'sid' => $liquidacion->sid,
+                    'apellidos' => $liquidacion->trabajador_apellidos,
                     'nombreTrabajador' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
                     'rutTrabajador' => $liquidacion->trabajador_rut,
                     'idTrabajador' => $liquidacion->trabajador_id,
@@ -320,6 +328,7 @@ class LiquidacionesController extends \BaseController {
                     'sueldo' => $liquidacion->sueldo,
                     'totalSalud' => $totalSalud,
                     'totalAfp' => $totalAfp,
+                    'sis' => $sis,
                     'totalApv' => $totalApvs,
                     'gratificacion' => $liquidacion->gratificacion,
                     'mutual' => $liquidacion->total_mutual,
@@ -332,7 +341,7 @@ class LiquidacionesController extends \BaseController {
                     'totalImponibles' => $liquidacion->renta_imponible,
                     'seguroCesantia' => $totalSeguroCesantia,
                     'totalDescuentos' => $liquidacion->total_descuentos,
-                    'totalOtrosDescuentos' => $liquidacion->total_otros_descuentos,
+                    'totalOtrosDescuentos' => $otrosDescuentos,
                     'sueldoLiquido' => $liquidacion->sueldo_liquido
                 );     
                 $sumaSueldoBase += $liquidacion->sueldo_base;
@@ -353,10 +362,13 @@ class LiquidacionesController extends \BaseController {
                 $sumaTotalImponibles += $liquidacion->renta_imponible;
                 $sumaSeguroCesantia += $totalSeguroCesantia;
                 $sumaTotalDescuentos += $liquidacion->total_descuentos;
-                $sumaOtrosDescuentos += $liquidacion->total_otros_descuentos;
+                $sumaOtrosDescuentos += $otrosDescuentos;
                 $sumaSueldoLiquido += $liquidacion->sueldo_liquido;
             }
-        }        
+        }       
+        
+        $listaLiquidaciones = Funciones::ordenar($listaLiquidaciones, 'apellidos');
+        
         $datos = array(
             'accesos' => array(
                 'ver' => true,
@@ -549,10 +561,50 @@ class LiquidacionesController extends \BaseController {
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     
+    public function imprimirMasivo()
+    {
+        $sids = (array) Input::all();
+        $html = "";
+        
+        foreach($sids as $sid){
+            $sids[] = $sid['sid'];
+        }
+        $liquidaciones = Liquidacion::whereIn('sid', $sids)->get()->toArray();
+        $liquidaciones = Funciones::ordenar($liquidaciones, 'trabajador_apellidos');
+        
+        if(count($liquidaciones)){            
+            foreach($liquidaciones as $liquidacion){
+                if($liquidacion['cuerpo']){
+                    $html = $html . $liquidacion['cuerpo'];                
+                }else{
+                    $html = $html . $liquidacion->generarCuerpo();
+                }
+            }
+            $destination = public_path() . '/stories/liquidaciones.pdf';
+            $pdf = new \Thujohn\Pdf\Pdf();
+            $content = $pdf->load($html, 'A4', 'portrait')->output();
+            File::put($destination, $content); 
+        }
+        
+        $datos = array(
+            'success' => true,
+            'mensaje' => "La Información fue generada correctamente",
+            'liquidaciones' => $liquidaciones
+        );
+        
+        return Response::json($datos);
+    }
+    
     public function destroy($sid)
     {
         $mensaje = "La Información fue eliminada correctamente";
         $documento = Documento::whereSid($sid)->first();
+        
+        $trabajador = $documento->trabajador;
+        $ficha = $trabajador->ficha();
+        
+        Logs::crearLog('#liquidaciones-de-sueldo', $documento->id, $documento->alias, 'Delete', $documento->trabajador_id, $ficha->nombreCompleto(), 'Liquidaciones Trabajadores');
+        
         $documento->eliminarDocumento();
 
         return Response::json(array('success' => true, 'mensaje' => $mensaje));

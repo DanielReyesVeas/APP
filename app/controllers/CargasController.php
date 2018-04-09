@@ -67,7 +67,7 @@ class CargasController extends \BaseController {
         if(!$errores){
             $carga = new Carga();
             $carga->sid = Funciones::generarSID();
-            $carga->ficha_trabajador_id = $datos['ficha_trabajador_id'];
+            $carga->trabajador_id = $datos['trabajador_id'];
             $carga->parentesco = $datos['parentesco'];
             $carga->es_carga = $datos['es_carga'];
             $carga->tipo_carga_id = $datos['tipo_carga_id'];
@@ -75,9 +75,15 @@ class CargasController extends \BaseController {
             $carga->nombre_completo = $datos['nombre_completo'];
             $carga->fecha_nacimiento = $datos['fecha_nacimiento'];
             $carga->sexo = $datos['sexo'];
-            $carga->fecha_autorizacion = 0;
-            $carga->es_autorizada = 0;
+            $carga->fecha_autorizacion = $datos['fecha_autorizacion'];
+            $carga->fecha_pago_desde = $datos['fecha_pago_desde'];
+            $carga->fecha_pago_hasta = $datos['fecha_pago_hasta'];
             $carga->save();
+            
+            $trabajador = $carga->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#cargas-familiares', $carga->trabajador_id, $ficha->nombreCompleto(), 'Create', $carga->id, $carga->nombre_completo, 'Cargas Trabajadores');
+
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -111,6 +117,9 @@ class CargasController extends \BaseController {
             'parentesco' => $carga->parentesco,
             'nombreCompleto' => $carga->nombre_completo,
             'fechaNacimiento' => $carga->fecha_nacimiento,
+            'fechaAutorizacion' => $carga->fecha_autorizacion,
+            'fechaPagoDesde' => $carga->fecha_pago_desde,
+            'fechaPagoHasta' => $carga->fecha_pago_hasta,
             'tipo' => array(
                 'id' => $carga->tipoCarga->id,
                 'nombre' => $carga->tipoCarga->nombre
@@ -147,14 +156,22 @@ class CargasController extends \BaseController {
         $errores = Carga::errores($datos);       
         
         if(!$errores and $carga){
-            $carga->trabajador_id = $datos['trabajador_id'];
             $carga->parentesco = $datos['parentesco'];
             $carga->es_carga = $datos['es_carga'];
             $carga->rut = $datos['rut'];
             $carga->nombre_completo = $datos['nombre_completo'];
             $carga->fecha_nacimiento = $datos['fecha_nacimiento'];
+            $carga->fecha_autorizacion = $datos['fecha_autorizacion'];
+            $carga->fecha_pago_desde = $datos['fecha_pago_desde'];
+            $carga->fecha_pago_hasta = $datos['fecha_pago_hasta'];
             $carga->sexo = $datos['sexo'];
+            $carga->tipo_carga_id = $datos['tipo_carga_id'];
             $carga->save();
+            
+            $trabajador = $carga->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#cargas-familiares', $carga->trabajador_id, $ficha->nombreCompleto(), 'Update', $carga->id, $carga->nombre_completo, 'Cargas Trabajadores');
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -179,19 +196,28 @@ class CargasController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        Carga::whereSid($sid)->delete();
+        $carga = Carga::whereSid($sid)->first();
+        
+        $trabajador = $carga->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#cargas-familiares', $carga['trabajador_id'], $ficha->nombreCompleto(), 'Delete', $carga['id'], $carga['nombre_completo'], 'Cargas Trabajadores');
+        
+        $carga->delete();
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     
     public function get_datos_formulario(){
         $datos = array(
-            'ficha_trabajador_id' => Input::get('idFichaTrabajador'),
+            'trabajador_id' => Input::get('idTrabajador'),
             'parentesco' => Input::get('parentesco'),
             'es_carga' => Input::get('esCarga'),
             'tipo_carga_id' => Input::get('tipo'),
             'rut' => Input::get('rut'),
             'nombre_completo' => Input::get('nombreCompleto'),
             'fecha_nacimiento' => Input::get('fechaNacimiento'),
+            'fecha_autorizacion' => Input::get('fechaAutorizacion'),
+            'fecha_pago_desde' => Input::get('fechaPagoDesde'),
+            'fecha_pago_hasta' => Input::get('fechaPagoHasta'),
             'sexo' => Input::get('sexo')
         );
         return $datos;

@@ -4,6 +4,10 @@ class Tienda extends Eloquent {
     
     protected $table = 'tiendas';
     
+    public function fichas(){
+        return $this->hasMany('FichaTrabajador', 'tienda_id');
+    }
+    
     static function listaTiendas(){
     	$listaTiendas = array();
     	$tiendas = Tienda::orderBy('nombre', 'ASC')->get();
@@ -30,6 +34,19 @@ class Tienda extends Eloquent {
             }
     	}
     	return $codigosTiendas;
+    }
+    
+    public function comprobarDependencias()
+    {
+        $fichas = $this->fichas;        
+        
+        if($fichas->count()){
+            $errores = new stdClass();
+            $errores->error = array("La Tienda <b>" . $this->nombre . "</b> se encuentra asignada.<br /> Debe <b>reasignar</b> los trabajadores primero para poder realizar esta acción.");
+            return $errores;
+        }
+        
+        return;
     }
         
     static function errores($datos){

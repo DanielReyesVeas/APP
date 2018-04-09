@@ -60,7 +60,7 @@ angular.module('angularjsApp')
       $rootScope.cargando=false;
     }
 
-    $scope.openExportar = function(){
+    $scope.openExportar = function(tipo){
       var miModal = $uibModal.open({
         animation: true,
         templateUrl: 'views/forms/form-exportar-libro-remuneraciones.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
@@ -69,6 +69,9 @@ angular.module('angularjsApp')
         resolve: {
           objeto: function () {
             return $scope.datos;          
+          },
+          tipo: function () {
+            return tipo;          
           }
         }
       });
@@ -80,11 +83,12 @@ angular.module('angularjsApp')
     }
 
   })
-  .controller('FormExportarLibroRemuneracionesCtrl', function ($scope, $uibModalInstance, constantes, objeto, Notification, $rootScope, trabajador) {
-    
+  .controller('FormExportarLibroRemuneracionesCtrl', function ($scope, tipo, $uibModalInstance, constantes, objeto, Notification, $rootScope, trabajador) {
+
     $scope.constantes = constantes;
     $scope.datos = angular.copy(objeto);
     $scope.objeto = { todosTrabajadores : true, todosConceptos : true };
+    $scope.tipo = tipo;
 
     $scope.conceptos = [
       { id : 1, nombre : 'Sueldo Base', codigo : 'sueldo_base' },
@@ -101,11 +105,12 @@ angular.module('angularjsApp')
       { id : 12, nombre : 'Asignación Familiar', codigo : 'asignacion_familiar' },
       { id : 13, nombre : 'Haberes no Imponibles', codigo : 'no_imponibles' },
       { id : 14, nombre : 'Seguro de Cesantía', codigo : 'seguro_cesantia' },
-      { id : 15, nombre : 'Otros Descuentos', codigo : 'otros_descuentos' },
-      { id : 16, nombre : 'Total Haberes', codigo : 'total_haberes' },
-      { id : 17, nombre : 'Total Imponibles', codigo : 'total_imponibles' },
-      { id : 18, nombre : 'Total Descuentos', codigo : 'total_descuentos' },
-      { id : 19, nombre : 'Alcance Líquido', codigo : 'sueldo_liquido' }
+      //{ id : 15, nombre : 'Otros Imponibles', codigo : 'otros_imponibles' },
+      { id : 16, nombre : 'Otros Descuentos', codigo : 'otros_descuentos' },
+      { id : 17, nombre : 'Total Haberes', codigo : 'total_haberes' },
+      { id : 18, nombre : 'Total Imponibles', codigo : 'total_imponibles' },
+      { id : 19, nombre : 'Total Descuentos', codigo : 'total_descuentos' },
+      { id : 20, nombre : 'Alcance Líquido', codigo : 'sueldo_liquido' }
     ];
 
 
@@ -181,14 +186,21 @@ angular.module('angularjsApp')
       }
     }
 
-    function descargarExcel(obj){
-      var url = $scope.constantes.URL + 'trabajadores/libro-remuneraciones/descargar-excel/' + obj.nombre;
-      $uibModalInstance.close(obj.mensaje); 
-      $rootScope.cargando=false;
-      window.open(url, "_self");
+    function descargar(obj){
+      if(obj.excel){
+        var url = $scope.constantes.URL + 'trabajadores/libro-remuneraciones/descargar-excel/' + obj.nombre;
+        $uibModalInstance.close(obj.mensaje); 
+        $rootScope.cargando=false;
+        window.open(url, "_self");  
+      }else{
+        var url = $scope.constantes.URL + '/stories/' + obj.nombre;
+        $uibModalInstance.close(obj.mensaje); 
+        $rootScope.cargando=false;
+        window.open(url, "_blank");  
+      }          
     }
 
-    $scope.generarExcel = function(){
+    $scope.generarExcel = function(excel){      
       $rootScope.cargando=true;
 
       var trabajadores = [];
@@ -203,11 +215,11 @@ angular.module('angularjsApp')
         conceptos[$scope.conceptos[i].codigo] = $scope.conceptos[i].check;
       }
 
-      var obj = { trabajadores : trabajadores, conceptos : conceptos };
+      var obj = { trabajadores : trabajadores, conceptos : conceptos, tipo : tipo, excel : excel };
       var datos = trabajador.generarLibro().post({}, obj);
       datos.$promise.then(function(response){
         if(response.success){
-          descargarExcel(response);
+          descargar(response);
         }else{
           // error
           $scope.erroresDatos = response.errores;

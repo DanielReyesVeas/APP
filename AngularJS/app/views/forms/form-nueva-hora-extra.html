@@ -30,9 +30,20 @@
             <label class="col-sm-3 control-label required">Cantidad:</label>
             <div class="col-sm-4">
               <div class="input-group">
-                <input type="number" class="form-control form-white" min="1" ng-model="horaExtra.cantidad" aria-describedby="basic-addon1" required>
+                <input class="form-control form-white" min="0.01" ng-model="horaExtra.cantidad" aria-describedby="basic-addon1" required>
                 <span class="input-group-addon" id="basic-addon1">horas</span>
               </div> 
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-12" style="margin-top: 20px;">
+          <div class="form-group form-group-md required">          
+            <label class="col-sm-3 control-label">Factor:</label>
+            <div class="col-sm-6">
+              <select class="form-control form-white" ng-model="horaExtra.tramo" ng-options="tram as tram.factor for tram in tramos" required> 
+                <option value="">-- Seleccione un Tramo --</option>
               </select>
             </div>
           </div>

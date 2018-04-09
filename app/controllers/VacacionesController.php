@@ -69,7 +69,7 @@ class VacacionesController extends \BaseController {
         } 
         
         return Response::json($respuesta);
-    }    
+    }            
     
 
     /**
@@ -80,7 +80,105 @@ class VacacionesController extends \BaseController {
      */
     public function show($sid)
     {
-        //
+        $permisos = array();
+        $detalle = array();
+        $vacaciones = Vacaciones::whereSid($sid)->first();
+        
+        if($vacaciones){
+            $detalle = array(
+                'id' => $vacaciones->id,
+                'sid' => $vacaciones->sid,
+                'mes' => $vacaciones->mes,
+                'dias' => $vacaciones->dias,
+                'totalTomaVacaciones' => $vacaciones->totalTomaVacaciones(),
+                'tomaVacaciones' => $vacaciones->tomaVacacionesMes()
+            );
+        }
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $detalle
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function eliminarTomaVacaciones()
+    {        
+        $datos = Input::all();        
+        $sid = $datos['sid'];        
+        $tomaVacaciones = TomaVacaciones::whereSid($sid)->first();
+        $mes = $tomaVacaciones['mes'];
+        $trabajador = Trabajador::find($tomaVacaciones->trabajador_id);
+        $tomaVacaciones->delete();
+        $empleado = $trabajador->ficha();
+        $dias = $empleado->vacaciones;
+        $trabajador->recalcularVacaciones($dias);
+        $vacaciones = Vacaciones::where('mes', $mes)->first();
+        
+        $datos = array(
+            'success' => true, 
+            'mensaje' => "La Información fue eliminada correctamente",
+            'vacaciones' => $vacaciones
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function tomaVacaciones()
+    {
+        $datos = Input::all();
+        $sidTrabajador = $datos['sid'];
+        $tomaVacaciones = $datos['tomaVacaciones'];
+        $trabajador = Trabajador::whereSid($sidTrabajador)->first();
+        
+        foreach($tomaVacaciones as $toma){
+            $vacaciones = new TomaVacaciones();
+            $vacaciones->sid = Funciones::generarSID();
+            $vacaciones->trabajador_id = $trabajador['id'];
+            $vacaciones->mes = $toma['mes'];
+            $vacaciones->desde = $toma['desde'];
+            $vacaciones->hasta = $toma['hasta'];
+            $vacaciones->dias = $toma['dias'];
+            $vacaciones->save();
+        }
+        
+        $ficha = $trabajador->ficha();
+        $dias = $ficha->dias;
+        
+        $trabajador->recalcularVacaciones($dias, $tomaVacaciones[0]['mes']);
+        
+        Logs::crearLog('#trabajadores-vacaciones', $trabajador->id, $trabajador->rut_formato(), 'Toma Vacaciones', $trabajador->id, $ficha->nombreCompleto(), NULL, $vacaciones->dias, $vacaciones->dias);
+        
+        $respuesta=array(
+            'success' => true,
+            'mensaje' => "La Información fue almacenada correctamente",
+            'sidTrabajador' => $trabajador['sid'],
+            'datos' => $datos,
+            'd' => $tomaVacaciones[0]['mes']
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function recalcularVacaciones($dias)
+    {
+        $datos = Input::all();
+        $sidTrabajador = $datos['sid'];
+        if($dias==null){
+            $dias = $datos['dias'];
+        }
+        $trabajador = Trabajador::whereSid($sidTrabajador)->first();
+        $trabajador->recalcularVacaciones($dias);
+        
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#trabajadores-vacaciones', $trabajador->id, $trabajador->rut_formato(), 'Recálculo', $trabajador->id, $ficha->nombreCompleto(), NULL, $dias, $dias);
+        
+        $datos = array(
+            'trabajador' => $trabajador
+        );
+        
+        return Response::json($datos);
     }
 
     /**

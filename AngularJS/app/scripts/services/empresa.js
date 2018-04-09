@@ -25,6 +25,9 @@ angular.module('angularjsApp')
       },
       empresasSistema : function(){
         return $resource(constantes.URL + 'empresas/sistemas/obtener');
+      },
+      datosEmpresaPortalTrabajador : function(sid){
+        return $resource(constantes.URL + 'empresas/datos-empresa/portal-trabajador/' + sid);
       }
     };
   });

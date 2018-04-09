@@ -247,7 +247,9 @@ class UsuariosController extends BaseController {
         		$lista[] = array(
         			'sid' => $funcionario->usuario->sid,
                     'fotografia' => $funcionario->fotografia ? URL::to("stories/min_".$funcionario->fotografia) : "images/usuario.png",
-                    'rut' => $funcionario->rut_formato(),
+                    'rut' => $funcionario->rut,
+                    'rutFormato' => $funcionario->rut_formato(),
+        			'apellidos' => ucwords(strtolower($funcionario->paterno)) . ' ' . ucwords(strtolower($funcionario->materno)),
         			'funcionario' => $funcionario->nombre_completo(),
                     'email' => $funcionario->email,
         			//'departamento' =>$depto?( $depto->departamento.( $depto->obtenerDependencia ? " ".$depto->obtenerArbolDependencia('') : '') ) : "",
@@ -262,61 +264,6 @@ class UsuariosController extends BaseController {
         	}
         }
         return Response::json($lista);
-    }
-    
-    public function empleados() {
-        
-        // super administrador
-        $usuarios = User::where('tipo', 2)->get();
-            
-        $lista=array();
-        if( $usuarios->count() ){
-        	foreach ($usuarios as $usuario ){
-        		//$depto = $funcionario->departamento;
-                $empleado = $usuario->trabajador->ficha();
-        		$lista[] = array(
-        			'id' => $usuario->id,
-        			'sid' => $usuario->sid,
-                    'rut' => $usuario->trabajador->rut_formato(),
-                    'username' => $usuario->username,
-                    'nombreCompleto' => $empleado->nombreCompleto(),
-                    'email' => $empleado->email,
-        			'activo' => $usuario->isActivo()
-                    /*'perfil' => array(
-                        'id' => $funcionario->usuario->perfil ? $funcionario->usuario->perfil->id : 0,
-                        'nombre' => $funcionario->usuario->perfil ? $funcionario->usuario->perfil->perfil : 'Personalizado'
-                    )*/
-        		);
-        	}
-        }
-        
-        $datos = array(
-            'datos' => $lista
-        );
-        
-        return Response::json($datos);
-    }
-    
-    public function cambiarPermisos()
-    {
-        $datos = Input::all();
-        $empresa = \Session::get('empresa');
-        $usuario = UsuarioEmpresa::where('usuario_id', $datos['id'])->where('empresa_id', $empresa->id)->first();
-        $usuario->activo = $datos['accesos'][0]['check'];
-        $usuario->documentos_empresa = $datos['accesos'][0]['check'];
-        $usuario->liquidaciones = $datos['accesos'][1]['check'];
-        $usuario->cartas_notificacion = $datos['accesos'][2]['check'];
-        $usuario->certificados = $datos['accesos'][3]['check'];
-        $usuario->solicitudes = $datos['accesos'][4]['check'];
-        $usuario->save();
-        
-        $respuesta = array(
-            'success' => true,
-            'mensaje' => "La Información fue actualizada correctamente",
-            'id' => $usuario->id
-        );
-        
-        return Response::json($respuesta);
     }
     
     public function almacenarPerfil($permisos, $usuario_id){
@@ -597,29 +544,6 @@ class UsuariosController extends BaseController {
            	);
         }
         return Response::json($respuesta);
-    }
-    
-    public function showUsuario($sid){
-        
-        $usuario = User::whereSid($sid)->first();
-        $opciones = MenuSistema::where('administrador', 4)->where('id', '<>', 145)->get();
-        $empleado = $usuario->trabajador->ficha();
-        
-        $datosUsuario = array(
-            'id' => $usuario->id,
-            'sid' => $usuario->sid,
-            'username' => $usuario->username,
-            'rut' => $usuario->trabajador->rut_formato(),
-            'nombreCompleto' => $empleado->nombreCompleto(),
-            'accesos' => $usuario->accesos(),
-            'activo' => $usuario->isActivo(),
-        );
-        
-        $datos = array(
-            'datos' => $datosUsuario
-        );
-        
-        return Response::json($datos);
     }
     
     public function show($id){

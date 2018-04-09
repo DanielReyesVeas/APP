@@ -88,7 +88,12 @@ class CertificadosController extends \BaseController {
             $certificado->trabajador_direccion = $datos['trabajador_direccion'];
             $certificado->trabajador_provincia = $datos['trabajador_provincia'];
             $certificado->trabajador_comuna = $datos['trabajador_comuna'];
-            $certificado->save();                        
+            $certificado->save();  
+            
+            $trabajador = $certificado->trabajador;
+            $ficha = $trabajador->ficha();
+            
+            Logs::crearLog('#certificados', $documento->id, $documento->alias, 'Create', $documento->trabajador_id, $ficha->nombreCompleto(), 'Certificados Trabajadores');
             
             $respuesta=array(
             	'success' => true,
@@ -186,7 +191,8 @@ class CertificadosController extends \BaseController {
             $certificado->trabajador_direccion = $datos['trabajador_direccion'];
             $certificado->trabajador_provincia = $datos['trabajador_provincia'];
             $certificado->trabajador_comuna = $datos['trabajador_comuna'];
-            $certificado->save();
+            $certificado->save();                    
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -211,9 +217,15 @@ class CertificadosController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
+        
         $certificado = Certificado::whereSid($sid)->first();
         $idDoc = $certificado->documento_id;
         $documento = Documento::find($idDoc);
+        
+        $trabajador = $certificado->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#certificados', $documento->id, $documento->alias, 'Delete', $documento->trabajador_id, $ficha->nombreCompleto(), 'Certificados Trabajadores');
+        
         $documento->delete();
         $certificado->delete();
         

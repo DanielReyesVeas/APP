@@ -28,6 +28,7 @@ angular.module('angularjsApp')
     cargarDatos();
 
     $scope.openHoraExtra = function(obj){
+      console.log(obj)
       var miModal = $uibModal.open({
         animation: true,
         templateUrl: 'views/forms/form-nueva-hora-extra.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
@@ -35,6 +36,9 @@ angular.module('angularjsApp')
         resolve: {
           objeto: function () {
             return obj;          
+          },
+          tramos: function () {
+            return obj.tramos;          
           }
         }
       });
@@ -119,6 +123,9 @@ angular.module('angularjsApp')
         resolve: {
           objeto: function () {
             return obj;          
+          },
+          tramos: function () {
+            return $scope.trabajador.tramos;          
           }
         }
       });
@@ -131,7 +138,7 @@ angular.module('angularjsApp')
     };
 
   })
-  .controller('FormHorasExtraCtrl', function ($rootScope, Notification, $scope, $uibModalInstance, objeto, horaExtra, fecha) {
+  .controller('FormHorasExtraCtrl', function ($rootScope, Notification, tramos, $scope, $uibModalInstance, objeto, horaExtra, fecha) {
 
     var mesActual = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
     
@@ -141,11 +148,14 @@ angular.module('angularjsApp')
       $scope.horaExtra.fecha = fecha.convertirFecha($scope.horaExtra.fecha);
       $scope.isEdit = true;
       $scope.titulo = 'Modificación Hora Extra';
+      console.log($scope.horaExtra)
     }else{
-      $scope.trabajador = angular.copy(objeto);
+      $scope.trabajador = angular.copy(objeto);      
       $scope.isEdit = false;
       $scope.titulo = 'Ingreso Hora Extra';
+      $scope.horaExtra = { fecha : fecha.fechaActiva() };
     }
+    $scope.tramos = angular.copy(tramos);
 
     $scope.jornadas = [
                       { id : 1, nombre : '4 x 3' },
@@ -165,7 +175,10 @@ angular.module('angularjsApp')
       $rootScope.cargando=true;
       var mes = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
       var response;
-      var HorasExtra = { idTrabajador : trabajador.id, idMes : mes.id, cantidad : horas.cantidad, jornada : horas.jornada, fecha : horas.fecha, observacion : horas.observacion };
+      if(horas.fecha==fecha.fechaActiva()){
+        horas.fecha = fecha.convertirFecha(fecha.convertirFechaFormato(horas.fecha));
+      }
+      var HorasExtra = { idTrabajador : trabajador.id, idMes : mes.id, factor : horas.tramo.factor, cantidad : horas.cantidad, jornada : horas.jornada, fecha : horas.fecha, observacion : horas.observacion };
 
       if( $scope.horaExtra.sid ){
         response = horaExtra.datos().update({sid:$scope.horaExtra.sid}, HorasExtra);
@@ -188,43 +201,15 @@ angular.module('angularjsApp')
 
     // Fecha
 
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
-
     $scope.dateOptions = {
-      //dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: fecha.convertirFecha(mesActual.fechaRemuneracion),
       minDate: fecha.convertirFecha(mesActual.mes),
       startingDay: 1
     };  
 
-    function disabled(data) {
-      var date = data.date,
-        mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
-
     $scope.openFecha = function() {
       $scope.popupFecha.opened = true;
-    };
-
-    $scope.setDate = function(year, month, day) {
-      $scope.fecha = new Date(year, month, day);
     };
 
     $scope.format = ['dd-MMMM-yyyy'];
@@ -232,20 +217,5 @@ angular.module('angularjsApp')
     $scope.popupFecha = {
       opened: false
     };
-
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
 
   });

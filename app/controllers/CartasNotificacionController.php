@@ -89,7 +89,12 @@ class CartasNotificacionController extends \BaseController {
             $cartaNotificacion->trabajador_direccion = $datos['trabajador_direccion'];
             $cartaNotificacion->trabajador_provincia = $datos['trabajador_provincia'];
             $cartaNotificacion->trabajador_comuna = $datos['trabajador_comuna'];
-            $cartaNotificacion->save();            
+            $cartaNotificacion->save();   
+            
+            $trabajador = $cartaNotificacion->trabajador;
+            $ficha = $trabajador->ficha();
+            
+            Logs::crearLog('#cartas-de-notificacion', $documento->id, $documento->alias, 'Create', $documento->trabajador_id, $ficha->nombreCompleto(), 'Cartas de Notificación Trabajadores');
             
             $respuesta=array(
             	'success' => true,
@@ -214,6 +219,11 @@ class CartasNotificacionController extends \BaseController {
         $cartaNotificacion = CartaNotificacion::whereSid($sid)->first();
         $idDoc = $cartaNotificacion->documento_id;
         $documento = Documento::find($idDoc);
+        
+        $trabajador = $cartaNotificacion->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#cartas-de-notificacion', $documento->id, $documento->alias, 'Delete', $documento->trabajador_id, $ficha->nombreCompleto(), 'Cartas de Notificación Trabajadores');
+        
         $documento->delete();
         $cartaNotificacion->delete();
         

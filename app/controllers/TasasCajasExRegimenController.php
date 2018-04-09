@@ -12,7 +12,7 @@ class TasasCajasExRegimenController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tabla-cajas');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tabla-cajas');
         $mes = \Session::get('mesActivo')->mes;
         $tablaCajas = TasaCajasExRegimen::all();
         

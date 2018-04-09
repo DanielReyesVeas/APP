@@ -39,6 +39,9 @@ angular.module('angularjsApp')
         resolve: {
           objeto: function () {
             return obj;
+          },
+          imponible: function () {
+            return $scope.tabImponibles;
           }
         }
       });
@@ -57,6 +60,10 @@ angular.module('angularjsApp')
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
           cargarDatos();
+        }else{
+          $scope.erroresDatos = response.errores;
+          Notification.error({message: response.errores.error[0], title: 'Mensaje del Sistema', delay: ''});
+          $rootScope.cargando=false;
         }
       });
     }
@@ -85,14 +92,14 @@ angular.module('angularjsApp')
     cargarDatos();
 
   })
-  .controller('FormTiposHaberCtrl', function ($scope, $uibModalInstance, objeto, Notification, $rootScope, tipoHaber, $uibModal, $filter) {
+  .controller('FormTiposHaberCtrl', function ($scope, imponible, $uibModalInstance, objeto, Notification, $rootScope, tipoHaber, $uibModal, $filter) {
 
     if(objeto){
       $scope.tipoHaber = angular.copy(objeto);
       $scope.titulo = 'Modificación Haberes';
       $scope.encabezado = $scope.tipoHaber.nombre;
     }else{
-      $scope.tipoHaber = {};
+      $scope.tipoHaber = { imponible : imponible, tributable : imponible, gratificacion : imponible, calculaHorasExtras : imponible, proporcionalDiasTrabajados : imponible };
       $scope.titulo = 'Ingreso Haberes';
       $scope.encabezado = 'Nuevo Haber';
     }

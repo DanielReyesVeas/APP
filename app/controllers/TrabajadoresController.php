@@ -5,6 +5,31 @@ class TrabajadoresController extends \BaseController {
      *
      * @return Response
      */
+    public function miLiquidacionObservaciones_store(){
+        $mes = \Session::get('mesActivo');
+        $sidTrabajador = Input::get('sidTrabajador');
+        $observaciones = Input::get('observaciones');
+        $trabajador = Trabajador::whereSid($sidTrabajador)->first();
+        $liquidacionObservacion = LiquidacionObservacion::where('periodo', $mes->mes)
+            ->where('trabajador_id', $trabajador->id)->first();
+        if(!$liquidacionObservacion){
+            $liquidacionObservacion = new LiquidacionObservacion();
+            $liquidacionObservacion->periodo = $mes->mes;
+            $liquidacionObservacion->trabajador_id = $trabajador->id;
+        }
+        $liquidacionObservacion->observaciones = $observaciones;
+        $liquidacionObservacion->save();
+        $datos=array(
+            'success' => true,
+            'mensaje' => Config::get('constants.mensajes.store.ok')
+        );
+        return Response::json($datos);
+    }
+
+    public function miLiquidacionObservaciones_show()
+    {
+
+    }
     
     public function descargarLibroExcel($name)
     {
@@ -13,7 +38,16 @@ class TrabajadoresController extends \BaseController {
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="Libro.xls"'
         ]);    
-    }        
+    }  
+    
+    /*public function descargarLibroExcel($name)
+    {
+        $destination = public_path() . '/stories/' . $name . '.pdf';
+        return Response::make(file_get_contents($destination), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="Libro.pdf"'
+        ]);    
+    } */
     
     public function descargarNominaExcel($name)
     {
@@ -38,7 +72,12 @@ class TrabajadoresController extends \BaseController {
         $datos = Input::all();
         $trabajadores = (array) $datos['trabajadores'];
         $conceptos = $datos['conceptos'];
+        $tipo = $datos['tipo'];
+        $excel = $datos['excel'];
         $libroRemuneraciones = array();
+        $haberes = array('imponibles' => array(), 'noImponibles' => array());
+        $descuentos = array();
+        $apvs = array();
         $empresa = \Session::get('empresa');
         $empresa->domicilio = $empresa->domicilio();
         $empresa->rutFormato = $empresa->rut_formato();
@@ -52,6 +91,7 @@ class TrabajadoresController extends \BaseController {
         $sumaAfp = 0;
         $sumaApv = 0;
         $sumaGratificacion = 0;
+        $sumaOtrosImponibles = 0;
         $sumaMutual = 0;
         $sumaImpuestoRenta = 0;
         $sumaAnticipos = 0;
@@ -64,38 +104,71 @@ class TrabajadoresController extends \BaseController {
         $sumaTotalDescuentos = 0;
         $sumaOtrosDescuentos = 0;
         $sumaSueldoLiquido = 0;
+        $sumas = array('imponibles' => array(), 'noImponibles' => array(), 'descuentos' => array(), 'apvs' => array());
         
         $mes = \Session::get('mesActivo');
-        $liquidaciones = Liquidacion::where('mes', $mes->mes)->get();
-        
+        $liquidaciones = Liquidacion::where('mes', $mes->mes)->orderBy('trabajador_apellidos')->get();        
         
         foreach($liquidaciones as $liquidacion){            
             if(in_array($liquidacion->trabajador_id, $trabajadores)){
-                $sis = 0;
-                if($liquidacion->detalleIpsIslFonasa->cotizacion_fonasa>0){
-                    $cotizacionSalud = $liquidacion->detalleIpsIslFonasa->cotizacion_fonasa;
-                }else{
-                    $cotizacionSalud = ($liquidacion->detalleSalud->cotizacion_obligatoria + $liquidacion->detalleSalud->cotizacion_adicional);
+                $detalles = $liquidacion->detalles;
+                $apvis = $liquidacion->detalleApvi;
+                if($detalles->count()){
+                    foreach($detalles as $detalle){
+                        if($detalle->tipo_id==1){
+                            if($detalle->tipo=='imponible'){
+                                $index = $detalle->tipo_id . '-' . $detalle->detalle_id;
+                                $haberes['imponibles'][$index] = $detalle->nombre;   
+                                $liquidacion->$index = isset($liquidacion->$index) ? ($liquidacion->$index + $detalle->valor) : $detalle->valor;
+                                $sumas['imponibles'][$index] = isset($sumas['imponibles'][$index]) ? ($sumas['imponibles'][$index] + $detalle->valor) : $detalle->valor;
+                            }else{
+                                $index = $detalle->tipo_id . '-' . $detalle->detalle_id;
+                                $haberes['noImponibles'][$index] = $detalle->nombre;                        
+                                $liquidacion->$index = isset($liquidacion->$index) ? ($liquidacion->$index + $detalle->valor) : $detalle->valor;
+                                $sumas['noImponibles'][$index] = isset($sumas['noImponibles'][$index]) ? ($sumas['noImponibles'][$index] + $detalle->valor) : $detalle->valor;
+                            }
+                        }else{
+                            $index = $detalle->tipo_id . '-' . $detalle->detalle_id;
+                            $descuentos[$index] = $detalle->nombre;                                                    
+                            $liquidacion->$index = isset($liquidacion->$index) ? ($liquidacion->$index + $detalle->valor) : $detalle->valor;
+                            $sumas['descuentos'][$index] = isset($sumas['descuentos'][$index]) ? ($sumas['descuentos'][$index] + $detalle->valor) : $detalle->valor;
+                        }
+                    }
                 }
+                if($apvis->count()){
+                    foreach($apvis as $apvi){
+                        $index = $apvi->afp_id . $apvi->regimen;
+                        $apvs[$index] = 'APV régimen ' . strtoupper($apvi->regimen) . ' AFP ' . $apvi->afp->glosa;   
+                        $liquidacion->$index = isset($liquidacion->$index) ? ($liquidacion->$index + $apvi->monto) : $apvi->monto;
+                        $sumas['apvs'][$index] = isset($sumas['apvs'][$index]) ? ($sumas['apvs'][$index] + $apvi->monto) : $apvi->monto;
+                    }
+                }
+                $sis = 0;
+                $cotizacionSalud = $liquidacion->totalSalud();
                 $liquidacion->totalApvs = $liquidacion->totalApvs();
                 $liquidacion->totalSalud = $cotizacionSalud;
-                if(!$empresa->sis){
-                    $sis = $liquidacion->detalleAfp->sis;
+                $liquidacion->total_otros_descuentos = ($liquidacion->total_otros_descuentos - $liquidacion->totalApvs() - $liquidacion->total_anticipos);
+                if($liquidacion->detalleAfp){
+                    if($liquidacion->detalleAfp->paga_sis=='empleado'){
+                        $sis = $liquidacion->detalleAfp ? $liquidacion->detalleAfp->sis : 0;
+                    }
                 }
-                $liquidacion->totalAfp = ($liquidacion->detalleAfp->cotizacion + $sis);
+                $cotizacion = $liquidacion->detalleAfp ? $liquidacion->detalleAfp->cotizacion : 0;
+                $liquidacion->totalAfp = ($cotizacion + $sis);
                 $liquidacion->totalSeguroCesantia = $liquidacion->detalleSeguroCesantia ? $liquidacion->detalleSeguroCesantia->aporte_trabajador : 0;
-                
+                $liquidacion->trabajador_apellidos = $liquidacion->centroCosto ? $liquidacion->trabajador_apellidos . " | " . $liquidacion->centroCosto->codigo : $liquidacion->trabajador_apellidos;
                 $libroRemuneraciones[] = $liquidacion;
                 
                 $sumaSueldoBase += $liquidacion->sueldo_base;
                 $sumaDiasTrabajados += $liquidacion->dias_trabajados;
                 $sumaInasistenciasAtrasos += $liquidacion->inasistencias;
-                $sumaHorasExtra += $liquidacion->horas_extra;
+                $sumaHorasExtra += $liquidacion->total_horas_extra;
                 $sumaSueldo += $liquidacion->sueldo;
                 $sumaSalud += $liquidacion->totalSalud;
-                $sumaAfp += ($liquidacion->detalleAfp->cotizacion + $liquidacion->detalleAfp->sis);
-                $sumaApv += $liquidacion->totalApvs();
+                $sumaAfp += $cotizacion;
+                $sumaApv += $liquidacion->totalApvs;
                 $sumaGratificacion += $liquidacion->gratificacion;
+                $sumaOtrosImponibles += $liquidacion->otros_imponibles;
                 $sumaMutual += $liquidacion->total_mutual;
                 $sumaImpuestoRenta += $liquidacion->impuesto_determinado;
                 $sumaAnticipos += $liquidacion->total_anticipos;
@@ -104,7 +177,7 @@ class TrabajadoresController extends \BaseController {
                 $sumaHaberes += $liquidacion->total_haberes;
                 $sumaImponibles += $liquidacion->imponibles;
                 $sumaTotalImponibles += $liquidacion->renta_imponible;
-                $sumaSeguroCesantia += $liquidacion->detalleSeguroCesantia ? ($liquidacion->detalleSeguroCesantia->aporte_trabajador + $liquidacion->detalleSeguroCesantia->aporte_empleador) : 0;;
+                $sumaSeguroCesantia += $liquidacion->detalleSeguroCesantia ? $liquidacion->detalleSeguroCesantia->aporte_trabajador : 0;
                 $sumaTotalDescuentos += $liquidacion->total_descuentos;
                 $sumaOtrosDescuentos += $liquidacion->total_otros_descuentos;
                 $sumaSueldoLiquido += $liquidacion->sueldo_liquido;
@@ -121,6 +194,7 @@ class TrabajadoresController extends \BaseController {
             'totalAfp' => $sumaAfp,
             'totalApv' => $sumaApv,
             'totalGratificacion' => $sumaGratificacion,
+            'totalOtrosImponibles' => $sumaOtrosImponibles,
             'totalImpuestoRenta' => $sumaImpuestoRenta,
             'totalAnticipos' => $sumaAnticipos,
             'totalAsignacionFamiliar' => $sumaAsignacionFamiliar,
@@ -131,28 +205,413 @@ class TrabajadoresController extends \BaseController {
             'totalTotalImponibles' => $sumaTotalImponibles,
             'totalOtrosDescuentos' => $sumaOtrosDescuentos,
             'totalTotalDescuentos' => $sumaTotalDescuentos,
-            'totalSueldoLiquido' => $sumaSueldoLiquido
-        );
+            'totalSueldoLiquido' => $sumaSueldoLiquido,
+            'sumas' => $sumas
+        );            
         
-        
+        $haberes['imponibles'] = array_unique($haberes['imponibles']);
+        $haberes['noImponibles'] = array_unique($haberes['noImponibles']);
+        $descuentos = array_unique($descuentos);
+        $apvs = array_unique($apvs);
+        array_multisort($apvs, SORT_STRING);
         
         $datos = new stdClass();
         $datos->liquidaciones = $libroRemuneraciones;
         $datos->conceptos = $conceptos;
+        $datos->haberes = $haberes;
+        $datos->descuentos = $descuentos;
+        $datos->apvs = $apvs;
         $datos->totales = $totales;
         $datos->empresa = $empresa;
         $datos->mes = strtoupper($mes->mesActivo);
+        $filename = 'Libro';
         
-        $filename = date("d-m-Y-H-i-s") . "_Libro_" . $mes->nombre . "_" . $mes->anio . ".xls";
-        
-        Excel::create("Libro", function($excel) use($datos) {
-            $excel->sheet("Libro", function($sheet) use($datos) {
-                $sheet->loadView('excel.libro')->with('datos', $datos);
-            });
-        })->store('xls', public_path('stories'));
-        
-        $destination = public_path('stories/' . $filename);
+        if($tipo==3){
+            Excel::create("Libro", function($excel) use($datos) {
+                $excel->sheet("Libro", function($sheet) use($datos) {
+                    $sheet->loadView('excel.libroDetallado')->with('datos', $datos);
+                });
+            })->store('xls', public_path('stories'));
+        }else if($tipo==1){
+            if($excel){
+                Excel::create("Libro", function($excel) use($datos) {
+                    $excel->sheet("Libro", function($sheet) use($datos) {
+                        $sheet->loadView('excel.libroLarge')->with('datos', $datos);
+                    });
+                })->store('xls', public_path('stories'));
+            }else{
+                $filename = 'LibroPDF.pdf';
+                $destination = public_path() . '/stories/' . $filename;
+                $pdf = new \Thujohn\Pdf\Pdf();
+                $content = $pdf->load(View::make('pdf.libroLarge', array('datos' => $datos)), 'A4', 'landscape')->output();               
+                File::put($destination, $content); 
+            }
+        }else{
+            if($excel){
+                Excel::create('Libro', function($excel) use($liquidaciones, $empresa, $mes, $totales) {
+                    $excel->sheet('Libro', function($sheet) use($liquidaciones, $empresa, $mes, $totales) {
 
+                        $i = 1;
+                        $j = 'A';
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':L'.$i);
+                        $sheet->setCellValue($a, $empresa->razon_social); 
+                        $i++;  
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':L'.$i);
+                        $sheet->setCellValue($a, 'RUT: ' . $empresa->rut_formato()); 
+                        $i++;   
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':L'.$i);
+                        $sheet->setCellValue($a, $empresa->actividad_economica); 
+                        $i++;
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':L'.$i);
+                        $sheet->setCellValue($a, $empresa->domicilio()); 
+                        $i++;
+                        $i++;
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':L'.$i);                        
+                        $sheet->cell($a, function($cell) {
+                            $cell->setValue('LIBRO DE REMUNERACIONES');
+                            $cell->setFontFamily('Arial');
+                            $cell->setFontSize(10);
+                            $cell->setAlignment('center');
+                        });
+                        $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                        $i++;
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':L'.$i);
+                        $sheet->cell($a, function($cell) use($mes) {
+                            $cell->setValue($mes->nombre . ' ' . $mes->anio);
+                            $cell->setFontFamily('Arial');
+                            $cell->setFontSize(10);
+                            $cell->setAlignment('center');
+                        });
+                        $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                        $i++;
+                        $i++;
+                        
+                        $sheet->setFontBold(true);
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':'.$j.($i + 1));
+                        $sheet->cell($a, function($cell) {
+                            $cell->setValue('RUT');
+                            $cell->setFontFamily('Arial');
+                            $cell->setFontSize(10);
+                            $cell->setAlignment('center');
+                        });
+                        $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                        $sheet->setBorder($a.':'.$j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':'.$j.($i + 1));
+                        $sheet->cell($a, function($cell) {
+                            $cell->setValue('NOMBRE');
+                            $cell->setFontFamily('Arial');
+                            $cell->setFontSize(10);
+                            $cell->setAlignment('center');
+                        });
+                        $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                        $sheet->setBorder($a.':'.$j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'SUELDO BASE');                         
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'DÍAS TRAB'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'INASIST Y ATRASO'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'H. EXTRA'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'SUELDO'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'GRATIFIC.');                         
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'TOTAL IMPONIBLES'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'ASIGNA. FAMILIAR'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');                                                
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'TOTAL NO IMP'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'TOTAL HABERES'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');                        
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'AFP'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'APV'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');                                                                        
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'SALUD'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'SEGURO CESANTÍA'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        
+                        $sheet->setCellValue($a, 'ANTICIPOS'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'IMPUESTO'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, 'OTROS DESC.'); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), 'TOTAL DESC.'); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->mergeCells($a.':'.$j.($i + 1));
+                        $sheet->cell($a, function($cell) {
+                            $cell->setValue('ALCANCE LÍQUIDO');
+                            $cell->setFontFamily('Arial');
+                            $cell->setFontSize(10);
+                            $cell->setAlignment( 'center');
+                        });
+                        $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                        $sheet->setBorder($a.':'.$j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $sheet->setFontBold(false);
+                        
+                        
+                        $i = 11;
+                        
+                        foreach($liquidaciones as $liquidacion){
+                            $liquidacion->ap = $liquidacion->totalApvi();
+                            $j = 'A';   
+                            
+                            $a = $j.$i;                            
+                            $sheet->cell($a, function($cell) use($liquidacion) {
+                                $cell->setValue(Funciones::formatear_rut($liquidacion->trabajador_rut));
+                                $cell->setBorder('none', 'thin', 'none', 'none');
+                            });
+                            $sheet->cell($j.($i + 1), function($cell) {
+                                $cell->setBorder('none', 'thin', 'thin', 'none');
+                            });
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->cell($a, function($cell) use($liquidacion) {
+                                $cell->setValue($liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos);
+                                $cell->setBorder('none', 'thin', 'none', 'none');
+                            });
+                            $sheet->cell($j.($i + 1), function($cell) {
+                                $cell->setBorder('none', 'thin', 'thin', 'none');
+                            });
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->sueldo_base)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), $liquidacion->dias_trabajados); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, $liquidacion->inasistencias); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), $liquidacion->horas_extra); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->sueldo)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($liquidacion->gratificacion)); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->imponibles)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($liquidacion->total_cargas)); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->no_imponibles)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($liquidacion->total_haberes)); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->totalAfp)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($liquidacion->totalApvs)); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->totalSalud)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($liquidacion->totalSeguroCesantia)); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;                                                                                                                                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->total_anticipos)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($liquidacion->impuesto_determinado)); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++;
+                            
+                            $a = $j.$i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($liquidacion->total_otros_descuentos)); 
+                            $sheet->setBorder($a, 'thin');
+                            $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($liquidacion->total_descuentos)); 
+                            $sheet->setBorder($j.($i + 1), 'thin');
+                            $j++; 
+                            
+                            $a = $j.$i;
+                            $sheet->cell($a, function($cell) use($liquidacion) {
+                                $cell->setValue(Funciones::formatoPesos($liquidacion->sueldo_liquido));
+                                $cell->setBorder('none', 'thin', 'none', 'none');
+                            });
+                            $sheet->cell($j.($i + 1), function($cell) {
+                                $cell->setBorder('none', 'thin', 'thin', 'none');
+                            });
+                            $j++;
+                            
+                            $i++;
+                            $i++;
+                        }
+                        
+                        $sheet->setFontBold(true);
+                        $j = 'A';   
+                        
+                        $a = $j.$i;                            
+                        $sheet->cell($a, function($cell) use($liquidacion) {            
+                            $cell->setBorder('none', 'thin', 'none', 'none');
+                        });
+                        $sheet->cell($j.($i + 1), function($cell) {            
+                            $cell->setBorder('none', 'thin', 'thin', 'none');
+                        });
+                        $j++;
+
+                        $a = $j.$i;
+                        $sheet->cell($a, function($cell) use($liquidacion) {
+                            $cell->setBorder('none', 'thin', 'none', 'none');
+                        });
+                        $sheet->cell($j.($i + 1), function($cell) {
+                            $cell->setValue('TOTAL GENERAL');
+                            $cell->setBorder('none', 'thin', 'thin', 'none');
+                        });
+                        $j++;
+
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalSueldoBase'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), $totales['totalDiasTrabajados']); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, $totales['totalInasistenciasAtrasos']); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), $totales['totalHorasExtra']); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalSueldo'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalGratificacion'])); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalTotalImponibles'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalAsignacionFamiliar'])); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalNoImponibles'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalHaberes'])); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                        
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalAfp'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalApv'])); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalSalud'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalSeguroCesantia'])); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+                                            
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalAnticipos'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalImpuestoRenta'])); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++;
+
+                        $a = $j.$i;
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalOtrosDescuentos'])); 
+                        $sheet->setBorder($a, 'thin');
+                        $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalTotalDescuentos'])); 
+                        $sheet->setBorder($j.($i + 1), 'thin');
+                        $j++; 
+
+                        $a = $j.$i;
+                        $sheet->cell($a, function($cell) use($totales) {
+                            $cell->setValue(Funciones::formatoPesos($totales['totalSueldoLiquido']));
+                            $cell->setBorder('none', 'thin', 'none', 'none');
+                        });
+                        $sheet->cell($j.($i + 1), function($cell) {
+                            $cell->setBorder('none', 'thin', 'thin', 'none');
+                        });
+                        $j++;
+                        
+                    });
+
+                })->store('xls', public_path('stories')); 
+            }else{
+                /*$filename = 'LibroPDF.pdf';
+                $destination = public_path() . '/stories/' . $filename;
+                $pdf = new \Thujohn\Pdf\Pdf();
+                $content = $pdf->load(View::make('pdf.libroShort', array('datos' => $datos)))->output();                
+                File::put($destination, $content); */
+            }
+        }
         
         $datos = array(
             'success' => true,
@@ -161,8 +620,15 @@ class TrabajadoresController extends \BaseController {
                 'editar' => true
             ),
             'datos' => $filename,
-            'nombre' => 'Libro',
-            'libro' => $libroRemuneraciones
+            'nombre' => $filename,
+            'libro' => $libroRemuneraciones,
+            'excel' => $excel,
+            'haberes' => $haberes,
+            'descuentos' => $descuentos,
+            'apvs' => $apvs,
+            'tipo' => $tipo,
+            'totales' => $totales,
+            'liq' => $liquidaciones
         );
         
         return Response::json($datos);
@@ -182,7 +648,7 @@ class TrabajadoresController extends \BaseController {
             $trabajadores[] = array(
                 'rut' => $trabajador->rut_formato(),
                 'nombreCompleto' => $empleado->nombreCompleto(),
-                'cargo' => $empleado->cargo->nombre,
+                'cargo' => $empleado->cargo ? $empleado->cargo->nombre : "",
                 'codigoBanco' => $empleado->banco ? $empleado->banco->codigo : "",
                 'tipoCuenta' => $empleado->tipoCuenta ? $empleado->tipoCuenta->nombre : "",
                 'numeroCuenta' => $empleado->numero_cuenta ? $empleado->numero_cuenta : "",
@@ -379,10 +845,40 @@ class TrabajadoresController extends \BaseController {
                     $i++;
                 }
                 
-                //Tipos de Cuenta
+                //Centros de Costo
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Tabla N° 8'); 
+                $i++;
+                $sheet->mergeCells('A'.$i.':B'.$i);
+                $sheet->setCellValue('A'.$i, 'Códigos de Centros de Costo');
+                $centrosCosto = CentroCosto::codigosCentrosCosto();
+                $i++;                
+                foreach($centrosCosto as $centroCosto){                
+                    $sheet->setCellValue('A'.$i, $centroCosto['codigo']);
+                    $sheet->setCellValue('B'.$i, $seccion['glosa']);
+                    $i++;
+                }
+                
+                //Tiendas
+                $i++;
+                $sheet->mergeCells('A'.$i.':B'.$i);
+                $sheet->setCellValue('A'.$i, 'Tabla N° 9'); 
+                $i++;
+                $sheet->mergeCells('A'.$i.':B'.$i);
+                $sheet->setCellValue('A'.$i, 'Códigos de Tiendas');
+                $tiendas = Tienda::codigosTiendas();
+                $i++;                
+                foreach($tiendas as $tienda){                
+                    $sheet->setCellValue('A'.$i, $tienda['codigo']);
+                    $sheet->setCellValue('B'.$i, $tienda['glosa']);
+                    $i++;
+                }
+                
+                //Tipos de Cuenta
+                $i++;
+                $sheet->mergeCells('A'.$i.':B'.$i);
+                $sheet->setCellValue('A'.$i, 'Tabla N° 10'); 
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Tipos de Cuenta');
@@ -412,7 +908,7 @@ class TrabajadoresController extends \BaseController {
                 //Bancos
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 9'); 
+                $sheet->setCellValue('A'.$i, 'Tabla N° 11'); 
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Bancos');
@@ -430,7 +926,7 @@ class TrabajadoresController extends \BaseController {
                 //Tipos de Contrato
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 10');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 12');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Tipos de Contrato');
@@ -448,7 +944,7 @@ class TrabajadoresController extends \BaseController {
                 //Tipos de Jornada
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 11');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 13');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Tipos de Jornada');
@@ -466,7 +962,7 @@ class TrabajadoresController extends \BaseController {
                 //Semana Corrida
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 12');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 14');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Semana Corrida');
@@ -484,7 +980,7 @@ class TrabajadoresController extends \BaseController {
                 //Tipos de Moneda
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 13');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 15');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Tipos de Moneda');
@@ -505,7 +1001,7 @@ class TrabajadoresController extends \BaseController {
                 //Tipos de Trabajador
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 14');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 16');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Tipos de Trabajador');
@@ -523,7 +1019,7 @@ class TrabajadoresController extends \BaseController {
                 //Exceso de Retiro
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 15');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 17');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Exceso de Retiro');
@@ -538,10 +1034,28 @@ class TrabajadoresController extends \BaseController {
                 $sheet->setCellValue('B'.$i, 'Sí');
                 $i++;
                 
+                //Gratificación
+                $i++;
+                $sheet->mergeCells('A'.$i.':B'.$i);
+                $sheet->setCellValue('A'.$i, 'Tabla N° 18');
+                $i++;
+                $sheet->mergeCells('A'.$i.':B'.$i);
+                $sheet->setCellValue('A'.$i, 'Códigos de Gratificación');
+                $i++;                
+                $sheet->setCellValue('A'.$i, 'Código');
+                $sheet->setCellValue('B'.$i, 'Glosa');
+                $i++;  
+                $sheet->setCellValue('A'.$i, 'm');
+                $sheet->setCellValue('B'.$i, 'Mensual');
+                $i++;  
+                $sheet->setCellValue('A'.$i, 'a');
+                $sheet->setCellValue('B'.$i, 'Anual');
+                $i++;
+                
                 //Proporcional Colación, Movilización y Viático
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 16');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 19');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Proporcional Colación, Movilización y Viático');
@@ -559,7 +1073,7 @@ class TrabajadoresController extends \BaseController {
                 //Previsión
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 17');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 20');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Previsión');
@@ -574,7 +1088,7 @@ class TrabajadoresController extends \BaseController {
                 //AFPs
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 18');
+                $sheet->setCellValue('A'.$i, 'Tabla N° 21');
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de AFPs');
@@ -589,7 +1103,7 @@ class TrabajadoresController extends \BaseController {
                 //ExCajas
                 $i=1;
                 $sheet->mergeCells('D'.$i.':E'.$i);
-                $sheet->setCellValue('D'.$i, 'Tabla N° 19');
+                $sheet->setCellValue('D'.$i, 'Tabla N° 22');
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
                 $sheet->setCellValue('D'.$i, 'Códigos de Ex Cajas');
@@ -604,7 +1118,7 @@ class TrabajadoresController extends \BaseController {
                 //Seguro de Cesantía
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
-                $sheet->setCellValue('D'.$i, 'Tabla N° 20');
+                $sheet->setCellValue('D'.$i, 'Tabla N° 23');
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
                 $sheet->setCellValue('D'.$i, 'Códigos de Seguro de Cesantía');
@@ -622,7 +1136,7 @@ class TrabajadoresController extends \BaseController {
                 //AFPs Seguro de Cesantía
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
-                $sheet->setCellValue('D'.$i, 'Tabla N° 21');
+                $sheet->setCellValue('D'.$i, 'Tabla N° 24');
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
                 $sheet->setCellValue('D'.$i, 'Códigos de AFPs Seguro de Cesantía');
@@ -637,7 +1151,7 @@ class TrabajadoresController extends \BaseController {
                 //Isapres
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
-                $sheet->setCellValue('D'.$i, 'Tabla N° 22');
+                $sheet->setCellValue('D'.$i, 'Tabla N° 25');
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
                 $sheet->setCellValue('D'.$i, 'Códigos de Isapres');
@@ -652,7 +1166,7 @@ class TrabajadoresController extends \BaseController {
                 //Cotización Isapre
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
-                $sheet->setCellValue('D'.$i, 'Tabla N° 23');
+                $sheet->setCellValue('D'.$i, 'Tabla N° 26');
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
                 $sheet->setCellValue('D'.$i, 'Códigos de Cotización Isapre (Sólo si es Isapre, no Fonasa)');
@@ -670,7 +1184,7 @@ class TrabajadoresController extends \BaseController {
                 //Sindicato
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
-                $sheet->setCellValue('D'.$i, 'Tabla N° 24');
+                $sheet->setCellValue('D'.$i, 'Tabla N° 27');
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
                 $sheet->setCellValue('D'.$i, 'Códigos de Sindicato');
@@ -688,7 +1202,7 @@ class TrabajadoresController extends \BaseController {
                 //Tramos Asignación Familiar
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
-                $sheet->setCellValue('D'.$i, 'Tabla N° 25');
+                $sheet->setCellValue('D'.$i, 'Tabla N° 28');
                 $i++;
                 $sheet->mergeCells('D'.$i.':E'.$i);
                 $sheet->setCellValue('D'.$i, 'Códigos de Tramo Asignación Familiar');
@@ -716,7 +1230,7 @@ class TrabajadoresController extends \BaseController {
                 //Comunas
                 $i = 1;
                 $sheet->mergeCells('A'.$i.':B'.$i);
-                $sheet->setCellValue('A'.$i, 'Tabla N° 26');                
+                $sheet->setCellValue('A'.$i, 'Tabla N° 29');                
                 $i++;
                 $sheet->mergeCells('A'.$i.':B'.$i);
                 $sheet->setCellValue('A'.$i, 'Códigos de Comunas');
@@ -783,18 +1297,130 @@ class TrabajadoresController extends \BaseController {
                             $sheet = $reader->getActiveSheet();
                             $a = 'A' . $i;
                             $sheet->setCellValue($a, $trabajador['rut']);
+                            $sheet->appendRow('a');   
                             $i++;
                         }
                     }
                 }
             }
 
-        })->setFilename('planilla-' . $tipo)->export('xlsx');
+        })->setFilename('planilla-masivo' . $tipo)->export('xlsx');
         
         return Response::make(file_get_contents($destination), 200, [
             'Content-Type' => 'application/vnd.ms-excel',
             'Content-Disposition' => 'attachment; filename="planillas.xlsx"'
         ]);    
+    }
+    
+    public function descargarPlantillaMasivo($tipo)
+    {                    
+        Excel::create('planilla-masivo-' . $tipo, function($reader) use ($tipo) {
+            $reader->sheet('Haberes', function($sheet) use ($tipo) {
+                $finMes = \Session::get('mesActivo')->fechaRemuneracion;
+                $mes = \Session::get('mesActivo')->mes;
+                $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes)));
+                $lista = array();
+                $trabajadores = Trabajador::all();
+                $i = 3;
+                $letter = 'C';
+                
+                if($trabajadores){
+                    foreach($trabajadores as $trabajador){
+                        $empleado = $trabajador->ficha();
+                        if($empleado){
+                            if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mesAnterior){
+                                $lista[] = array(
+                                    'rut' => $trabajador->rut_formato(),
+                                    'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                    'nombreCompleto' => $empleado->apellidos . ', ' . $empleado->nombres
+                                );
+                            }                            
+                        }                        
+                    }
+                    $lista = Funciones::ordenar($lista, 'apellidos');   
+                }
+                
+                if(count($lista)){
+                    foreach($lista as $trab){        
+                       $sheet->cell('A'.$i, function($cell) use ($i, $trab) {
+                            $cell->setValue($trab['rut']);
+                        });
+                        $sheet->cell('B'.$i, function($cell) use ($i, $trab) {
+                            $cell->setValue($trab['nombreCompleto']);
+                        });
+                        $i++;
+                    }
+                }
+                
+                if($tipo=='haberes'){
+                    $haberes = TipoHaber::all();
+                    if($haberes){
+                        foreach($haberes as $haber){
+                            if($haber->id>15 || $haber->id==10 || $haber->id==11){
+                                $sheet->cell($letter.'1', function($cell) use ($letter, $haber) {
+                                    $cell->setValue($haber->codigo);                       
+                                });
+                                $sheet->cell($letter.'2', function($cell) use ($letter, $haber) {
+                                    $cell->setValue($haber->nombre);                       
+                                });
+                                $letter++;
+                            }
+                        }
+                    }
+                }else{
+                    $descuentos = TipoDescuento::all();
+                    if($descuentos){
+                        foreach($descuentos as $tipoDescuento){
+                            if($tipoDescuento->id!=3){
+                                $nombre = '';
+                                if($tipoDescuento->estructura_descuento_id<3){                   
+                                    $nombre = $tipoDescuento->nombre;
+                                    $sheet->cell($letter.'1', function($cell) use ($letter, $tipoDescuento) {
+                                        $cell->setValue($tipoDescuento->codigo);                       
+                                    });
+                                    $sheet->cell($letter.'2', function($cell) use ($letter, $nombre) {
+                                        $cell->setValue($nombre);                       
+                                    });
+                                    $letter++;
+                                }else if($tipoDescuento->estructura_descuento_id==6){
+                                    if($tipoDescuento->nombre!='Caja de Compensación'){
+                                        $nombre = $tipoDescuento->nombre;
+                                        $sheet->cell($letter.'1', function($cell) use ($letter, $tipoDescuento) {
+                                            $cell->setValue($tipoDescuento->codigo);                       
+                                        });
+                                        $sheet->cell($letter.'2', function($cell) use ($letter, $nombre) {
+                                            $cell->setValue($nombre);                       
+                                        });
+                                        $letter++;
+                                    }
+                                }else if($tipoDescuento->estructura_descuento_id==3){
+                                    $nombre = 'APVC AFP ' . $tipoDescuento->nombreAfp();
+                                    $sheet->cell($letter.'1', function($cell) use ($letter, $tipoDescuento) {
+                                        $cell->setValue($tipoDescuento->codigo);                       
+                                    });
+                                    $sheet->cell($letter.'2', function($cell) use ($letter, $nombre) {
+                                        $cell->setValue($nombre);                       
+                                    });
+                                    $letter++;
+                                }else if($tipoDescuento->estructura_descuento_id==7){
+                                    $nombre = 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp();
+                                    $sheet->cell($letter.'1', function($cell) use ($letter, $tipoDescuento) {
+                                        $cell->setValue($tipoDescuento->codigo);                       
+                                    });
+                                    $sheet->cell($letter.'2', function($cell) use ($letter, $nombre) {
+                                        $cell->setValue($nombre);                       
+                                    });
+                                    $letter++;
+                                }
+                            }                                
+                        }
+                    }
+                }
+                
+            });
+
+        })->export('xlsx');
+        
     }
     
     public function generarPlanillaExcel()
@@ -849,59 +1475,63 @@ class TrabajadoresController extends \BaseController {
                 foreach($data as $key => $value){
                     if(isset($value->rut)){
                         $insert[] = array(
-                            'rut' => $value->rut,
-                            'nombres' => $value->nombres,
-                            'apellidos' => $value->apellidos,
-                            'nacionalidad' => $value->nacionalidad,
-                            'sexo' => strtolower($value->sexo),
-                            'estadoCivil' => $value->estado_civil,
-                            'fechaNacimiento' => $value->fecha_nacimiento,
-                            'direccion' => $value->direccion,
-                            'comuna' => $value->comuna,
-                            'telefonoFijo' => $value->telefono_fijo,
-                            'celular' => $value->celular,
-                            'celularEmpresa' => $value->celular_empresa,
-                            'email' => $value->email,
-                            'emailEmpresa' => $value->email_empresa,
-                            'cargo' => $value->cargo,
-                            'titulo' => $value->titulo,
-                            'seccion' => $value->seccion,
-                            'tipoCuenta' => $value->tipo_cuenta,
-                            'banco' => $value->banco,
-                            'numeroCuenta' => $value->numero_cuenta,
-                            'fechaIngreso' => $value->fecha_ingreso,
-                            'fechaReconocimiento' => $value->fecha_reconocimiento,
-                            'tipoContrato' => $value->tipo_contrato,
-                            'fechaVencimiento' => $value->fecha_vencimiento,
-                            'fechaFiniquito' => $value->fecha_finiquito,
-                            'tipoJornada' => $value->tipo_jornada,
-                            'semanaCorrida' => $value->semana_corrida,
-                            'monedaSueldo' => $value->moneda_sueldo,
-                            'sueldoBase' => $value->sueldo_base,
-                            'tipoTrabajador' => $value->tipo_trabajador,
-                            'tipo' => $value->tipo_empleado,
-                            'excesoRetiro' => $value->exceso_retiro,
-                            'monedaColacion' => $value->moneda_colacion,
-                            'proporcionalColacion' => $value->proporcional_colacion,
-                            'montoColacion' => $value->monto_colacion,
-                            'monedaMovilizacion' => $value->moneda_movilizacion,
-                            'proporcionalMovilizacion' => $value->proporcional_movilizacion,
-                            'montoMovilizacion' => $value->monto_movilizacion,
-                            'monedaViatico' => $value->moneda_viatico,
-                            'proporcionalViatico' => $value->proporcional_viatico,
-                            'montoViatico' => $value->monto_viatico,
-                            'prevision' => $value->prevision,
-                            'afp_ips' => $value->afpips,
-                            'seguroCesantia' => $value->seguro_cesantia,
-                            'afpSeguroCesantia' => $value->afp_seguro_cesantia,
-                            'isapre' => $value->isapre,
-                            'cotizacionIsapre' => $value->cotizacion_isapre,
-                            'planIsapre' => $value->plan_isapre,
-                            'sindicato' => $value->sindicato,
-                            'monedaSindicato' => $value->moneda_sindicato,
-                            'montoSindicato' => $value->monto_sindicato,
-                            'vacaciones' => $value->vacaciones,
-                            'tramo' => $value->tramo
+                            'rut' => trim($value->rut),
+                            'nombres' => $value->nombres ? trim($value->nombres) : $value->nombres,
+                            'apellidos' => $value->apellidos ? trim($value->apellidos) : $value->apellidos,
+                            'nacionalidad' => $value->nacionalidad ? trim($value->nacionalidad) : $value->nacionalidad,
+                            'sexo' => $value->sexo ? trim($value->sexo) : $value->sexo,
+                            'estadoCivil' => $value->estado_civil ? trim($value->estado_civil) : $value->estado_civil,
+                            'fechaNacimiento' => $value->fecha_nacimiento ? trim($value->fecha_nacimiento) : $value->fecha_nacimiento,
+                            'direccion' => $value->direccion ? trim($value->direccion) : $value->direccion,
+                            'comuna' => $value->comuna ? trim($value->comuna) : $value->comuna,
+                            'telefonoFijo' => $value->telefono_fijo ? trim($value->telefono_fijo) : $value->telefono_fijo,
+                            'celular' => $value->celular ? trim($value->celular) : $value->celular,
+                            'celularEmpresa' => $value->celular_empresa ? trim($value->celular_empresa) : $value->celular_empresa,
+                            'email' => $value->email ? trim($value->email) : $value->email,
+                            'emailEmpresa' => $value->email_empresa ? trim($value->email_empresa) : $value->email_empresa,
+                            'cargo' => $value->cargo ? trim($value->cargo) : $value->cargo,
+                            'titulo' => $value->titulo ? trim($value->titulo) : $value->titulo,
+                            'seccion' => $value->seccion ? trim($value->seccion) : $value->seccion,
+                            'tipoCuenta' => $value->tipo_cuenta ? trim($value->tipo_cuenta) : $value->tipo_cuenta,
+                            'banco' => $value->banco ? trim($value->banco) : $value->banco,
+                            'gratificacion' => $value->gratificacion ? trim($value->gratificacion) : $value->gratificacion,
+                            'centroCosto' => $value->centro_de_costo ? trim($value->centro_de_costo) : $value->centro_de_costo,
+                            'tienda' => $value->tienda ? trim($value->tienda) : $value->tienda,
+                            'numeroCuenta' => $value->numero_cuenta ? trim($value->numero_cuenta) : $value->numero_cuenta,
+                            'fechaIngreso' => $value->fecha_ingreso ? trim($value->fecha_ingreso) : $value->fecha_ingreso,
+                            'fechaReconocimiento' => $value->fecha_reconocimiento ? trim($value->fecha_reconocimiento) : $value->fecha_reconocimiento,
+                            'fechaReconocimientoSCesantia' => $value->fecha_reconocimiento_s_cesantia ? trim($value->fecha_reconocimiento_s_cesantia) : $value->fecha_reconocimiento_s_cesantia,
+                            'tipoContrato' => $value->tipo_contrato ? trim($value->tipo_contrato) : $value->tipo_contrato,
+                            'fechaVencimiento' => $value->fecha_vencimiento ? trim($value->fecha_vencimiento) : $value->fecha_vencimiento,
+                            'fechaFiniquito' => $value->fecha_finiquito ? trim($value->fecha_finiquito) : $value->fecha_finiquito,
+                            'tipoJornada' => $value->tipo_jornada ? trim($value->tipo_jornada) : $value->tipo_jornada,
+                            'semanaCorrida' => $value->semana_corrida ? trim($value->semana_corrida) : $value->semana_corrida,
+                            'monedaSueldo' => $value->moneda_sueldo ? trim($value->moneda_sueldo) : $value->moneda_sueldo,
+                            'sueldoBase' => $value->sueldo_base ? trim($value->sueldo_base) : $value->sueldo_base,
+                            'tipoTrabajador' => $value->tipo_trabajador ? trim($value->tipo_trabajador) : $value->tipo_trabajador,
+                            'tipo' => $value->tipo_empleado ? trim($value->tipo_empleado) : $value->tipo_empleado,
+                            'excesoRetiro' => $value->exceso_retiro ? trim($value->exceso_retiro) : $value->exceso_retiro,
+                            'monedaColacion' => $value->moneda_colacion ? trim($value->moneda_colacion) : $value->moneda_colacion,
+                            'proporcionalColacion' => $value->proporcional_colacion ? trim($value->proporcional_colacion) : $value->proporcional_colacion,
+                            'montoColacion' => $value->monto_colacion ? trim($value->monto_colacion) : $value->monto_colacion,
+                            'monedaMovilizacion' => $value->moneda_movilizacion ? trim($value->moneda_movilizacion) : $value->moneda_movilizacion,
+                            'proporcionalMovilizacion' => $value->proporcional_movilizacion ? trim($value->proporcional_movilizacion) : $value->proporcional_movilizacion,
+                            'montoMovilizacion' => $value->monto_movilizacion ? trim($value->monto_movilizacion) : $value->monto_movilizacion,
+                            'monedaViatico' => $value->moneda_viatico ? trim($value->moneda_viatico) : $value->moneda_viatico,
+                            'proporcionalViatico' => $value->proporcional_viatico ? trim($value->proporcional_viatico) : $value->proporcional_viatico,
+                            'montoViatico' => $value->monto_viatico ? trim($value->monto_viatico) : $value->monto_viatico,
+                            'prevision' => $value->prevision ? trim($value->prevision) : $value->prevision,
+                            'afp_ips' => $value->afpips ? trim($value->afpips) : $value->afpips,
+                            'seguroCesantia' => $value->seguro_cesantia ? trim($value->seguro_cesantia) : $value->seguro_cesantia,
+                            'afpSeguroCesantia' => $value->afp_seguro_cesantia ? trim($value->afp_seguro_cesantia) : $value->afp_seguro_cesantia,
+                            'isapre' => $value->isapre ? trim($value->isapre) : $value->isapre,
+                            'cotizacionIsapre' => $value->cotizacion_isapre ? trim($value->cotizacion_isapre) : $value->cotizacion_isapre,
+                            'planIsapre' => $value->plan_isapre ? trim($value->plan_isapre) : $value->plan_isapre,
+                            'sindicato' => $value->sindicato ? trim($value->sindicato) : $value->sindicato,
+                            'monedaSindicato' => $value->moneda_sindicato ? trim($value->moneda_sindicato) : $value->moneda_sindicato,
+                            'montoSindicato' => $value->monto_sindicato ? trim($value->monto_sindicato) : $value->monto_sindicato,
+                            'vacaciones' => $value->vacaciones ? trim($value->vacaciones) : $value->vacaciones,
+                            'tramo' => $value->tramo ? trim($value->tramo) : $value->tramo
                         );
                     }else{
                         $errores = array();
@@ -954,7 +1584,7 @@ class TrabajadoresController extends \BaseController {
     {
         $datos = Input::get();
         $idMes = \Session::get('mesActivo')->id;  
-        
+        $cont = 0;
         
         foreach($datos as $dato){
             if($dato['rut']){
@@ -976,9 +1606,9 @@ class TrabajadoresController extends \BaseController {
                 $ficha->nombres = $dato['nombres'];
                 $ficha->apellidos = $dato['apellidos'];
                 $ficha->nacionalidad_id = $dato['nacionalidad'];
-                $ficha->sexo = $dato['sexo'];
+                $ficha->sexo = strtolower(trim($dato['sexo']));
                 $ficha->estado_civil_id = $dato['estadoCivil'];
-                $ficha->fecha_nacimiento = date('Y-m-d', strtotime($dato['fechaNacimiento']));
+                $ficha->fecha_nacimiento = Funciones::regularizarFecha($dato['fechaNacimiento']);
                 $ficha->direccion = $dato['direccion'];
                 $ficha->comuna_id = $dato['comuna'];
                 $ficha->telefono = $dato['telefonoFijo'];
@@ -990,21 +1620,24 @@ class TrabajadoresController extends \BaseController {
                 $ficha->cargo_id = $dato['cargo'];
                 $ficha->titulo_id = $dato['titulo'];
                 $ficha->seccion_id = $dato['seccion'];
+                $ficha->tienda_id = $dato['tienda'];
+                $ficha->centro_costo_id = $dato['centroCosto'];
                 $ficha->tipo_cuenta_id = $dato['tipoCuenta'];
                 $ficha->banco_id = $dato['banco'];
                 $ficha->numero_cuenta = $dato['numeroCuenta'];
-                $ficha->fecha_ingreso = date('Y-m-d', strtotime($dato['fechaIngreso']));
-                $ficha->fecha_reconocimiento = date('Y-m-d', strtotime($dato['fechaReconocimiento']));
+                $ficha->fecha_ingreso = Funciones::regularizarFecha($dato['fechaIngreso']);
+                $ficha->fecha_reconocimiento = Funciones::regularizarFecha($dato['fechaReconocimiento']);
+                $ficha->fecha_reconocimiento_cesantia = $dato['fechaReconocimientoSCesantia'] ? Funciones::regularizarFecha($dato['fechaReconocimientoSCesantia']) : NULL;
                 $ficha->tipo_contrato_id = $dato['tipoContrato'];
-                $ficha->fecha_vencimiento = $dato['fechaVencimiento'] ? date('Y-m-d', strtotime($dato['fechaVencimiento'])) : NULL;
-                $ficha->fecha_finiquito = $dato['fechaFiniquito'] ? date('Y-m-d', strtotime($dato['fechaFiniquito'])) : NULL;
+                $ficha->fecha_vencimiento = $dato['fechaVencimiento'] ? Funciones::regularizarFecha($dato['fechaVencimiento']) : NULL;
+                $ficha->fecha_finiquito = $dato['fechaFiniquito'] ? Funciones::regularizarFecha($dato['fechaFiniquito']) : NULL;
                 $ficha->tipo_jornada_id = $dato['tipoJornada'];
                 $ficha->semana_corrida = $dato['semanaCorrida'];
                 $ficha->moneda_sueldo = strtoupper($dato['monedaSueldo']);
                 $ficha->sueldo_base = $dato['sueldoBase'];
-                $ficha->tipo_trabajador = $dato['tipoTrabajador'];
-                $ficha->gratificacion = 'm';
+                $ficha->tipo_trabajador = ucwords(strtolower($dato['tipoTrabajador']));
                 $ficha->exceso_retiro = $dato['excesoRetiro'];
+                $ficha->gratificacion = $dato['gratificacion'];
                 $ficha->moneda_colacion = strtoupper($dato['monedaColacion']);
                 $ficha->proporcional_colacion = $dato['proporcionalColacion'];
                 $ficha->monto_colacion = $dato['montoColacion'];
@@ -1043,11 +1676,15 @@ class TrabajadoresController extends \BaseController {
                     }
                 }
                 $trabajador->save();
-                $trabajador->crearUser(false);
+                //$trabajador->crearUser();
                 $ficha->save();
+                $cont++;
             }
 
         }
+        
+        $text = $cont . ' Trabajadores';
+        Logs::crearLog('#trabajadores', $cont, $text, 'Create', NULL, NULL, 'Importación Masiva'); 
         
         $respuesta=array(
             'success' => true,
@@ -1068,6 +1705,8 @@ class TrabajadoresController extends \BaseController {
         $estadosCiviles = EstadoCivil::all()->lists('id');
         $tiposCuentas = TipoCuenta::all()->lists('id');
         $bancos = Banco::all()->lists('id');
+        $tiendas = Tienda::all()->lists('id');
+        $centrosCosto = CentroCosto::all()->lists('id');
         $tiposContratos = TipoContrato::all()->lists('id');
         $tiposTrabajador = Glosa::where('tipo_estructura_id', 5)->orderBy('id', 'ASC')->get()->lists('id');
         $tiposJornadas = Jornada::all()->lists('id');
@@ -1083,19 +1722,32 @@ class TrabajadoresController extends \BaseController {
         $secciones = Seccion::all()->lists('id');
         $i = 1;
         
-        foreach($datos as $dato){
+        foreach($datos as $dato){            
             if($dato){
+                $isRut = false;
                 if($dato['rut']){
                     $isError = false;
                     $listaErrores = array();
                 
                     if($dato['rut']){
-                        if(!Funciones::comprobarRut($dato['rut'])){
-                            $listaErrores[] = 'El RUT ' . Funciones::formatear_rut($dato['rut']) . ' es inválido.';
-                            $isError = true;
-                        }                
-                        if(in_array($dato['rut'], $trabajadores)){
-                            $listaErrores[] = 'El RUT ' . Funciones::formatear_rut($dato['rut']) . ' ya se encuentra registrado.';
+                        if(strlen($dato['rut'])>=8){
+                            if(strlen($dato['rut'])>9){
+                                $listaErrores[] = 'El RUT ' . $dato['rut'] . ' es inválido, recuerde ingresar sólo dígitos, sin puntos ni guion.';
+                                $isError = true;
+                            }else{
+                                if(!Funciones::comprobarRut($dato['rut'])){
+                                    $listaErrores[] = 'El RUT ' . $dato['rut'] . ' es inválido.';
+                                    $isError = true;
+                                }else{     
+                                    $isRut = true;
+                                    if(in_array($dato['rut'], $trabajadores)){
+                                        $listaErrores[] = 'El RUT ' . Funciones::formatear_rut($dato['rut']) . ' ya se encuentra registrado.';
+                                        $isError = true;                                        
+                                    }
+                                }
+                            }
+                        }else{
+                            $listaErrores[] = 'El RUT ' . $dato['rut'] . ' es inválido.';
                             $isError = true;
                         }
                     }else{
@@ -1120,7 +1772,7 @@ class TrabajadoresController extends \BaseController {
                         $isError = true;
                     }
                     if(isset($dato['sexo'])){
-                        if(strtoupper($dato['sexo'])!='F' && strtoupper($dato['sexo'])!='M'){
+                        if(strtolower(trim($dato['sexo']))!="f" && strtolower(trim($dato['sexo']))!="m"){
                             $listaErrores[] = 'El código de Sexo "' . $dato['sexo'] . '" es incorrecto, recuerda que los códigos son "F" o "M".';
                             $isError = true;
                         }
@@ -1138,7 +1790,7 @@ class TrabajadoresController extends \BaseController {
                         $isError = true;
                     }
                     if(isset($dato['fechaNacimiento'])){
-                        if(!Funciones::comprobarFecha($dato['fechaNacimiento'], 'd-m-Y')){
+                        if(!Funciones::comprobarFecha($dato['fechaNacimiento'], 'Y-m-d')){
                            $listaErrores[] = 'El formato de Fecha de Nacimiento "' . $dato['fechaNacimiento'] . '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
                             $isError = true; 
                         }
@@ -1147,7 +1799,7 @@ class TrabajadoresController extends \BaseController {
                         $isError = true;
                     }
                     if(!isset($dato['direccion'])){
-                        $listaErrores[] = 'El campo Direcci? es obligatorio.';
+                        $listaErrores[] = 'El campo Dirección es obligatorio.';
                         $isError = true;
                     }
                     if(isset($dato['comuna'])){
@@ -1185,21 +1837,36 @@ class TrabajadoresController extends \BaseController {
                     }
                     if(isset($dato['seccion'])){
                         if(!in_array($dato['seccion'], $secciones)){
-                            $listaErrores[] = 'La Secci? "' . $dato['seccion'] . '" no existe.';
+                            $listaErrores[] = 'La Sección "' . $dato['seccion'] . '" no existe.';
                             $isError = true;
                         }
                     }else{
-                        $listaErrores[] = 'El campo Secci? es obligatorio.';
+                        $listaErrores[] = 'El campo Sección es obligatorio.';
                         $isError = true;
+                    }
+                    if(isset($dato['centroCosto'])){
+                        if(!in_array($dato['centroCosto'], $centrosCosto)){
+                            $listaErrores[] = 'El Centro de Costo "' . $dato['centroCosto'] . '" no existe.';
+                            $isError = true;
+                        }
+                    }
+                    if(isset($dato['tienda'])){
+                        if(!in_array($dato['tienda'], $tiendas)){
+                            $listaErrores[] = 'La Tienda "' . $dato['tienda'] . '" no existe.';
+                            $isError = true;
+                        }
+                    }
+                    if(isset($dato['gratificacion'])){
+                        if(strtoupper($dato['gratificacion'])!='M' && strtoupper($dato['gratificacion'])!='A'){
+                            $listaErrores[] = 'El código de Gratificación "' . $dato['gratificacion'] . '" no existe.';
+                            $isError = true;
+                        }
                     }
                     if(isset($dato['telefonoFijo'])){
                         if(!is_numeric($dato['telefonoFijo'])){
                             $listaErrores[] =  'El formato de Teléfono Fijo "' . $dato['telefonoFijo'] . '" es incorrecto, recuerda deben ser sólo valores núméricos.';
                             $isError = true;
                         }
-                    }else{
-                        $listaErrores[] = 'El campo Teléfono Fijo es obligatorio.';
-                        $isError = true;
                     }
                     if(isset($dato['celular'])){
                         if(!is_numeric($dato['celular'])){
@@ -1252,8 +1919,8 @@ class TrabajadoresController extends \BaseController {
                         $isError = true;*/
                     }
                     if(isset($dato['fechaIngreso'])){
-                        if(!Funciones::comprobarFecha($dato['fechaIngreso'], 'd-m-Y')){
-                           $listaErrores[] = 'El formato de Fecha de Ingreso "' . $dato['fechaIngreso'] . '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
+                        if(!Funciones::comprobarFecha($dato['fechaIngreso'], 'Y-m-d')){
+                           $listaErrores[] = 'El formato de Fecha de Ingreso "' . $dato['fechaIngreso']. '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
                             $isError = true; 
                         }
                     }else{
@@ -1261,7 +1928,7 @@ class TrabajadoresController extends \BaseController {
                         $isError = true;
                     }
                     if(isset($dato['fechaReconocimiento'])){
-                        if(!Funciones::comprobarFecha($dato['fechaReconocimiento'], 'd-m-Y')){
+                        if(!Funciones::comprobarFecha($dato['fechaReconocimiento'], 'Y-m-d')){
                            $listaErrores[] = 'El formato de Fecha de Reconocimiento "' . $dato['fechaReconocimiento'] . '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
                             $isError = true; 
                         }
@@ -1269,21 +1936,36 @@ class TrabajadoresController extends \BaseController {
                         $listaErrores[] = 'El campo Fecha de Reconocimiento es obligatorio.';
                         $isError = true;
                     }
+                    if(isset($dato['fechaReconocimientoSCesantia'])){
+                        if(!Funciones::comprobarFecha($dato['fechaReconocimientoSCesantia'], 'Y-m-d')){
+                           $listaErrores[] = 'El formato de Fecha de Reconocimiento S. de Cesantía "' . $dato['fechaReconocimientoSCesantia'] . '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
+                            $isError = true; 
+                        }
+                    }else{
+                        /*$listaErrores[] = 'El campo Fecha de Reconocimiento S. de Cesantía es obligatorio.';
+                        $isError = true;*/
+                    }
                     if(isset($dato['tipoContrato'])){
                         if(!in_array($dato['tipoContrato'], $tiposContratos)){
                             $listaErrores[] = 'El código de Tipo de Contrato "' . $dato['tipoContrato'] . '" no existe.';
                             $isError = true;
+                        }else{
+                            if($dato['tipoContrato']>1){
+                                if(isset($dato['fechaVencimiento'])){
+                                    if(!Funciones::comprobarFecha($dato['fechaVencimiento'], 'd-m-Y')){
+                                       $listaErrores[] = 'El formato de Fecha de Vencimiento "' . $dato['fechaVencimiento'] . '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
+                                        $isError = true; 
+                                    }
+                                }else{
+                                    $listaErrores[] = 'El campo Fecha de Vencimiento es obligatorio si el trabajador no posee contrato Indefinido.';
+                                    $isError = true;
+                                }
+                            }
                         }
                     }else{
                         $listaErrores[] = 'El campo Tipo de Contrato es obligatorio.';
                         $isError = true;
-                    }
-                    if(isset($dato['fechaVencimiento'])){
-                        if(!Funciones::comprobarFecha($dato['fechaVencimiento'], 'd-m-Y')){
-                           $listaErrores[] = 'El formato de Fecha de Vencimiento "' . $dato['fechaVencimiento'] . '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
-                            $isError = true; 
-                        }
-                    }
+                    }                    
                     if(isset($dato['fechaFiniquito'])){
                         if(!Funciones::comprobarFecha($dato['fechaFiniquito'], 'd-m-Y')){
                            $listaErrores[] = 'El formato de Fecha de Finiquito "' . $dato['fechaFiniquito'] . '" es incorrecto, recuerda que el formato es "DD-MM-AAAA".';
@@ -1337,9 +2019,6 @@ class TrabajadoresController extends \BaseController {
                                         $listaErrores[] = 'El código de Exceso de Retiro "' . $dato['excesoRetiro'] . '" es incorrecto, recuerda que los códigos son 0 o 1.';
                                         $isError = true;
                                     }
-                                }else{
-                                    $listaErrores[] = 'El campo Exceso de Retiro es obligatorio si el Tipo de Trabajador es "Socio".';
-                                    $isError = true;
                                 }
                             }
                         }
@@ -1562,9 +2241,14 @@ class TrabajadoresController extends \BaseController {
                         }
                     }
                     if($isError){
+                        if($isRut){
+                            $rut = Funciones::formatear_rut($dato['rut']);
+                        }else{
+                            $rut = $dato['rut'];
+                        }
                         $lista[] = array(
                             'fila' => $i,
-                            'trabajador' => $dato['rut'] ? Funciones::formatear_rut($dato['rut']) : '',
+                            'trabajador' => $dato['rut'] ? $rut : '',
                             'errores' => $listaErrores
                         );
                     }
@@ -1588,226 +2272,89 @@ class TrabajadoresController extends \BaseController {
                 $empleado = $trabajador->ficha();
                 if($empleado){
                     if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mes->mes && $empleado->fecha_ingreso<=$finMes){
-                        $liquidacion = Liquidacion::where('trabajador_id', $trabajador->id)->where('mes', $mes->mes)->first();
-                        
-                        $movimientoPersonal = $liquidacion->movimiento_personal;
-                        $detallesAfiliadoVoluntario = $liquidacion->detalleAfiliadoVoluntario;
-                        $detallesAfp = $liquidacion->miDetalleAfp();
-                        $detallesApvc = $liquidacion->miDetalleApvc($lineaAdicional);
-                        $detallesApvi = $liquidacion->miDetalleApvi($lineaAdicional);
-                        $detallesCaja = $liquidacion->miDetalleCaja();
-                        $detallesIpsIslFonasa = $liquidacion->miDetalleIpsIslFonasa();
-                        $detallesSalud = $liquidacion->miDetalleSalud();
-                        $detallesMutual = $liquidacion->miDetalleMutual();
-                        $detallesSeguroCesantia = $liquidacion->miDetalleSeguroCesantia();
-                        $detallesPagadorSubsidio = $liquidacion->miDetallePagadorSubsidio();
-                        
-                        $listaTrabajadores[] = array(
-                            /*'id' => $trabajador->id,
-                            'sid' => $trabajador->sid,*/
-                            
-                            //Datos del Trabajador
-                            'rutSinDigito' => $trabajador->rut_sin_digito(),
-                            'rutDigito' => $trabajador->rut_digito(),
-                            'apellidoPaterno' => $empleado->apellidoPaterno(),
-                            'apellidoMaterno' => $empleado->apellidoMaterno(),
-                            'nombres' => $liquidacion->trabajador_nombres,
-                            'sexo' => strtoupper($empleado->sexo),
-                            'nacionalidad' => $empleado->codigoNacionalidad(),
-                            'tipoPago' => '01',
-                            'periodoDesde' => Funciones::obtenerMes($mes->nombre) . $mes->anio, 
-                            'periodoHasta' => 0, 
-                            'regimenPrevisional' => $liquidacion->regimenPrevisional(), 
-                            'tipoTrabajador' => $empleado->tipoTrabajador(), 
-                            'diasTrabajados' => $liquidacion->dias_trabajados, 
-                            'tipoLinea' => '00', 
-                            'movimientoPersonal' => $liquidacion->movimiento_personal, 
-                            'movimientoPersonalDesde' => $liquidacion->fecha_desde ? $liquidacion->fecha_desde : '',
-                            'movimientoPersonalHasta' => $liquidacion->fecha_hasta ? $liquidacion->fecha_hasta : '',
-                            'tramo' => strtoupper($empleado->tramo_id), 
-                            'cargasSimples' => $liquidacion->cantidad_cargas_simples, 
-                            'cargasMaternales' => $liquidacion->cantidad_cargas_maternales, 
-                            'cargasInvalidas' => $liquidacion->cantidad_cargas_invalidas,
-                            'asignacionFamiliar' => $liquidacion->total_cargas,
-                            'asignacionFamiliarRetroactiva' => $liquidacion->asignacion_retroactiva,
-                            'reintegroCargasFamiliares' => $liquidacion->reintegro_cargas,
-                            'solicitudTrabajadorJoven' => $empleado->solicitudTrabajadorJoven(),
-                            
-                            //Datos de la AFP
-                            'codigoAfp' => $detallesAfp['codigoAfp'],
-                            'rentaImponible' => $detallesAfp['rentaImponible'],
-                            'cotizacionAfp' => $detallesAfp['cotizacionAfp'],
-                            'sis' => $detallesAfp['sis'],
-                            'cuentaAhorroVoluntario' => $detallesAfp['cuentaAhorroVoluntario'],
-                            'rentaSustitutiva' => $detallesAfp['rentaSustitutiva'],
-                            'tasaSustitutiva' => $detallesAfp['tasaSustitutiva'],
-                            'aporteSustitutiva' => $detallesAfp['aporteSustitutiva'],
-                            'numeroPeriodos' => $detallesAfp['numeroPeriodos'],
-                            'periodoDesdeSustit' => $detallesAfp['periodoDesdeSustit'],
-                            'periodoHastaSustit' => $detallesAfp['periodoHastaSustit'],
-                            'puestoTrabajoPesado' => $detallesAfp['puestoTrabajoPesado'],
-                            'porcentajeTrabajoPesado' => $detallesAfp['porcentajeTrabajoPesado'],
-                            'cotizacionTrabajoPesado' => $detallesAfp['cotizacionTrabajoPesado'],
-                            
-                            //Datos Ahorro Previsional Voluntario Individual    
-                            'codigoAPVI' => $detallesApvi['codigo'],
-                            'numeroContratoAPVI' => $detallesApvi['numeroContrato'],
-                            'formaPagoAPVI' => $detallesApvi['formaPago'],
-                            'cotizacionAPVI' => $detallesApvi['cotizacion'],
-                            'cotizacionDepositosConvenidos' => $detallesApvi['cotizacionDepositosConvenidos'],
-                            
-                            //Datos Ahorro Previsional Voluntario Colectivo
-                            'codigoAPVC' => $detallesApvc['codigo'],
-                            'numeroContratoAPVC' => $detallesApvc['numeroContrato'],
-                            'formaPagoAPVC' => $detallesApvc['formaPago'],
-                            'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajador'],
-                            'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleador'],
-                            
-                            
-                            //Datos Afiliado Voluntario
-                            'rutAfiliadoVoluntario' => '',
-                            'dvAfiliadoVoluntario' => '',
-                            'apellidoPaternoAfiliadoVoluntario' => '',
-                            'apellidoMaternoAfiliadoVoluntario' => '',
-                            'nombresAfiliadoVoluntario' => '',
-                            'codigoMovimientoPersonalAfiliadoVoluntario' => '0',
-                            'fechaDesdeAfiliadoVoluntario' => '',
-                            'fechaHastaAfiliadoVoluntario' => '',
-                            'codigoAfpAfiliadoVoluntario' => '',
-                            'montoCapitalizacionVoluntaria' => 0,
-                            'montoAhorroVoluntario' => 0,
-                            'numeroPeriodosCotizacion' => 0,
-                            
-                            //Datos IPS-ISL-FONASA
-                            'codigoExCaja' => $detallesIpsIslFonasa['codigoExCaja'],
-                            'tasaCotizacionExCaja' => $detallesIpsIslFonasa['tasa'],
-                            'rentaImponibleIps' => $detallesIpsIslFonasa['rentaImponible'],
-                            'cotizacionObligatoriaIps' => $detallesIpsIslFonasa['cotizacionObligatoria'],
-                            'rentaImponibleDesahucio' => $detallesIpsIslFonasa['rentaImponibleDesahucio'],
-                            'codigoExCajaDesahucio' => $detallesIpsIslFonasa['codigoExCajaDesahucio'],
-                            'tasaDesahucio' => $detallesIpsIslFonasa['tasaDesahucio'],
-                            'cotizacionDesahucio' => $detallesIpsIslFonasa['cotizacionDesahucio'],
-                            'cotizacionFonasa' => $detallesIpsIslFonasa['cotizacionFonasa'],
-                            'cotizacionIsl' => $detallesIpsIslFonasa['cotizacionIsl'],
-                            'bonificacion15386' => $detallesIpsIslFonasa['bonificacion'],
-                            'descuentoCargasIsl' => $detallesIpsIslFonasa['descuentoCargasIsl'],
-                            'bonosGobierno' => $detallesIpsIslFonasa['bonosGobierno'],                            
-                            
-                            //Datos Salud
-                            'codigoInstitucionSalud' => $detallesSalud['codigoSalud'],
-                            'numeroFun' => '',
-                            'rentaImponibleIsapre' => $detallesSalud['rentaImponible'],
-                            'monedaPlanIsapre' => $detallesSalud['moneda'],
-                            'cotizacionPactada' => $detallesSalud['cotizacionPactada'],
-                            'cotizacionObligatoria' => $detallesSalud['cotizacionObligatoria'],
-                            'cotizacionAdicional' => $detallesSalud['cotizacionAdicional'],
-                            'montoGarantiaExplicita' => $detallesSalud['ges'],
-                            
-                            //Datos Caja de Compensación
-                            'codigoCcaf' => $detallesCaja['codigoCaja'],
-                            'rentaImponibleCcaf' => $detallesCaja['rentaImponible'],
-                            'creditosPersonalesCcaf' => $detallesCaja['creditosPersonales'],
-                            'descuentoDentalCcaf' => $detallesCaja['descuentoDental'],
-                            'descuentosLeasing' => $detallesCaja['descuentosLeasing'],
-                            'descuentosSeguroCcaf' => $detallesCaja['descuentosSeguro'],
-                            'otrosDescuentosCcaf' => $detallesCaja['otrosDescuentos'],
-                            'cotizacionCcafNoAfiliadosIsapre' => $detallesCaja['cotizacion'],
-                            'descuentoCargasFamiliaresCcaf' => $detallesCaja['descuentoCargas'],
-                            'otrosDescuentosCcaf1' => $detallesCaja['otrosDescuentos1'],
-                            'otrosDescuentosCcaf2' => $detallesCaja['otrosDescuentos2'],
-                            'bonosGobiernoSalud' => $detallesCaja['bonosGobierno'],
-                            'codigoSucursalSalud' => $detallesCaja['codigoSucursal'],
-                            
-                            //Datos Mutualidad
-                            'codigoMutualidad' => $detallesMutual['codigoMutual'],
-                            'rentaImponibleMutual' => $detallesMutual['rentaImponible'],
-                            'cotizacionAccidenteTrabajo' => $detallesMutual['cotizacionAccidentes'],
-                            'sucursalPagoMutual' => $detallesMutual['codigoSucursal'],
-                            
-                            //Datos Administradora de Seguro de Cesantía
-                            'rentaImponibleSeguroCesantia' => $detallesSeguroCesantia['rentaImponible'],
-                            'aporteTrabajadorSeguroCesantia' => $detallesSeguroCesantia['aporteTrabajador'],
-                            'aporteEmpleadorSeguroCesantia' => $detallesSeguroCesantia['aporteEmpleador'],
-                            
-                            //Datos Pagador de Subsidios
-                            'rutPagadoraSubsidio' => $detallesPagadorSubsidio['rut'],
-                            'dvPagadoraSubsidio' => $detallesPagadorSubsidio['digito'],
-                            
-                            //Otros Datos de la Empresa
-                            'centroCosto' => $liquidacion->centro_costo_id                  
-                            
-                            //'liquidacion' => $liquidacion                           
-                        );
-                        //$lineaAdicional
-                        if(false){
-                            if($liquidacion->movimiento_personal==3){
-                                $licencia = $trabajador->fechasLicencia();
-                                $fechaDesdeMovimiento = $licencia['desde'];
-                                $fechaHastaMovimiento = $licencia['hasta'];
-                            }else{
-                                $fechaDesdeMovimiento = '';
-                                $fechaHastaMovimiento = '';
+                        if($trabajador->id!=99){
+                            $liquidacion = Liquidacion::where('trabajador_id', $trabajador->id)->where('mes', $mes->mes)->first();
+                            $lineaAdicional = array();
+                            $licenciasAdicional = false;
+                            $movimientoPersonal = $liquidacion->movimiento_personal;
+                            $detallesAfiliadoVoluntario = $liquidacion->detalleAfiliadoVoluntario;
+                            $detallesAfp = $liquidacion->miDetalleAfp();
+                            $detallesApvc = $liquidacion->miDetalleApvc($lineaAdicional);
+                            $detallesApvi = $liquidacion->miDetalleApvi($lineaAdicional);
+                            $detallesCaja = $liquidacion->miDetalleCaja();
+                            $detallesIpsIslFonasa = $liquidacion->miDetalleIpsIslFonasa();
+                            $detallesSalud = $liquidacion->miDetalleSalud();
+                            $detallesMutual = $liquidacion->miDetalleMutual();
+                            $detallesSeguroCesantia = $liquidacion->miDetalleSeguroCesantia();
+                            $detallesPagadorSubsidio = $liquidacion->miDetallePagadorSubsidio();
+                            $dias = $liquidacion->dias_trabajados;
+                            if($liquidacion->diasTotales()>30){
+                                $dias = ($dias - 1);
                             }
+                            //$dias = $liquidacion->diasTotales();
+                            
                             $listaTrabajadores[] = array(
-
+                                /*'id' => $trabajador->id,
+                                'sid' => $trabajador->sid,*/
+                                
                                 //Datos del Trabajador
-                                'rutSinDigito' => '',
-                                'rutDigito' => '',
-                                'apellidoPaterno' => '',
-                                'apellidoMaterno' => '',
-                                'nombres' => '',
-                                'sexo' => '',
-                                'nacionalidad' => '',
-                                'tipoPago' => '',
-                                'periodoDesde' => '', 
-                                'periodoHasta' => '', 
-                                'regimenPrevisional' => '', 
-                                'tipoTrabajador' => '', 
-                                'diasTrabajados' => '', 
-                                'tipoLinea' => '01', 
-                                'movimientoPersonal' => '', 
-                                'movimientoPersonalDesde' => $fechaDesdeMovimiento,
-                                'movimientoPersonalHasta' => $fechaHastaMovimiento,
-                                'tramo' => '', 
-                                'cargasSimples' => '', 
-                                'cargasMaternales' => '', 
-                                'cargasInvalidas' => '',
-                                'asignacionFamiliar' => '',
-                                'asignacionFamiliarRetroactiva' => '',
-                                'reintegroCargasFamiliares' => '',
-                                'solicitudTrabajadorJoven' => '',
-
+                                'rutSinDigito' => $trabajador->rut_sin_digito(),
+                                'rutDigito' => $trabajador->rut_digito(),
+                                'apellidoPaterno' => $empleado->apellidoPaterno(),
+                                'apellidoMaterno' => $empleado->apellidoMaterno(),
+                                'nombres' => $liquidacion->trabajador_nombres,
+                                'sexo' => strtoupper($empleado->sexo),
+                                'nacionalidad' => $empleado->codigoNacionalidad(),
+                                'tipoPago' => '01',
+                                'periodoDesde' => Funciones::obtenerMes($mes->nombre) . $mes->anio, 
+                                'periodoHasta' => 0, 
+                                'regimenPrevisional' => $liquidacion->regimenPrevisional(), 
+                                'tipoTrabajador' => $empleado->tipoTrabajador(), 
+                                'diasTrabajados' => $dias, 
+                                'tipoLinea' => '00', 
+                                'movimientoPersonal' => $liquidacion->movimiento_personal, 
+                                'movimientoPersonalDesde' => $liquidacion->movimientoPersonal()['desde'],
+                                'movimientoPersonalHasta' => $liquidacion->movimientoPersonal()['hasta'], 
+                                'tramo' => $empleado->tramo_id ? strtoupper($empleado->tramo_id) : 'D', 
+                                'cargasSimples' => $liquidacion->cantidad_cargas_simples, 
+                                'cargasMaternales' => $liquidacion->cantidad_cargas_maternales, 
+                                'cargasInvalidas' => $liquidacion->cantidad_cargas_invalidas,
+                                'asignacionFamiliar' => $liquidacion->total_cargas,
+                                'asignacionFamiliarRetroactiva' => $liquidacion->asignacion_retroactiva,
+                                'reintegroCargasFamiliares' => $liquidacion->reintegro_cargas,
+                                'solicitudTrabajadorJoven' => $trabajador->solicitudTrabajadorJoven(),
+                                
                                 //Datos de la AFP
-                                'codigoAfp' => '',
-                                'rentaImponible' => '',
-                                'cotizacionAfp' => '',
-                                'sis' => '',
-                                'cuentaAhorroVoluntario' => '',
-                                'rentaSustitutiva' => '',
-                                'tasaSustitutiva' => '',
-                                'aporteSustitutiva' => '',
-                                'numeroPeriodos' => '',
-                                'periodoDesdeSustit' => '',
-                                'periodoHastaSustit' => '',
-                                'puestoTrabajoPesado' => '',
-                                'porcentajeTrabajoPesado' => '',
-                                'cotizacionTrabajoPesado' => '',
-
+                                'codigoAfp' => $detallesAfp['codigoAfp'] ? $detallesAfp['codigoAfp'] : $detallesSeguroCesantia['codigo'],
+                                'rentaImponible' => $detallesAfp['rentaImponible'],
+                                'cotizacionAfp' => $detallesAfp['cotizacionAfp'],
+                                'sis' => $detallesAfp['sis'],
+                                'cuentaAhorroVoluntario' => $detallesAfp['cuentaAhorroVoluntario'],
+                                'rentaSustitutiva' => $detallesAfp['rentaSustitutiva'],
+                                'tasaSustitutiva' => $detallesAfp['tasaSustitutiva'],
+                                'aporteSustitutiva' => $detallesAfp['aporteSustitutiva'],
+                                'numeroPeriodos' => $detallesAfp['numeroPeriodos'],
+                                'periodoDesdeSustit' => $detallesAfp['periodoDesdeSustit'],
+                                'periodoHastaSustit' => $detallesAfp['periodoHastaSustit'],
+                                'puestoTrabajoPesado' => $detallesAfp['puestoTrabajoPesado'],
+                                'porcentajeTrabajoPesado' => $detallesAfp['porcentajeTrabajoPesado'],
+                                'cotizacionTrabajoPesado' => $detallesAfp['cotizacionTrabajoPesado'],
+                                
                                 //Datos Ahorro Previsional Voluntario Individual    
-                                'codigoAPVI' => '',
-                                'numeroContratoAPVI' => '',
-                                'formaPagoAPVI' => '',
-                                'cotizacionAPVI' => '',
-                                'cotizacionDepositosConvenidos' => '',
-
+                                'codigoAPVI' => $detallesApvi['codigo'],
+                                'numeroContratoAPVI' => $detallesApvi['numeroContrato'],
+                                'formaPagoAPVI' => $detallesApvi['formaPago'],
+                                'cotizacionAPVI' => $detallesApvi['cotizacion'],
+                                'cotizacionDepositosConvenidos' => $detallesApvi['cotizacionDepositosConvenidos'],
+                                
                                 //Datos Ahorro Previsional Voluntario Colectivo
-                                'codigoAPVC' => '',
-                                'numeroContratoAPVC' => '',
-                                'formaPagoAPVC' => '',
-                                'cotizacionTrabajadorAPVC' => '',
-                                'cotizacionEmpleadorAPVC' => '',
-
-
+                                'codigoAPVC' => $detallesApvc['codigo'],
+                                'numeroContratoAPVC' => $detallesApvc['numeroContrato'],
+                                'formaPagoAPVC' => $detallesApvc['formaPago'],
+                                'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajador'],
+                                'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleador'],
+                                
+                                
                                 //Datos Afiliado Voluntario
                                 'rutAfiliadoVoluntario' => '',
                                 'dvAfiliadoVoluntario' => '',
@@ -1818,68 +2365,347 @@ class TrabajadoresController extends \BaseController {
                                 'fechaDesdeAfiliadoVoluntario' => '',
                                 'fechaHastaAfiliadoVoluntario' => '',
                                 'codigoAfpAfiliadoVoluntario' => '',
-                                'montoCapitalizacionVoluntaria' => '',
-                                'montoAhorroVoluntario' => '',
-                                'numeroPeriodosCotizacion' => '',
-
+                                'montoCapitalizacionVoluntaria' => 0,
+                                'montoAhorroVoluntario' => 0,
+                                'numeroPeriodosCotizacion' => 0,
+                                
                                 //Datos IPS-ISL-FONASA
-                                'codigoExCaja' => '',
-                                'tasaCotizacionExCaja' => '',
-                                'rentaImponibleIps' => '',
-                                'cotizacionObligatoriaIps' => '',
-                                'rentaImponibleDesahucio' => '',
-                                'codigoExCajaDesahucio' => '',
-                                'tasaDesahucio' => '',
-                                'cotizacionDesahucio' => '',
-                                'cotizacionFonasa' => '',
-                                'cotizacionIsl' => '',
-                                'bonificacion15386' => '',
-                                'descuentoCargasIsl' => '',
-                                'bonosGobierno' => '',                          
-
+                                'codigoExCaja' => $detallesIpsIslFonasa['codigoExCaja'],
+                                'tasaCotizacionExCaja' => $detallesIpsIslFonasa['tasa'],
+                                'rentaImponibleIps' => $detallesIpsIslFonasa['rentaImponible'],
+                                'cotizacionObligatoriaIps' => $detallesIpsIslFonasa['cotizacionObligatoria'],
+                                'rentaImponibleDesahucio' => $detallesIpsIslFonasa['rentaImponibleDesahucio'],
+                                'codigoExCajaDesahucio' => $detallesIpsIslFonasa['codigoExCajaDesahucio'],
+                                'tasaDesahucio' => $detallesIpsIslFonasa['tasaDesahucio'],
+                                'cotizacionDesahucio' => $detallesIpsIslFonasa['cotizacionDesahucio'],
+                                'cotizacionFonasa' => $detallesIpsIslFonasa['cotizacionFonasa'],
+                                'cotizacionIsl' => $detallesIpsIslFonasa['cotizacionIsl'],
+                                'bonificacion15386' => $detallesIpsIslFonasa['bonificacion'],
+                                'descuentoCargasIsl' => $detallesIpsIslFonasa['descuentoCargasIsl'],
+                                'bonosGobierno' => $detallesIpsIslFonasa['bonosGobierno'],                            
+                                
                                 //Datos Salud
-                                'codigoInstitucionSalud' => '',
+                                'codigoInstitucionSalud' => $detallesSalud['codigoSalud'],
                                 'numeroFun' => '',
-                                'rentaImponibleIsapre' => '',
-                                'monedaPlanIsapre' => '',
-                                'cotizacionPactada' => '',
-                                'cotizacionObligatoria' => '',
-                                'cotizacionAdicional' => '',
-                                'montoGarantiaExplicita' => '',
-
+                                'rentaImponibleIsapre' => $detallesSalud['rentaImponible'],
+                                'monedaPlanIsapre' => $detallesSalud['moneda'],
+                                'cotizacionPactada' => $detallesSalud['cotizacionPactada'],
+                                'cotizacionObligatoria' => $detallesSalud['cotizacionObligatoria'],
+                                'cotizacionAdicional' => $detallesSalud['cotizacionAdicional'],
+                                'montoGarantiaExplicita' => $detallesSalud['ges'],
+                                
                                 //Datos Caja de Compensación
-                                'codigoCcaf' => '',
-                                'rentaImponibleCcaf' => '',
-                                'creditosPersonalesCcaf' => '',
-                                'descuentoDentalCcaf' => '',
-                                'descuentosLeasing' => '',
-                                'descuentosSeguroCcaf' => '',
-                                'otrosDescuentosCcaf' => '',
-                                'cotizacionCcafNoAfiliadosIsapre' => '',
-                                'descuentoCargasFamiliaresCcaf' => '',
-                                'otrosDescuentosCcaf1' => '',
-                                'otrosDescuentosCcaf2' => '',
-                                'bonosGobierno' => '',
-                                'codigoSucursal' => '',
-
+                                'codigoCcaf' => $detallesCaja['codigoCaja'],
+                                'rentaImponibleCcaf' => $detallesCaja['rentaImponible'],
+                                'creditosPersonalesCcaf' => $detallesCaja['creditosPersonales'],
+                                'descuentoDentalCcaf' => $detallesCaja['descuentoDental'],
+                                'descuentosLeasing' => $detallesCaja['descuentosLeasing'],
+                                'descuentosSeguroCcaf' => $detallesCaja['descuentosSeguro'],
+                                'otrosDescuentosCcaf' => $detallesCaja['otrosDescuentos'],
+                                'cotizacionCcafNoAfiliadosIsapre' => $detallesCaja['cotizacion'],
+                                'descuentoCargasFamiliaresCcaf' => $detallesCaja['descuentoCargas'],
+                                'otrosDescuentosCcaf1' => $detallesCaja['otrosDescuentos1'],
+                                'otrosDescuentosCcaf2' => $detallesCaja['otrosDescuentos2'],
+                                'bonosGobiernoSalud' => $detallesCaja['bonosGobierno'],
+                                'codigoSucursalSalud' => $detallesCaja['codigoSucursal'],
+                                
                                 //Datos Mutualidad
-                                'codigoMutualidad' => '',
-                                'rentaImponibleMutual' => '',
-                                'cotizacionAccidenteTrabajo' => '',
-                                'sucursalPagoMutual' => '',
-
+                                'codigoMutualidad' => $detallesMutual['codigoMutual'],
+                                'rentaImponibleMutual' => $detallesMutual['rentaImponible'],
+                                'cotizacionAccidenteTrabajo' => $detallesMutual['cotizacionAccidentes'],
+                                'sucursalPagoMutual' => $detallesMutual['codigoSucursal'],
+                                
                                 //Datos Administradora de Seguro de Cesantía
-                                'rentaImponibleSeguroCesantia' => '',
-                                'aporteTrabajadorSeguroCesantia' => '',
-                                'aporteEmpleadorSeguroCesantia' => '',
-
+                                'rentaImponibleSeguroCesantia' => $detallesSeguroCesantia['rentaImponible'],
+                                'aporteTrabajadorSeguroCesantia' => $detallesSeguroCesantia['aporteTrabajador'],
+                                'aporteEmpleadorSeguroCesantia' => $detallesSeguroCesantia['aporteEmpleador'],
+                                
                                 //Datos Pagador de Subsidios
-                                'rutPagadoraSubsidio' => '',
-                                'dvPagadoraSubsidio' => '',
-
+                                'rutPagadoraSubsidio' => $detallesPagadorSubsidio['rut'],
+                                'dvPagadoraSubsidio' => $detallesPagadorSubsidio['digito'],
+                                
                                 //Otros Datos de la Empresa
-                                'centroCosto' => ''                  
+                                'centroCosto' => $liquidacion->centroCosto ? $liquidacion->centroCosto->codigo : ''              
+                                
+                                //'liquidacion' => $liquidacion                           
                             );
+                            //$lineaAdicional                        
+                            if($liquidacion->movimiento_personal==3){
+                                $licenciasAdicional = $trabajador->licenciasAdicional();
+                            }
+                            
+                            if($licenciasAdicional){
+                                foreach($licenciasAdicional as $licencia){
+                                    $listaTrabajadores[] = array(
+        
+                                        //Datos del Trabajador
+                                        'rutSinDigito' => $trabajador->rut_sin_digito(),
+                                        'rutDigito' => $trabajador->rut_digito(),
+                                        'apellidoPaterno' => $empleado->apellidoPaterno(),
+                                        'apellidoMaterno' => $empleado->apellidoMaterno(),
+                                        'nombres' => $liquidacion->trabajador_nombres,
+                                        'sexo' => strtoupper($empleado->sexo),
+                                        'nacionalidad' => $empleado->codigoNacionalidad(),
+                                        'tipoPago' => '01',
+                                        'periodoDesde' => Funciones::obtenerMes($mes->nombre) . $mes->anio, 
+                                        'periodoHasta' => 0, 
+                                        'regimenPrevisional' => $liquidacion->regimenPrevisional(), 
+                                        'tipoTrabajador' => $empleado->tipoTrabajador(), 
+                                        'diasTrabajados' => $dias,
+                                        'tipoLinea' => '01', 
+                                        'movimientoPersonal' => $liquidacion->movimiento_personal, 
+                                        'movimientoPersonalDesde' => $licencia['desde'],
+                                        'movimientoPersonalHasta' => $licencia['hasta'], 
+                                        'tramo' => $empleado->tramo_id ? strtoupper($empleado->tramo_id) : 'D', 
+                                        'cargasSimples' => $liquidacion->cantidad_cargas_simples, 
+                                        'cargasMaternales' => $liquidacion->cantidad_cargas_maternales, 
+                                        'cargasInvalidas' => $liquidacion->cantidad_cargas_invalidas,
+                                        'asignacionFamiliar' => $liquidacion->total_cargas,
+                                        'asignacionFamiliarRetroactiva' => $liquidacion->asignacion_retroactiva,
+                                        'reintegroCargasFamiliares' => $liquidacion->reintegro_cargas,
+                                        'solicitudTrabajadorJoven' => $trabajador->solicitudTrabajadorJoven(),
+                                        
+                                        //Datos de la AFP
+                                        'codigoAfp' => $detallesAfp['codigoAfp'] ? $detallesAfp['codigoAfp'] : $detallesSeguroCesantia['codigo'],
+                                        'rentaImponible' => $detallesAfp['rentaImponible'],
+                                        'cotizacionAfp' => $detallesAfp['cotizacionAfp'],
+                                        'sis' => $detallesAfp['sis'],
+                                        'cuentaAhorroVoluntario' => $detallesAfp['cuentaAhorroVoluntario'],
+                                        'rentaSustitutiva' => $detallesAfp['rentaSustitutiva'],
+                                        'tasaSustitutiva' => $detallesAfp['tasaSustitutiva'],
+                                        'aporteSustitutiva' => $detallesAfp['aporteSustitutiva'],
+                                        'numeroPeriodos' => $detallesAfp['numeroPeriodos'],
+                                        'periodoDesdeSustit' => $detallesAfp['periodoDesdeSustit'],
+                                        'periodoHastaSustit' => $detallesAfp['periodoHastaSustit'],
+                                        'puestoTrabajoPesado' => $detallesAfp['puestoTrabajoPesado'],
+                                        'porcentajeTrabajoPesado' => $detallesAfp['porcentajeTrabajoPesado'],
+                                        'cotizacionTrabajoPesado' => $detallesAfp['cotizacionTrabajoPesado'],
+                                        
+                                        //Datos Ahorro Previsional Voluntario Individual    
+                                        'codigoAPVI' => $detallesApvi['codigo'],
+                                        'numeroContratoAPVI' => $detallesApvi['numeroContrato'],
+                                        'formaPagoAPVI' => $detallesApvi['formaPago'],
+                                        'cotizacionAPVI' => $detallesApvi['cotizacion'],
+                                        'cotizacionDepositosConvenidos' => $detallesApvi['cotizacionDepositosConvenidos'],
+                                        
+                                        //Datos Ahorro Previsional Voluntario Colectivo
+                                        'codigoAPVC' => $detallesApvc['codigo'],
+                                        'numeroContratoAPVC' => $detallesApvc['numeroContrato'],
+                                        'formaPagoAPVC' => $detallesApvc['formaPago'],
+                                        'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajador'],
+                                        'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleador'],
+                                        
+                                        
+                                        //Datos Afiliado Voluntario
+                                        'rutAfiliadoVoluntario' => '',
+                                        'dvAfiliadoVoluntario' => '',
+                                        'apellidoPaternoAfiliadoVoluntario' => '',
+                                        'apellidoMaternoAfiliadoVoluntario' => '',
+                                        'nombresAfiliadoVoluntario' => '',
+                                        'codigoMovimientoPersonalAfiliadoVoluntario' => '0',
+                                        'fechaDesdeAfiliadoVoluntario' => '',
+                                        'fechaHastaAfiliadoVoluntario' => '',
+                                        'codigoAfpAfiliadoVoluntario' => '',
+                                        'montoCapitalizacionVoluntaria' => 0,
+                                        'montoAhorroVoluntario' => 0,
+                                        'numeroPeriodosCotizacion' => 0,
+                                        
+                                        //Datos IPS-ISL-FONASA
+                                        'codigoExCaja' => $detallesIpsIslFonasa['codigoExCaja'],
+                                        'tasaCotizacionExCaja' => $detallesIpsIslFonasa['tasa'],
+                                        'rentaImponibleIps' => $detallesIpsIslFonasa['rentaImponible'],
+                                        'cotizacionObligatoriaIps' => $detallesIpsIslFonasa['cotizacionObligatoria'],
+                                        'rentaImponibleDesahucio' => $detallesIpsIslFonasa['rentaImponibleDesahucio'],
+                                        'codigoExCajaDesahucio' => $detallesIpsIslFonasa['codigoExCajaDesahucio'],
+                                        'tasaDesahucio' => $detallesIpsIslFonasa['tasaDesahucio'],
+                                        'cotizacionDesahucio' => $detallesIpsIslFonasa['cotizacionDesahucio'],
+                                        'cotizacionFonasa' => $detallesIpsIslFonasa['cotizacionFonasa'],
+                                        'cotizacionIsl' => $detallesIpsIslFonasa['cotizacionIsl'],
+                                        'bonificacion15386' => $detallesIpsIslFonasa['bonificacion'],
+                                        'descuentoCargasIsl' => $detallesIpsIslFonasa['descuentoCargasIsl'],
+                                        'bonosGobierno' => $detallesIpsIslFonasa['bonosGobierno'],                            
+                                        
+                                        //Datos Salud
+                                        'codigoInstitucionSalud' => $detallesSalud['codigoSalud'],
+                                        'numeroFun' => '',
+                                        'rentaImponibleIsapre' => $detallesSalud['rentaImponible'],
+                                        'monedaPlanIsapre' => $detallesSalud['moneda'],
+                                        'cotizacionPactada' => $detallesSalud['cotizacionPactada'],
+                                        'cotizacionObligatoria' => $detallesSalud['cotizacionObligatoria'],
+                                        'cotizacionAdicional' => $detallesSalud['cotizacionAdicional'],
+                                        'montoGarantiaExplicita' => $detallesSalud['ges'],
+                                        
+                                        //Datos Caja de Compensación
+                                        'codigoCcaf' => $detallesCaja['codigoCaja'],
+                                        'rentaImponibleCcaf' => $detallesCaja['rentaImponible'],
+                                        'creditosPersonalesCcaf' => $detallesCaja['creditosPersonales'],
+                                        'descuentoDentalCcaf' => $detallesCaja['descuentoDental'],
+                                        'descuentosLeasing' => $detallesCaja['descuentosLeasing'],
+                                        'descuentosSeguroCcaf' => $detallesCaja['descuentosSeguro'],
+                                        'otrosDescuentosCcaf' => $detallesCaja['otrosDescuentos'],
+                                        'cotizacionCcafNoAfiliadosIsapre' => $detallesCaja['cotizacion'],
+                                        'descuentoCargasFamiliaresCcaf' => $detallesCaja['descuentoCargas'],
+                                        'otrosDescuentosCcaf1' => $detallesCaja['otrosDescuentos1'],
+                                        'otrosDescuentosCcaf2' => $detallesCaja['otrosDescuentos2'],
+                                        'bonosGobiernoSalud' => $detallesCaja['bonosGobierno'],
+                                        'codigoSucursalSalud' => $detallesCaja['codigoSucursal'],
+                                        
+                                        //Datos Mutualidad
+                                        'codigoMutualidad' => $detallesMutual['codigoMutual'],
+                                        'rentaImponibleMutual' => $detallesMutual['rentaImponible'],
+                                        'cotizacionAccidenteTrabajo' => $detallesMutual['cotizacionAccidentes'],
+                                        'sucursalPagoMutual' => $detallesMutual['codigoSucursal'],
+                                        
+                                        //Datos Administradora de Seguro de Cesantía
+                                        'rentaImponibleSeguroCesantia' => '',
+                                        'aporteTrabajadorSeguroCesantia' => '',
+                                        'aporteEmpleadorSeguroCesantia' => '',
+                                        
+                                        //Datos Pagador de Subsidios
+                                        'rutPagadoraSubsidio' => $detallesPagadorSubsidio['rut'],
+                                        'dvPagadoraSubsidio' => $detallesPagadorSubsidio['digito'],
+                                        
+                                        //Otros Datos de la Empresa
+                                        'centroCosto' => $liquidacion->centroCosto ? $liquidacion->centroCosto->codigo : ''                 
+                                    );
+                                }
+                            }
+                            if(count($lineaAdicional)){
+                                foreach($lineaAdicional as $linea){
+                                    $listaTrabajadores[] = array(
+        
+                                        //Datos del Trabajador
+                                        'rutSinDigito' => $trabajador->rut_sin_digito(),
+                                        'rutDigito' => $trabajador->rut_digito(),
+                                        'apellidoPaterno' => $empleado->apellidoPaterno(),
+                                        'apellidoMaterno' => $empleado->apellidoMaterno(),
+                                        'nombres' => $liquidacion->trabajador_nombres,
+                                        'sexo' => strtoupper($empleado->sexo),
+                                        'nacionalidad' => $empleado->codigoNacionalidad(),
+                                        'tipoPago' => '01',
+                                        'periodoDesde' => Funciones::obtenerMes($mes->nombre) . $mes->anio, 
+                                        'periodoHasta' => 0, 
+                                        'regimenPrevisional' => $liquidacion->regimenPrevisional(), 
+                                        'tipoTrabajador' => $empleado->tipoTrabajador(), 
+                                        'diasTrabajados' => $dias,
+                                        'tipoLinea' => '01', 
+                                        'movimientoPersonal' => $liquidacion->movimiento_personal, 
+                                        'movimientoPersonalDesde' => '',
+                                        'movimientoPersonalHasta' => '', 
+                                        'tramo' => $empleado->tramo_id ? strtoupper($empleado->tramo_id) : 'D', 
+                                        'cargasSimples' => $liquidacion->cantidad_cargas_simples, 
+                                        'cargasMaternales' => $liquidacion->cantidad_cargas_maternales, 
+                                        'cargasInvalidas' => $liquidacion->cantidad_cargas_invalidas,
+                                        'asignacionFamiliar' => $liquidacion->total_cargas,
+                                        'asignacionFamiliarRetroactiva' => $liquidacion->asignacion_retroactiva,
+                                        'reintegroCargasFamiliares' => $liquidacion->reintegro_cargas,
+                                        'solicitudTrabajadorJoven' => $trabajador->solicitudTrabajadorJoven(),
+                                        
+                                        //Datos de la AFP
+                                        'codigoAfp' => $detallesAfp['codigoAfp'] ? $detallesAfp['codigoAfp'] : $detallesSeguroCesantia['codigo'],
+                                        'rentaImponible' => $detallesAfp['rentaImponible'],
+                                        'cotizacionAfp' => $detallesAfp['cotizacionAfp'],
+                                        'sis' => $detallesAfp['sis'],
+                                        'cuentaAhorroVoluntario' => $detallesAfp['cuentaAhorroVoluntario'],
+                                        'rentaSustitutiva' => $detallesAfp['rentaSustitutiva'],
+                                        'tasaSustitutiva' => $detallesAfp['tasaSustitutiva'],
+                                        'aporteSustitutiva' => $detallesAfp['aporteSustitutiva'],
+                                        'numeroPeriodos' => $detallesAfp['numeroPeriodos'],
+                                        'periodoDesdeSustit' => $detallesAfp['periodoDesdeSustit'],
+                                        'periodoHastaSustit' => $detallesAfp['periodoHastaSustit'],
+                                        'puestoTrabajoPesado' => $detallesAfp['puestoTrabajoPesado'],
+                                        'porcentajeTrabajoPesado' => $detallesAfp['porcentajeTrabajoPesado'],
+                                        'cotizacionTrabajoPesado' => $detallesAfp['cotizacionTrabajoPesado'],
+                                        
+                                        //Datos Ahorro Previsional Voluntario Individual    
+                                        'codigoAPVI' => $linea['codigo'],
+                                        'numeroContratoAPVI' => $linea['numeroContrato'],
+                                        'formaPagoAPVI' => $linea['formaPago'],
+                                        'cotizacionAPVI' => $linea['cotizacion'],
+                                        'cotizacionDepositosConvenidos' => $linea['cotizacionDepositosConvenidos'],
+                                        
+                                        //Datos Ahorro Previsional Voluntario Colectivo
+                                        'codigoAPVC' => $detallesApvc['codigo'],
+                                        'numeroContratoAPVC' => $detallesApvc['numeroContrato'],
+                                        'formaPagoAPVC' => $detallesApvc['formaPago'],
+                                        'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajador'],
+                                        'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleador'],
+                                        
+                                        
+                                        //Datos Afiliado Voluntario
+                                        'rutAfiliadoVoluntario' => '',
+                                        'dvAfiliadoVoluntario' => '',
+                                        'apellidoPaternoAfiliadoVoluntario' => '',
+                                        'apellidoMaternoAfiliadoVoluntario' => '',
+                                        'nombresAfiliadoVoluntario' => '',
+                                        'codigoMovimientoPersonalAfiliadoVoluntario' => '0',
+                                        'fechaDesdeAfiliadoVoluntario' => '',
+                                        'fechaHastaAfiliadoVoluntario' => '',
+                                        'codigoAfpAfiliadoVoluntario' => '',
+                                        'montoCapitalizacionVoluntaria' => 0,
+                                        'montoAhorroVoluntario' => 0,
+                                        'numeroPeriodosCotizacion' => 0,
+                                        
+                                        //Datos IPS-ISL-FONASA
+                                        'codigoExCaja' => $detallesIpsIslFonasa['codigoExCaja'],
+                                        'tasaCotizacionExCaja' => $detallesIpsIslFonasa['tasa'],
+                                        'rentaImponibleIps' => $detallesIpsIslFonasa['rentaImponible'],
+                                        'cotizacionObligatoriaIps' => $detallesIpsIslFonasa['cotizacionObligatoria'],
+                                        'rentaImponibleDesahucio' => $detallesIpsIslFonasa['rentaImponibleDesahucio'],
+                                        'codigoExCajaDesahucio' => $detallesIpsIslFonasa['codigoExCajaDesahucio'],
+                                        'tasaDesahucio' => $detallesIpsIslFonasa['tasaDesahucio'],
+                                        'cotizacionDesahucio' => $detallesIpsIslFonasa['cotizacionDesahucio'],
+                                        'cotizacionFonasa' => $detallesIpsIslFonasa['cotizacionFonasa'],
+                                        'cotizacionIsl' => $detallesIpsIslFonasa['cotizacionIsl'],
+                                        'bonificacion15386' => $detallesIpsIslFonasa['bonificacion'],
+                                        'descuentoCargasIsl' => $detallesIpsIslFonasa['descuentoCargasIsl'],
+                                        'bonosGobierno' => $detallesIpsIslFonasa['bonosGobierno'],                            
+                                        
+                                        //Datos Salud
+                                        'codigoInstitucionSalud' => $detallesSalud['codigoSalud'],
+                                        'numeroFun' => '',
+                                        'rentaImponibleIsapre' => $detallesSalud['rentaImponible'],
+                                        'monedaPlanIsapre' => $detallesSalud['moneda'],
+                                        'cotizacionPactada' => $detallesSalud['cotizacionPactada'],
+                                        'cotizacionObligatoria' => $detallesSalud['cotizacionObligatoria'],
+                                        'cotizacionAdicional' => $detallesSalud['cotizacionAdicional'],
+                                        'montoGarantiaExplicita' => $detallesSalud['ges'],
+                                        
+                                        //Datos Caja de Compensación
+                                        'codigoCcaf' => $detallesCaja['codigoCaja'],
+                                        'rentaImponibleCcaf' => $detallesCaja['rentaImponible'],
+                                        'creditosPersonalesCcaf' => $detallesCaja['creditosPersonales'],
+                                        'descuentoDentalCcaf' => $detallesCaja['descuentoDental'],
+                                        'descuentosLeasing' => $detallesCaja['descuentosLeasing'],
+                                        'descuentosSeguroCcaf' => $detallesCaja['descuentosSeguro'],
+                                        'otrosDescuentosCcaf' => $detallesCaja['otrosDescuentos'],
+                                        'cotizacionCcafNoAfiliadosIsapre' => $detallesCaja['cotizacion'],
+                                        'descuentoCargasFamiliaresCcaf' => $detallesCaja['descuentoCargas'],
+                                        'otrosDescuentosCcaf1' => $detallesCaja['otrosDescuentos1'],
+                                        'otrosDescuentosCcaf2' => $detallesCaja['otrosDescuentos2'],
+                                        'bonosGobiernoSalud' => $detallesCaja['bonosGobierno'],
+                                        'codigoSucursalSalud' => $detallesCaja['codigoSucursal'],
+                                        
+                                        //Datos Mutualidad
+                                        'codigoMutualidad' => $detallesMutual['codigoMutual'],
+                                        'rentaImponibleMutual' => $detallesMutual['rentaImponible'],
+                                        'cotizacionAccidenteTrabajo' => $detallesMutual['cotizacionAccidentes'],
+                                        'sucursalPagoMutual' => $detallesMutual['codigoSucursal'],
+                                        
+                                        //Datos Administradora de Seguro de Cesantía
+                                        'rentaImponibleSeguroCesantia' => '',
+                                        'aporteTrabajadorSeguroCesantia' => '',
+                                        'aporteEmpleadorSeguroCesantia' => '',
+                                        
+                                        //Datos Pagador de Subsidios
+                                        'rutPagadoraSubsidio' => $detallesPagadorSubsidio['rut'],
+                                        'dvPagadoraSubsidio' => $detallesPagadorSubsidio['digito'],
+                                        
+                                        //Otros Datos de la Empresa
+                                        'centroCosto' => $liquidacion->centroCosto ? $liquidacion->centroCosto->codigo : ''                 
+                                    );
+                                }
+                            }
                         }
                     }
                 }
@@ -1926,7 +2752,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#trabajadores');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores');
         $mes = \Session::get('mesActivo')->mes;
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;
         /*$trabajadores = FichaTrabajador::orderBy('fecha', 'DESC')->groupby('trabajador_id')->distinct()->with('Trabajador')->where('fecha', '<=', $mes)->get();
@@ -1944,7 +2770,9 @@ class TrabajadoresController extends \BaseController {
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),      
                             'nombreCompleto' => $empleado->nombreCompleto(),      
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : "",
@@ -1952,6 +2780,7 @@ class TrabajadoresController extends \BaseController {
                             'fechaIngreso' => $empleado->fecha_ingreso,
                             'monedaSueldo' => $empleado->moneda_sueldo,
                             'sueldoBase' => $empleado->sueldo_base,
+                            'contratoOrden' => $empleado->tipoContrato ? ucwords(strtolower($empleado->tipoContrato->nombre)) : "", 
                             'tipoContrato' => array(
                                 'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
                                 'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
@@ -1963,9 +2792,35 @@ class TrabajadoresController extends \BaseController {
                 }
             }
         }
-        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+
+
+
+        $totalTrabajadores = 0;
+        $variable = VariableGlobal::where('variable', "TRABAJADORES")->first();
+        if($variable){
+            $trabajadoresPermitidos=$variable->valor;
+        }else{
+            $trabajadoresPermitidos=200;
+        }
+
+        $empresas = Empresa::all();
+        foreach ($empresas as $empresa) {
+            Config::set('database.default', $empresa->base_datos);
+            $trabajadoresEmpresa = Trabajador::all();
+            $totalTrabajadores+=$trabajadoresEmpresa->count();
+        }
+
+
+
+        if( $totalTrabajadores >= $trabajadoresPermitidos ){
+            $permisos['crear']=false;
+        }
+
         
         $datos = array(
+            'trabajadoresPermitidos' => $trabajadoresPermitidos,
+            'totalTrabajadores' => $totalTrabajadores,
             'accesos' => $permisos,
             'datos' => $listaTrabajadores
         );
@@ -1981,6 +2836,41 @@ class TrabajadoresController extends \BaseController {
     
     public function input()
     {
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
+        $trabajadores = Trabajador::all();
+        
+        $listaTrabajadores=array();
+        if( $trabajadores->count() ){
+            foreach( $trabajadores as $trabajador ){
+                $empleado = $trabajador->ficha();
+                if($empleado){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMes && $empleado->fecha_finiquito >= $mesAnterior){
+                        $listaTrabajadores[]=array(
+                            'id' => $trabajador->id,
+                            'sid' => $trabajador->sid,
+                            'apellidos' => $empleado->apellidos,
+                            'nombreCompleto' => $empleado->nombreCompleto()
+                        );
+                    }
+                }
+            }
+        }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');        
+        
+        $datos = array(
+            'datos' => $listaTrabajadores
+        );
+        
+        return Response::json($datos);
+        
+    }  
+    
+    public function inputActivos()
+    {
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;
         $trabajadores = Trabajador::all();
         
@@ -1993,6 +2883,7 @@ class TrabajadoresController extends \BaseController {
                         $listaTrabajadores[]=array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
+                            'apellidos' => $empleado->apellidos,
                             'nombreCompleto' => $empleado->nombreCompleto()
                         );
                     }
@@ -2000,6 +2891,7 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');        
         
         $datos = array(
             'datos' => $listaTrabajadores
@@ -2099,7 +2991,7 @@ class TrabajadoresController extends \BaseController {
         
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;    
         $trabajadores = Trabajador::all();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#trabajadores-vacaciones');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores-vacaciones');
         
         $listaTrabajadores=array();
         if( $trabajadores->count() ){
@@ -2110,27 +3002,16 @@ class TrabajadoresController extends \BaseController {
                         $listaTrabajadores[]=array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
+                            'rut' => $trabajador->rut,
                             'rutFormato' => $trabajador->rut_formato(),
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
-                            'celular' => $empleado->celular,
-                            'email' => $empleado->email,
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : "",
                             ),                     
-                            'fechaIngreso' => $empleado->fecha_ingreso,
-                            'monedaSueldo' => $empleado->moneda_sueldo,
-                            'sueldoBase' => $empleado->sueldo_base,
-                            'sueldoBasePesos' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo),
-                            'afp' => array(
-                                'id' => $empleado->afp ? $empleado->afp->id : "",
-                                'nombre' => $empleado->afp ? $empleado->afp->glosa : ""
-                            ),
-                            'tipoContrato' => array(
-                                'id' => $empleado->tipo_contrato ? $empleado->tipo_contrato->id : "",
-                                'nombre' => $empleado->tipo_contrato ? $empleado->tipo_contrato->nombre : ""
-                            ),
-                            'estado' => $empleado->estado,
+                            'fechaIngreso' => $empleado->fecha_ingreso,                           
                             'vacaciones' => $trabajador->misVacaciones()
                         );
                     }
@@ -2138,7 +3019,8 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
-        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+                
         $datos = array(
             'datos' => $listaTrabajadores,
             'accesos' => $permisos
@@ -2152,7 +3034,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#semana-corrida');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#semana-corrida');
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;    
         $trabajadores = Trabajador::all();
         $semanas = MesDeTrabajo::semanas();        
@@ -2166,7 +3048,9 @@ class TrabajadoresController extends \BaseController {
                         $listaTrabajadores[]=array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
+                            'rut' => $trabajador->rut,
                             'rutFormato' => $trabajador->rut_formato(),
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'semanaCorrida' => $trabajador->semanaCorrida()
                         );
@@ -2175,6 +3059,8 @@ class TrabajadoresController extends \BaseController {
             }
         }        
         
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+                
         $datos = array(
             'datos' => $listaTrabajadores,
             'semanas' => $semanas,
@@ -2210,8 +3096,9 @@ class TrabajadoresController extends \BaseController {
     public function trabajadorVacaciones($sid)
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#trabajadores-vacaciones');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores-vacaciones');
         $mes = \Session::get('mesActivo');
+        $empleado = $trabajador->ficha();
         
         $trabajadorVacaciones = array(
             'id' => $trabajador->id,
@@ -2220,6 +3107,7 @@ class TrabajadoresController extends \BaseController {
             'rut' => $trabajador->rut,
             'nombreCompleto' => $trabajador->ficha()->nombreCompleto(),
             'vacacionesMesActual' => $trabajador->mesActualVacaciones(),
+            'vacacionesIniciales' => $empleado->vacaciones,
             'vacaciones' => $trabajador->miHistorialVacaciones()
         );
         
@@ -2236,7 +3124,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#asociar-documentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#asociar-documentos');
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;    
         $trabajadores = Trabajador::all();
         
@@ -2249,6 +3137,8 @@ class TrabajadoresController extends \BaseController {
                         $listaTrabajadores[]=array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                            'rut' => $trabajador->rut,
                             'rutFormato' => $trabajador->rut_formato(),
                             'nombreCompleto' => $empleado->nombreCompleto(),                        
                             'cargo' => array(
@@ -2262,6 +3152,8 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores
@@ -2274,7 +3166,7 @@ class TrabajadoresController extends \BaseController {
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
         $empleado = $trabajador->ficha();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#asociar-documentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#asociar-documentos');
         
         $trabajadorDocumentos = array(
             'id' => $trabajador->id,
@@ -2296,7 +3188,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cartas-de-notificacion');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cartas-de-notificacion');
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
         $trabajadores = Trabajador::all();
         
@@ -2310,27 +3202,15 @@ class TrabajadoresController extends \BaseController {
                         $listaTrabajadores[]=array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
-                            'rutFormato' => $trabajador->rut_formato(),
+                            'rut' => $trabajador->rut,          
+                            'rutFormato' => $trabajador->rut_formato(),          
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
-                            'celular' => $empleado->celular,
-                            'email' => $empleado->email,
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : "",
                             ),                     
-                            'fechaIngreso' => $empleado->fecha_ingreso,
-                            'monedaSueldo' => $empleado->moneda_sueldo,
-                            'sueldoBase' => $empleado->sueldo_base,
-                            'sueldoBasePesos' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo),
-                            'afp' => array(
-                                'id' => $empleado->afp ? $empleado->afp->id : "",
-                                'nombre' => $empleado->afp ? $empleado->afp->glosa : ""
-                            ),
-                            'tipoContrato' => array(
-                                'id' => $empleado->tipo_contrato ? $empleado->tipo_contrato->id : "",
-                                'nombre' => $empleado->tipo_contrato ? $empleado->tipo_contrato->nombre : ""
-                            ),
-                            'estado' => $empleado->estado,
                             'totalCartasNotificacion' => $trabajador->totalCartasNotificacion()
 
                         );
@@ -2339,6 +3219,7 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
         
         $datos = array(
             'accesos' => $permisos,
@@ -2353,7 +3234,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#certificados');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#certificados');
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
         $trabajadores = Trabajador::all();
         
@@ -2367,27 +3248,15 @@ class TrabajadoresController extends \BaseController {
                         $listaTrabajadores[]=array(
                             'id' => $empleado->id,
                             'sid' => $trabajador->sid,
+                            'rut' => $trabajador->rut,
                             'rutFormato' => $trabajador->rut_formato(),
                             'nombreCompleto' => $empleado->nombreCompleto(),
-                            'celular' => $empleado->celular,
-                            'email' => $empleado->email,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),      
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",                         
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
-                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : "",
-                            ),                     
-                            'fechaIngreso' => $empleado->fecha_ingreso,
-                            'monedaSueldo' => $empleado->moneda_sueldo,
-                            'sueldoBase' => $empleado->sueldo_base,
-                            'sueldoBasePesos' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo),
-                            'afp' => array(
-                                'id' => $empleado->afp ? $empleado->afp->glosa : "",
-                                'nombre' => $empleado->afp ? $empleado->afp->nombre : ""
-                            ),
-                            'tipoContrato' => array(
-                                'id' => $empleado->tipo_contrato ? $empleado->tipo_contrato->id : "",
-                                'nombre' => $empleado->tipo_contrato ? $empleado->tipo_contrato->nombre : ""
-                            ),
-                            'estado' => $empleado->estado,
+                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
+                            ),                                                
                             'totalCertificados' => $trabajador->totalCertificados()
                         );
                     }
@@ -2395,6 +3264,7 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');        
         
         $datos = array(
             'accesos' => $permisos,
@@ -2408,7 +3278,7 @@ class TrabajadoresController extends \BaseController {
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
         $empleado = $trabajador->ficha();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#certificados');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#certificados');
         
         $trabajadorCertificados = array(
             'id' => $trabajador->id,
@@ -2448,7 +3318,7 @@ class TrabajadoresController extends \BaseController {
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
         $empleado = $trabajador->ficha();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cartas-de-notificacion');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cartas-de-notificacion');
         
         $trabajadorCartasNotificacion = array(
             'id' => $trabajador->id,
@@ -2489,7 +3359,7 @@ class TrabajadoresController extends \BaseController {
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
         $empleado = $trabajador->ficha();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#trabajadores');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores');
         
         $trabajadorContratos = array(
             'id' => $trabajador->id,
@@ -2505,35 +3375,99 @@ class TrabajadoresController extends \BaseController {
         );
         
         return Response::json($datos);     
+    }   
+    
+    public function trabajadorFichas($sid)
+    {        
+        $trabajador = Trabajador::whereSid($sid)->first();
+        $empleado = $trabajador->ficha();
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores');
+        
+        $trabajadorFichas = array(
+            'id' => $trabajador->id,
+            'idFicha' => $empleado->id,
+            'sid' => $trabajador->sid,
+            'rutFormato' => $trabajador->rut_formato(),
+            'nombreCompleto' => $empleado->nombreCompleto(),
+            'fichas' => $trabajador->misFichas()
+        );
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $trabajadorFichas
+        );
+        
+        return Response::json($datos);     
     }    
     
     public function trabajadoresLiquidaciones()
     {   
         if(!\Session::get('empresa')){
-            return Response::json(array('sinLiquidacion' => array(), 'conLiquidacion' => array(), 'permisos' => array()));
+            return Response::json(array('sinLiquidacion' => array(), 'conLiquidacion' => array(),'sinLiquidacionFiniquitados' => array(), 'conLiquidacionFiniquitados' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#liquidaciones-de-sueldo');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#liquidaciones-de-sueldo');
         $mes = \Session::get('mesActivo')->mes;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes)));
         $finMes = \Session::get('mesActivo')->fechaRemuneracion; 
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
         $trabajadores = Trabajador::all();
         $liquidaciones = Liquidacion::where('mes', $mes)->orderBy('trabajador_apellidos')->get();
         
         $listaTrabajadores = array();
         $listaLiquidaciones = array();
+        $listaFiniquitados = array();
+        $listaLiquidacionesFiniquitados = array();
         
         if($trabajadores->count()){
             foreach($trabajadores as $trabajador){
                 $empleado = $trabajador->ficha();
                 if($empleado){
-                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mes){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito <= $finMes && $empleado->fecha_finiquito >= $mes){
                         if(!$trabajador->isLiquidacion()){
+
+                            $observacion = LiquidacionObservacion::where('periodo', $mes)
+                                ->where('trabajador_id', $trabajador->id )->first();
+
                             $listaTrabajadores[]=array(
                                 'id' => $empleado->id,
                                 'sidTrabajador' => $trabajador->sid,
+                                'rut' => $trabajador->rut,
                                 'rutFormato' => $trabajador->rut_formato(),
                                 'nombreCompleto' => $empleado->nombreCompleto(),
-                                'cargo' => $empleado->cargo->nombre,
-                                'sueldoBasePesos' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo)
+                                'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                                'cargo' => $empleado->cargo ? $empleado->cargo->nombre : "",
+                                'sueldoBasePesos' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo),
+                                'estado' => $empleado->estado,
+                                'observaciones' => $observacion ? $observacion->observaciones : ""
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        
+        if($trabajadores->count()){
+            foreach($trabajadores as $trabajador){
+                $empleado = $trabajador->ficha();
+                if($empleado){
+                    if($empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMesAnterior && $empleado->fecha_finiquito >= $mesAnterior){
+                        if(!$trabajador->isLiquidacion()){
+                            $observacion = LiquidacionObservacion::where('periodo', $mes)
+                                ->where('trabajador_id', $trabajador->id )->first();
+                            $listaFiniquitados[]=array(
+                                'id' => $empleado->id,
+                                'sidTrabajador' => $trabajador->sid,
+                                'rut' => $trabajador->rut,
+                                'rutFormato' => $trabajador->rut_formato(),
+                                'nombreCompleto' => $empleado->nombreCompleto(),
+                                'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                                'fechaFiniquito' => $empleado->fecha_finiquito,
+                                'cargo' => $empleado->cargo ? $empleado->cargo->nombre : "",
+                                'sueldoBasePesos' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo),
+                                'estado' => $empleado->estado,
+                                'observaciones' => $observacion? $observacion->observaciones : ""
                             );
                         }
                     }
@@ -2543,26 +3477,988 @@ class TrabajadoresController extends \BaseController {
         
         if( $liquidaciones->count() ){
             foreach( $liquidaciones as $liquidacion ){
-                $listaLiquidaciones[]=array(
-                    'id' => $liquidacion->trabajador_id,
-                    'sid' => $liquidacion->sid,
-                    'sidDocumento' => $liquidacion->documento->sid,
-                    'sidTrabajador' => $liquidacion->trabajador->sid,
-                    'rutFormato' => $liquidacion->trabajador->rut_formato(),
-                    'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
-                    'cargo' => $liquidacion->trabajador_cargo,              
-                    'sueldoBasePesos' => $liquidacion->sueldo_base,
-                    'sueldoLiquido' => $liquidacion->sueldo_liquido
-                );
+                if($liquidacion->estado==1){
+                    $listaLiquidaciones[]=array(
+                        'id' => $liquidacion->trabajador_id,
+                        'sid' => $liquidacion->sid,
+                        'sidDocumento' => $liquidacion->documento->sid,
+                        'nombreDocumento' => $liquidacion->documento->nombre,
+                        'aliasDocumento' => $liquidacion->documento->alias,
+                        'sidTrabajador' => $liquidacion->trabajador->sid,
+                        'rut' => $liquidacion->trabajador->rut,
+                        'rutFormato' => $liquidacion->trabajador->rut_formato(),
+                        'apellidos' => ucwords(strtolower($liquidacion->trabajador_apellidos)),
+                        'cargoOrden' => ucwords(strtolower($liquidacion->trabajador_cargo)),
+                        'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
+                        'cargo' => $liquidacion->trabajador_cargo,              
+                        'sueldoBasePesos' => $liquidacion->sueldo_base,
+                        'sueldoLiquido' => $liquidacion->sueldo_liquido,
+                        'observaciones' => $liquidacion->observacion
+                    );
+                }else{
+                    $listaLiquidacionesFiniquitados[]=array(
+                        'id' => $liquidacion->trabajador_id,
+                        'sid' => $liquidacion->sid,
+                        'sidDocumento' => $liquidacion->documento->sid,
+                        'nombreDocumento' => $liquidacion->documento->nombre,
+                        'aliasDocumento' => $liquidacion->documento->alias,
+                        'sidTrabajador' => $liquidacion->trabajador->sid,
+                        'rut' => $liquidacion->trabajador->rut,
+                        'rutFormato' => $liquidacion->trabajador->rut_formato(),
+                        'apellidos' => ucwords(strtolower($liquidacion->trabajador_apellidos)),
+                        'cargoOrden' => ucwords(strtolower($liquidacion->trabajador_cargo)),
+                        'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
+                        'cargo' => $liquidacion->trabajador_cargo,              
+                        'sueldoBasePesos' => $liquidacion->sueldo_base,
+                        'sueldoLiquido' => $liquidacion->sueldo_liquido,
+                        'observaciones' => $liquidacion->observacion
+                    );
+                }
             }
         }
         
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        $listaLiquidaciones = Funciones::ordenar($listaLiquidaciones, 'apellidos');
         
         $datos = array(
             'accesos' => $permisos,
             'sinLiquidacion' => $listaTrabajadores,
             'conLiquidacion' => $listaLiquidaciones,
-            'cuentas' => Liquidacion::comprobarCuentas($liquidaciones)
+            'sinLiquidacionFiniquitados' => $listaFiniquitados,
+            'conLiquidacionFiniquitados' => $listaLiquidacionesFiniquitados,
+            'cuentas' => Liquidacion::comprobarCuentas($liquidaciones),
+            'mesAnterior' => $mesAnterior
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function generarF1887Trabajadores()
+    {               
+        $mes = \Session::get('mesActivo');
+		$empresa = \Session::get('empresa');
+		$rutEmpresa = Funciones::formatear_rut($empresa->rut);
+        $empresa->domicilio = $empresa->domicilio();
+        $empresa->rut_formato = Funciones::formatear_rut($empresa->rut);        
+        $certificados = array();
+        $folio = DeclaracionTrabajador::obtenerUltimoFolio();
+                
+        $datos = Input::all();
+        $sid = (array) $datos['trabajadores'];
+        $anio = $datos['anio'];
+        $isComprobar = $datos['comprobar'];
+        $anioRemuneracion = AnioRemuneracion::where('anio', $anio)->first();
+        $trabajadores = Trabajador::whereIn('sid', $sid)->get();
+        $lista = array();
+        $destination = public_path() . '/planillas/1887_1.xlsx';
+        $folder = public_path() . '/stories/';
+        $resumen = null;
+        $fecha = date('d / m / Y');        
+        $empresa->fecha = $empresa->comuna->provincia->provincia . ' ' . $fecha;
+        
+        if($isComprobar){
+            $comprobar = $this->comprobarDeclaraciones($datos['trabajadores'], $anioRemuneracion);
+        }
+
+        if($trabajadores->count()){            
+            foreach($trabajadores as $trabajador){
+                $empleado = $trabajador->fichaAnual($anio);
+                if($empleado){                            
+                    $filename = '1887_1_'.$trabajador->rut.'_'.$empresa->rut.'_'.$anio;   
+                    $resumen = $empleado->resumen($anio);
+                    $folio = DeclaracionTrabajador::obtenerSiguienteFolio($folio);
+                    Excel::load($destination, function($reader) use($trabajador, $empleado, $anio, $empresa, $fecha, $filename, $folio, $resumen) {             
+                        $i = 24;                                                
+                        $sheet = $reader->getActiveSheet();
+                        for($x=0; $x<13; $x++){
+                            $a = 'G' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['sueldo']));
+                            $a = 'K' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['cotizacionPrevisional']));
+                            $a = 'O' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rentaImponible']));
+                            $a = 'S' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['impuestoUnico']));
+                            $a = 'W' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['mayorRetencion']));
+                            $a = 'AA' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rentaTotal']));
+                            $a = 'AE' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rentaNoGravada']));
+                            $a = 'AI' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rebaja']));
+                            $a = 'AM' . $i;
+                            $sheet->setCellValue($a, $resumen[$x]['factor']);
+                            $a = 'AQ' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rentaAfecta']));
+                            $a = 'AU' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['impuestoUnicoRetenido']));
+                            $a = 'AY' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['mayorRetencionImpuesto']));
+                            $a = 'BC' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rentaTotalExenta']));
+                            $a = 'BG' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rentaTotalNoGravada']));
+                            $a = 'BJ' . $i;
+                            $sheet->setCellValue($a, Funciones::formatoPesos($resumen[$x]['rebajaZonasExtremas']));
+                            $i++;
+                            
+                        }
+                        $sheet->setCellValue('M3', $empresa->razon_social);
+                        $sheet->setCellValue('M4', $empresa->rut_formato());
+                        $sheet->setCellValue('BA4', $folio);
+                        $sheet->setCellValue('M5', $empresa->domicilio());
+                        $sheet->setCellValue('BA5', $empresa->comuna->provincia->provincia . ' ' . $fecha);
+                        $sheet->setCellValue('M6', $empresa->actividad_economica);
+                        $sheet->setCellValue('K15', $empresa->razon_social);
+                        $sheet->setCellValue('AH15', $empleado->nombreCompleto());
+                        $sheet->setCellValue('AX15', $trabajador->rut_formato());
+                        $sheet->setCellValue('BJ15', $anio);                                                
+                            
+                    })->setFilename($filename)->store('xlsx', $folder);
+                    
+                    $declaracion = new DeclaracionTrabajador();
+                    $declaracion->sid = Funciones::generarSID();
+                    $declaracion->nombre_archivo = $filename . '.xlsx';
+                    $declaracion->folio = $folio;
+                    $declaracion->trabajador_id = $trabajador->id;
+                    $declaracion->anio_id = $anioRemuneracion->id;
+                    $declaracion->sueldo = $resumen[12]['sueldo'];
+                    $declaracion->cotizacion_previsional = $resumen[12]['cotizacionPrevisional'];
+                    $declaracion->renta_imponible = $resumen[12]['rentaImponible'];
+                    $declaracion->impuesto_unico = $resumen[12]['impuestoUnico'];
+                    $declaracion->mayor_retencion = $resumen[12]['mayorRetencion'];
+                    $declaracion->renta_total = $resumen[12]['rentaTotal'];
+                    $declaracion->renta_no_gravada = $resumen[12]['rentaNoGravada'];
+                    $declaracion->rebaja = $resumen[12]['rebaja'];
+                    $declaracion->factor = $resumen[12]['factor'];
+                    $declaracion->renta_afecta = $resumen[12]['rentaAfecta'];
+                    $declaracion->impuesto_unico_retenido = $resumen[12]['impuestoUnicoRetenido'];
+                    $declaracion->mayor_retencion_impuesto = $resumen[12]['mayorRetencionImpuesto'];
+                    $declaracion->renta_total_exenta = $resumen[12]['rentaTotalExenta'];
+                    $declaracion->renta_total_no_gravada = $resumen[12]['rentaTotalNoGravada'];
+                    $declaracion->rebaja_zonas_extremas = $resumen[12]['rebajaZonasExtremas'];
+                    $declaracion->renta_imponible_actualizada = $resumen[12]['rentaImponibleActualizada'];
+                    $declaracion->actividad = $resumen[12]['actividad'];
+                    $declaracion->save();
+                                        
+                    $filenamePDF = 'certificado.pdf';
+                    $destination = public_path() . '/stories/' . $filenamePDF;
+                    $pdf = new \Thujohn\Pdf\Pdf();
+                    $content = $pdf->load(View::make('pdf.certificado', array('datos' => $resumen, 'empresa' => $empresa, 'folio' => $folio)), 'A4', 'landscape')->output();          
+                    File::put($destination, $content); 
+                    
+                    $lista[] = array(
+                        'id' => $trabajador->id,
+                        'nombreCompleto' => $empleado->nombreCompleto(),
+                        'rutFormato' => $trabajador->rut_formato(),
+                        'rut' => $trabajador->rut,
+                        'resumen' => $resumen,
+                        'declaracion' => $declaracion,
+                        'nombre' => $filename . '.xlsx',
+                        'alias' => $filename . '.xlsx'
+                    );
+                    $folio++;
+                }
+            }                  
+        }            
+                
+        $respuesta = array(
+            'datos' => $lista,
+            'success' => true,
+            'mensaje' => "La Información fue generada correctamente"
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function generarF1887($anio)
+    {               
+		$empresa = \Session::get('empresa');
+		$rutEmpresa = Funciones::formatear_rut($empresa->rut);
+        $anioRemuneracion = AnioRemuneracion::whereSid($anio)->first();
+        //$declaraciones = DeclaracionTrabajador::where('anio_id', $anioRemuneracion->id)->orderBy('folio')->get();
+        $obtenerDeclaraciones = DeclaracionTrabajador::obtenerDeclaraciones($anioRemuneracion->id);
+        $declaraciones = $obtenerDeclaraciones['declaraciones'];
+        $totales = $obtenerDeclaraciones['totales'];
+
+        $filename = '188_'.$empresa->rut.'_'.$anioRemuneracion->anio;
+        $destination = public_path() . '/planillas/188.xlsx';
+        $folder = public_path() . '/stories/';
+        $fecha = date('d / m / Y');
+        $anio = $anioRemuneracion->anio;
+        $lista = array();
+        $folio = F1887::obtenerFolio();
+        
+        $comprobar = F1887::comprobarDeclaracion($anio);
+
+        if(count($declaraciones)){            
+            Excel::load($destination, function($reader) use($declaraciones, $totales, $anio, $empresa, $fecha, $filename, $folio) {    
+                $count = 0;
+                $i = 4;                                                
+                $sheet = $reader->sheet(0);
+                
+                $a = 'BL' . $i;
+                $sheet->cell($a, function($cell) use($folio) {
+                    $cell->setValue($folio);                                    
+                    $cell->setFontWeight('bold');                    
+                });
+                
+                $i++;
+                $i++;
+                
+                $a = 'U' . $i;
+                $sheet->cell($a, function($cell) use($anio) {
+                    $cell->setValue($anio);                                    
+                    $cell->setFontWeight('bold');                    
+                });
+                
+                $i = 11;
+                
+                $a = 'AE' . $i;
+                $sheet->setCellValue($a, $empresa->razon_social);  
+                $a = 'B' . $i;
+                $sheet->setCellValue($a, $empresa->rut_formato()); 
+                
+                $i++;
+                $i++;
+                
+                $a = 'B' . $i;
+                $sheet->setCellValue($a, $empresa->domicilio()); 
+                $a = 'AE' . $i;
+                $sheet->setCellValue($a, $empresa->comuna->comuna); 
+                
+                $i++;
+                $i++;
+                
+                $a = 'B' . $i;
+                $sheet->setCellValue($a, ""); 
+                $a = 'AE' . $i;
+                $sheet->setCellValue($a, $empresa->fax);
+                $a = 'AO' . $i;
+                $sheet->setCellValue($a, $empresa->telefono);
+                
+                $i = 21;
+
+                foreach($declaraciones as $declaracion){   
+                    
+                    $count++;
+                    
+                    $sheet->mergeCells('B'.$i.':C'.$i);
+                    $a = 'B' . $i;
+                    $sheet->setCellValue($a, $count); 
+                    $a = 'B'.$i.':C'.$i;
+                    $sheet->setBorder($a, 'thin');
+
+                    $sheet->mergeCells('D'.$i.':J'.$i);
+                    $a = 'D' . $i;
+                    $sheet->setCellValue($a, Funciones::formatear_rut($declaracion['rut'])); 
+                    $a = 'D'.$i.':J'.$i;
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $sheet->mergeCells('K'.$i.':Q'.$i);
+                    $a = 'K' . $i;
+                    $sheet->setCellValue($a, Funciones::formatoPesos($declaracion['rentaAfecta'])); 
+                    $a = 'K'.$i.':Q'.$i;
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $sheet->mergeCells('R'.$i.':X'.$i);
+                    $a = 'R' . $i;
+                    $sheet->setCellValue($a, Funciones::formatoPesos($declaracion['impuestoUnicoRetenido'])); 
+                    $a = 'R'.$i.':X'.$i;
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $sheet->mergeCells('Y'.$i.':AF'.$i);
+                    $a = 'Y' . $i;
+                    $sheet->setCellValue($a, Funciones::formatoPesos($declaracion['mayorRetencionImpuesto'])); 
+                    $a = 'Y'.$i.':AF'.$i;
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $sheet->mergeCells('AG'.$i.':AL'.$i);
+                    $a = 'AG' . $i;
+                    $sheet->setCellValue($a, Funciones::formatoPesos($declaracion['rentaTotalNoGravada'])); 
+                    $a = 'AG'.$i.':AL'.$i;
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $sheet->mergeCells('AM'.$i.':AS'.$i);
+                    $a = 'AM' . $i;
+                    $sheet->setCellValue($a, Funciones::formatoPesos($declaracion['rentaTotalExenta'])); 
+                    $a = 'AM'.$i.':AS'.$i;
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $sheet->mergeCells('AT'.$i.':AY'.$i);
+                    $a = 'AT' . $i;
+                    $sheet->setCellValue($a, Funciones::formatoPesos($declaracion['rebajaZonasExtremas'])); 
+                    $a = 'AT'.$i.':AY'.$i;
+                    $sheet->setBorder($a, 'thin');                                    
+                    
+                    $a = 'AZ' . $i;
+                    $sheet->setCellValue($a, $declaracion['enero']); 
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BA' . $i;
+                    $sheet->setCellValue($a, $declaracion['febrero']); 
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BB' . $i;
+                    $sheet->setCellValue($a, $declaracion['marzo']); 
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BC' . $i;
+                    $sheet->setCellValue($a, $declaracion['abril']); 
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BD' . $i;
+                    $sheet->setCellValue($a, $declaracion['mayo']);  
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BE' . $i;
+                    $sheet->setCellValue($a, $declaracion['junio']);  
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BF' . $i;
+                    $sheet->setCellValue($a, $declaracion['julio']);  
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BG' . $i;
+                    $sheet->setCellValue($a, $declaracion['agosto']);  
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BH' . $i;
+                    $sheet->setCellValue($a, $declaracion['septiembre']); 
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BI' . $i;
+                    $sheet->setCellValue($a, $declaracion['octubre']);  
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BJ' . $i;
+                    $sheet->setCellValue($a, $declaracion['noviembre']); 
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $a = 'BK' . $i;
+                    $sheet->setCellValue($a, $declaracion['diciembre']);  
+                    $sheet->setBorder($a, 'thin');
+                    
+                    $sheet->mergeCells('BL'.$i.':BO'.$i);
+                    $a = 'BL' . $i;
+                    $sheet->setCellValue($a, $declaracion['folio']); 
+                    $a = 'BL'.$i.':BO'.$i;
+                    $sheet->setBorder($a, 'thin');
+
+                    $i++;                    
+                }
+                
+                $i++;
+                $i++;
+                
+                $sheet->mergeCells('B'.$i.':BA'.($i + 1));
+                $a = 'B' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('TOTAL MONTOS ANUALES SIN ACTUALIZAR');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'B'.$i.':BA'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('BB'.$i.':BH'.($i + 5));
+                $a = 'BB' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('TOTAL REMUNERACIÓN IMPONIBLE PARA EFECTOS PREVISIONALES ACTUALIZADA A TODOS LOS TRABAJADORES');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'BB'.$i.':BH'.($i + 5);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;
+                $i++;
+                
+                $sheet->mergeCells('B'.$i.':J'.($i + 3));
+                $a = 'B' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('RENTA TOTAL NETA PAGADA (Art.42 N°1, Ley de la Renta)');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'B'.$i.':J'.($i + 3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('K'.$i.':AG'.$i);
+                $a = 'K' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('IMPUESTO UNICO RETENIDO');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'K'.$i.':AG'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AH'.$i.':AN'.($i + 3));
+                $a = 'AH' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('RENTA TOTAL EXENTA NO GRAVADA');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'AH'.$i.':AN'.($i + 3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AO'.$i.':AU'.($i + 3));
+                $a = 'AO' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('RENTA TOTAL EXENTA');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'AO'.$i.':AU'.($i + 3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AV'.$i.':BA'.($i + 3));
+                $a = 'AV' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('REBAJA POR ZONAS EXTREMAS (FRANQUICIA D.L.889)');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'AV'.$i.':BA'.($i + 3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;
+                
+                $sheet->mergeCells('K'.$i.':S'.($i + 2));
+                $a = 'K' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('POR RENTA TOTAL NETA PAGADA DURANTE EL AÑO');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'K'.$i.':S'.($i + 2);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('T'.$i.':AG'.($i + 2));
+                $a = 'T' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('POR RENTAS ACCESORIAS Y/O COMPLEMENTARIA PAGADA ENTRE ENE-ABR. AÑO SGTE.');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'T'.$i.':AG'.($i + 2);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;
+                $i++;
+                $i++;
+                
+                $sheet->mergeCells('B'.$i.':J'.($i + 1));
+                $a = 'B' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rentaImponible'])); 
+                $a = 'B'.$i.':J'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('K'.$i.':S'.($i + 1));
+                $a = 'K' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['impuestoUnico'])); 
+                $a = 'K'.$i.':S'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('T'.$i.':AG'.($i + 1));
+                $a = 'T' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos(0)); 
+                $a = 'T'.$i.':AG'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AH'.$i.':AN'.($i + 1));
+                $a = 'AH' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rentaNoGravada'])); 
+                $a = 'AH'.$i.':AN'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AO'.$i.':AU'.($i + 1));
+                $a = 'AO' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rentaTotal'])); 
+                $a = 'AO'.$i.':AU'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AV'.$i.':BA'.($i + 1));
+                $a = 'AV' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rebaja'])); 
+                $a = 'AV'.$i.':BA'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('BB'.$i.':BH'.($i + 1));
+                $a = 'BB' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rentaImponibleActualizada'])); 
+                $a = 'BB'.$i.':BH'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                                
+                $i++;
+                $i++;
+                $i++;
+                $i++;
+                
+                $sheet->mergeCells('D'.$i.':AW'.($i + 1));
+                $a = 'D' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('CUADRO RESUMEN FINAL DE LA DECLARACIÓN');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'D'.$i.':AW'.($i + 1);
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;   
+                $i++;   
+                
+                $sheet->mergeCells('D'.$i.':AP'.$i);
+                $a = 'D' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('TOTAL MONTOS ANUALES ACTUALIZADOS');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'D'.$i.':AP'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AQ'.$i.':AW'.($i +4));
+                $a = 'AQ' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('TOTAL DE CASOS INFORMADOS');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'AQ'.$i.':AW'.($i +4);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;
+                
+                $sheet->mergeCells('D'.$i.':J'.($i +3));
+                $a = 'D' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('RENTA TOTAL NETA PAGADA (Art.42 N°1, Ley de la Renta)');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'D'.$i.':J'.($i +3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('K'.$i.':Q'.($i +3));
+                $a = 'K' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('IMPUESTO UNICO RETENIDO');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'K'.$i.':Q'.($i +3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('R'.$i.':W'.($i +3));
+                $a = 'R' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('MAYOR RETENCIÓN SOLICITADA (Art.88 L.I.R)');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'R'.$i.':W'.($i +3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('X'.$i.':AC'.($i +3));
+                $a = 'X' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('RENTA TOTAL EXENTA Y NO GRAVADA');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'X'.$i.':AC'.($i +3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AD'.$i.':AI'.($i +3));
+                $a = 'AD' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('RENTA TOTAL EXENTA');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'AD'.$i.':AI'.($i +3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AJ'.$i.':AP'.($i +3));
+                $a = 'AJ' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('REBAJA POR ZONAS EXTREMAS (FRANQUICIA D.L.889)');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'AJ'.$i.':AP'.($i +3);
+                $sheet->getStyle($a)->getAlignment()->setWrapText(true); 
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;
+                $i++;
+                $i++;
+                $i++;
+                
+                $sheet->mergeCells('D'.$i.':J'.$i);
+                $a = 'D' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rentaAfecta'])); 
+                $a = 'D'.$i.':J'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('K'.$i.':Q'.$i);
+                $a = 'K' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['impuestoUnicoRetenido'])); 
+                $a = 'K'.$i.':Q'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('R'.$i.':W'.$i);
+                $a = 'R' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['mayorRetencionImpuesto'])); 
+                $a = 'R'.$i.':W'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('X'.$i.':AC'.$i);
+                $a = 'X' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rentaTotalNoGravada'])); 
+                $a = 'X'.$i.':AC'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AD'.$i.':AI'.$i);
+                $a = 'AD' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rentaTotalExenta'])); 
+                $a = 'AD'.$i.':AI'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AJ'.$i.':AP'.$i);
+                $a = 'AJ' . $i;
+                $sheet->setCellValue($a, Funciones::formatoPesos($totales['rebajaZonasExtremas'])); 
+                $a = 'AJ'.$i.':AP'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $sheet->mergeCells('AQ'.$i.':AW'.$i);
+                $a = 'AQ' . $i;
+                $sheet->setCellValue($a, $count); 
+                $a = 'AQ'.$i.':AW'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;
+                $i++;
+                
+                $a = 'B' . $i;
+                $sheet->mergeCells('B'.$i.':BH'.$i);
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('DECLARO BAJO JURAMENTO QUE LOS DATOS CONTENIDOS EN EL PRESENTE DOCUMENTO SON LA EXPRESION FIEL DE LA VERDAD, POR LO QUE ASUMO LA RESPONSABILIDAD');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                });
+                
+                $i++;
+                $i++;
+                $i++;
+                $i++;
+                
+                $sheet->mergeCells('B'.$i.':M'.$i);
+                $a = 'B' . $i;
+                $sheet->cell($a, function($cell) {
+                    $cell->setValue('RUT REPRESENTANTE LEGAL');
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setFontWeight('bold');
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'B'.$i.':M'.$i;
+                $sheet->setBorder($a, 'thin');
+                
+                $i++;
+                
+                $sheet->mergeCells('B'.$i.':M'.$i);
+                $a = 'B' . $i;
+                $sheet->cell($a, function($cell) use($empresa) {
+                    $cell->setValue(Funciones::formatear_rut($empresa->representante_rut));
+                    $cell->setFontFamily('Arial');
+                    $cell->setFontSize(8);
+                    $cell->setAlignment( 'center');
+                });
+                $a = 'B'.$i.':M'.$i;
+                $sheet->setBorder($a, 'thin');    
+                
+                $sheet->row(34, function ($row) {
+                    $row->setFontFamily('Arial');
+                    $row->setFontSize(8);
+                    $row->setFontWeight('bold');
+                });
+
+            })->setFilename($filename)->store('xlsx', $folder);
+        }        
+        
+        $filenameCSV = $filename . ".csv";        
+        
+        $f1887 = new F1887();
+        $f1887->sid = Funciones::generarSID();
+        $f1887->folio = $folio;
+        $f1887->anio = $anio;
+        $f1887->rut_empresa = $empresa->rut;
+        $f1887->nombre_empresa = $empresa->razon_social;
+        $f1887->domicilio_empresa = $empresa->domicilio();
+        $f1887->comuna_empresa = $empresa->comuna->comuna;
+        $f1887->email_empresa = '';
+        $f1887->fax_empresa = $empresa->fax ? $empresa->fax : '';
+        $f1887->telefono_empresa = $empresa->telefono ? $empresa->telefono : '';
+        $f1887->renta_total_neta = $totales['rentaImponible'];
+        $f1887->por_renta_total_neta_pagada_anio = $totales['impuestoUnico'];;
+        $f1887->rentas_accesorias = 1;
+        $f1887->renta_no_gravada = $totales['rentaNoGravada'];
+        $f1887->renta_exenta = $totales['rentaTotal'];
+        $f1887->rebaja = $totales['rebaja'];
+        $f1887->total_remuneracion_imponible = $totales['rentaImponibleActualizada'];
+        $f1887->renta_total_neta_pagada = $totales['rentaAfecta'];
+        $f1887->impuesto_unico_retenido = $totales['impuestoUnicoRetenido'];
+        $f1887->retencion_solicitada = $totales['mayorRetencionImpuesto'];
+        $f1887->renta_total_no_gravada = $totales['rentaTotalNoGravada'];
+        $f1887->renta_total_exenta = $totales['rentaTotalExenta'];
+        $f1887->rebaja_zonas_extremas = $totales['rebajaZonasExtremas'];
+        $f1887->total_casos_informados = count($declaraciones);
+        $f1887->rut_representante = $empresa->representante_rut;
+        $f1887->excel = $filename . '.xlsx';
+        $f1887->csv = $filenameCSV;
+        $f1887->save();
+        
+        $destinationCSV = public_path('stories/' . $filenameCSV);
+        $fp = fopen($destinationCSV, "w+");
+        if($fp){
+            if(count($declaraciones)){
+                foreach($declaraciones as $index => $trab){
+                    $actividad = $trab['enero'].$trab['febrero'].$trab['marzo'].$trab['abril'].$trab['mayo'].$trab['junio'].$trab['julio'].$trab['agosto'].$trab['septiembre'].$trab['octubre'].$trab['noviembre'].$trab['diciembre'];
+                    $detalle = new DetalleF1887();
+                    $detalle->sid = Funciones::generarSID();
+                    $detalle->f1887_id = $f1887->id;
+                    $detalle->folio = $trab['folio'];
+                    $detalle->rut = $trab['rut'];
+                    $detalle->renta_total_neta_pagada = $trab['rentaAfecta'];
+                    $detalle->impuesto_unico_retenido = $trab['impuestoUnicoRetenido'];
+                    $detalle->mayor_retencion_solicitada = $trab['mayorRetencionImpuesto'];
+                    $detalle->renta_total_exenta = $trab['rentaTotalExenta'];
+                    $detalle->renta_total_no_gravada = $trab['rentaTotalNoGravada'];
+                    $detalle->rebaja_zonas_extremas = $trab['rebajaZonasExtremas'];
+                    $detalle->actividad = $actividad;
+                    $detalle->save();
+                    unset($trab['rentaTotalExenta']);
+                    fputs($fp, utf8_decode(implode(";", $trab))."\r\n", 2048);
+                    $obtenerDeclaraciones['declaraciones'][$index]['rutFormato'] = Funciones::formatear_rut($trab['rut']);
+                }
+            }
+            fclose($fp);
+        }
+        
+        $obtenerDeclaraciones['totales']['folio'] = $folio;
+                
+        $respuesta = array(
+            'datos' => $obtenerDeclaraciones,
+            'anio' => $anio,
+            'folio' => $folio,
+            'declaraciones' => $declaraciones,
+            'nombreExcel' => $filename . '.xlsx',
+            'aliasExcel' => 'F1887.xlsx',
+            'nombreCSV' => $filenameCSV,
+            'aliasCSV' => 'ArchivoF1887.xls',
+            'success' => true,
+            'mensaje' => "La Información fue generada correctamente"
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function verF1887($anio)
+    {
+        $f1887 = F1887::where('anio', $anio)->first();    
+        $totales = array();
+        $filenameCSV = '';
+        $filename = '';
+        $folio = '';
+        $datosDetalles = array();
+        
+        if($f1887){
+            $totales = array(
+                'id' => $f1887->id,
+                'sid' => $f1887->sid,
+                'folio' => $f1887->folio,
+                'anio' => $f1887->anio,
+                'rentaAfecta' => $f1887->renta_total_neta_pagada,
+                'impuestoUnico' => $f1887->por_renta_total_neta_pagada_anio,
+                'rentaNoGravada' => $f1887->renta_no_gravada,
+                'rentaTotal' => $f1887->renta_exenta,
+                'rebaja' => $f1887->rebaja,
+                'rentaImponible' => $f1887->renta_total_neta,
+                'impuestoUnicoRetenido' => $f1887->impuesto_unico_retenido,
+                'mayorRetencionImpuesto' => $f1887->retencion_solicitada,
+                'rentaTotalNoGravada' => $f1887->renta_total_no_gravada,
+                'rentaTotalExenta' => $f1887->renta_total_exenta,
+                'rebajaZonasExtremas' => $f1887->rebaja_zonas_extremas,
+                'rentaImponibleActualizada' => $f1887->total_remuneracion_imponible
+            );
+            
+            $detalles = $f1887->detalles;
+            
+            if($detalles->count()){
+                foreach($detalles as $detalle){
+                    $datosDetalles[] = array(
+                        'id' => $detalle->id,
+                        'rutFormato' => Funciones::formatear_rut($detalle->rut),
+                        'rentaAfecta' => $detalle->renta_total_neta_pagada,
+                        'impuestoUnicoRetenido' => $detalle->impuesto_unico_retenido,
+                        'mayorRetencionImpuesto' => $detalle->mayor_retencion_solicitada,
+                        'rentaTotalNoGravada' => $detalle->renta_total_no_gravada,
+                        'rentaTotalExenta' => $detalle->renta_total_exenta,
+                        'rebajaZonasExtremas' => $detalle->rebaja_zonas_extremas,
+                        'folio' => $detalle->folio
+                    );
+                }
+            }
+            
+            $filenameCSV = $f1887->csv;
+            $filename = $f1887->excel;
+            $folio = $f1887->folio;
+        }
+        
+        $datos = array(
+            'declaraciones' => $datosDetalles,
+            'totales' => $totales
+        );
+        
+        $respuesta = array(
+            'datos' => $datos,
+            'anio' => $anio,
+            'folio' => $folio,
+            'nombreExcel' => $filename,
+            'aliasExcel' => 'F1887.xlsx',
+            'nombreCSV' => $filenameCSV,
+            'aliasCSV' => 'ArchivoF1887.xls',
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function trabajadoresF1887($sid)
+    {   
+        if(!\Session::get('empresa')){
+            return Response::json(array('sinCertificado' => array(), 'conCertificado' => array(), 'permisos' => array()));
+        }
+        
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#f1887');
+        $mes = \Session::get('mesActivo')->mes;
+        $trabajadores = Trabajador::all();
+        $aniosRemuneraciones = AnioRemuneracion::aniosF1887();
+        
+        $listaSinDeclaracion = array();
+        $listaConDeclaracion = array();
+        
+        if(!$sid){
+            $mes = MesDeTrabajo::orderBy('mes', 'DESC')->first();  
+            $id = $mes->anio_id;        
+            $anioRemuneracion = AnioRemuneracion::find($id);
+        }else{
+            $anioRemuneracion = AnioRemuneracion::whereSid($sid)->first();
+        }
+        
+        if($anioRemuneracion->isDiciembre()){        
+            if($trabajadores->count()){
+                foreach($trabajadores as $trabajador){
+                    $empleado = $trabajador->fichaAnual($anioRemuneracion->anio);
+                    if($empleado){
+                        if($trabajador->isActivo($anioRemuneracion)){
+                            $declaracion = $trabajador->declaracion($anioRemuneracion);
+                            if($declaracion){
+                                $listaConDeclaracion[]=array(
+                                    'id' => $empleado->id,
+                                    'sidTrabajador' => $trabajador->sid,
+                                    'rut' => $trabajador->rut,
+                                    'rutFormato' => $trabajador->rut_formato(),
+                                    'isActividad' => true,
+                                    'nombreCompleto' => $empleado->nombreCompleto(),
+                                    'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                    'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                                    'cargo' => $empleado->cargo ? $empleado->cargo->nombre : "",
+                                    'declaracion' => $declaracion
+                                );
+                            }else{
+                                $listaSinDeclaracion[]=array(
+                                    'id' => $trabajador->id,
+                                    'sidTrabajador' => $trabajador->sid,
+                                    'rut' => $trabajador->rut,
+                                    'rutFormato' => $trabajador->rut_formato(),
+                                    'isActividad' => $trabajador->isActividad($anioRemuneracion),
+                                    'nombreCompleto' => $empleado->nombreCompleto(),
+                                    'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                    'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                                    'cargo' => $empleado->cargo ? $empleado->cargo->nombre : ""
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            $listaSinDeclaracion = Funciones::ordenar($listaSinDeclaracion, 'apellidos');
+            $listaConDeclaracion = Funciones::ordenar($listaConDeclaracion, 'apellidos');
+        }
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'sinDeclaracion' => $listaSinDeclaracion,
+            'conDeclaracion' => $listaConDeclaracion,
+            'mes' => $mes,
+            'anios' => $aniosRemuneraciones,
+            'anio' => $anioRemuneracion,
+            'isDeclaracion' => F1887::isDeclaracion($anioRemuneracion->anio)
         );
         
         return Response::json($datos);
@@ -2575,7 +4471,7 @@ class TrabajadoresController extends \BaseController {
         }
         $mes = \Session::get('mesActivo')->mes;
         $liquidaciones = Liquidacion::where('mes', $mes)->orderBy('trabajador_apellidos')->get();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#planilla-costo-empresa');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#planilla-costo-empresa');
         $listaTrabajadores = array();
         
         if($liquidaciones->count()){
@@ -2585,6 +4481,7 @@ class TrabajadoresController extends \BaseController {
                     'idTrabajador' => $liquidacion->trabajador_id,
                     'sid' => $liquidacion->sid,
                     'rutFormato' => $liquidacion->trabajador->rut_formato(),
+                    'apellidos' => $liquidacion->trabajador->ficha()->apellidos,
                     'nombreCompleto' => $liquidacion->trabajador->ficha()->nombreCompleto(),
                     'sueldoBasePesos' => $liquidacion->sueldo,
                     'sueldoLiquido' => $liquidacion->sueldo_liquido,
@@ -2600,6 +4497,8 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+            
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores
@@ -2796,11 +4695,11 @@ class TrabajadoresController extends \BaseController {
             'monedaSindicato' => $empleado->moneda_sindicato,
             'montoSindicato' => $empleado->monto_sindicato,
             'estado' => $empleado->estado,
-            'apvs' => $empleado->misApvs(),
+            'apvs' => $trabajador->misApvs(),
             'haberes' => $trabajador->misHaberes(),
             'descuentos' => $trabajador->misDescuentos(),
             'prestamos' => $trabajador->misPrestamos(),
-            'cargas' => $empleado->misCargas()
+            'cargas' => $trabajador->misCargas()
 
         );
         
@@ -2834,8 +4733,9 @@ class TrabajadoresController extends \BaseController {
         $empresa = Empresa::find($idEmpresa);
         
         $detalleFiniquito = $this->detalleFiniquito($datos);
+        
         $finiquito = $this->reemplazarFiniquito($trabajador, $empleado, $empresa, $clausulas, $plantilla, $causal, $fechaFiniquito, $totalFiniquito, $detalleFiniquito);
-        $finiquito->cuerpo = '<html><head><style>table {width: 100%; border-collapse: collapse;} th {height: 50px;} td {padding: 8px;} tr:nth-child(even) {background-color: #f2f2f2} </style></head><body>' . $finiquito->cuerpo . '</body></html>';
+        $finiquito->cuerpo = '<html><head><style>table {width: 100%; border-collapse: collapse;} th {height: 50px;} td {padding: 8px;} tr:nth-child(even) {background-color: #f2f2f2} noClass tr {background-color: white} </style></head><body>' . $finiquito->cuerpo;
         
         $datosRepresentante = array(
             'rut' => $empresa->representante_rut,
@@ -2934,11 +4834,11 @@ class TrabajadoresController extends \BaseController {
             'monedaSindicato' => $empleado->moneda_sindicato,
             'montoSindicato' => $empleado->monto_sindicato,
             'estado' => $empleado->estado,
-            'apvs' => $empleado->misApvs(),
+            'apvs' => $trabajador->misApvs(),
             'haberes' => $trabajador->misHaberes(),
             'descuentos' => $trabajador->misDescuentos(),
             'prestamos' => $trabajador->misPrestamos(),
-            'cargas' => $empleado->misCargas()
+            'cargas' => $trabajador->misCargas()
 
         );
         
@@ -2984,10 +4884,11 @@ class TrabajadoresController extends \BaseController {
             if($datos['sueldoVariable']){
                 $mesAviso = '(promedio Renta Imponible últimos ' . $datos['mesAviso']['meses'] . ' meses)';
             }else{
-                $mesAviso = '(Renta Imponible ' . $datos['detalle'][0]['mes'] . ')';
+                $mesAviso = '';
             }
-            
-            $table .= '<tr><td>Mes de Aviso ' . $mesAviso . '</td><td>' . Funciones::formatoPesos($datos['mesAviso']['imponibles']['suma']) . '</td></tr>';
+            if($datos['detalle'][0]['imponibles']['rentaImponible']['check']){
+                $table .= '<tr><td>Mes de Aviso ' . $mesAviso . '</td><td>' . Funciones::formatoPesos($datos['mesAviso']['imponibles']['suma']) . '</td></tr>';
+            }
         }
         
         if($datos['noImponibles']){
@@ -2997,15 +4898,16 @@ class TrabajadoresController extends \BaseController {
             }else{
                 $noImponibles = '(' . $datos['detalle'][0]['mes'] . ')';
             }
-            
-            $table .= '<tr><td>No Imponibles ' . $noImponibles . '</td><td>' . Funciones::formatoPesos($datos['mesAviso']['noImponibles']['suma']) . '</td></tr>';
+            if($datos['mesAviso']['noImponibles']['check']){
+                $table .= '<tr><td>No Imponibles ' . $noImponibles . '</td><td>' . Funciones::formatoPesos($datos['mesAviso']['noImponibles']['suma']) . '</td></tr>';
+            }
         }
         
         if($datos['indemnizacion']['indemnizacion']){
-            $table .= '<tr><td>Indemización Años de Servicio (' . $datos['indemnizacion']['anios'] . ' años)</td><td>' . Funciones::formatoPesos($datos['indemnizacion']['monto']) . '</td></tr>';
+            $table .= '<tr><td>Indemnización Años de Servicio (' . $datos['indemnizacion']['anios'] . ' años)</td><td>' . Funciones::formatoPesos($datos['indemnizacion']['monto']) . '</td></tr>';
         }
         if($datos['vacaciones']['vacaciones']){
-            $table .= '<tr><td>Vacaciones disponibles (' . $datos['vacaciones']['dias'] . ' días)</td><td>' . Funciones::formatoPesos($datos['vacaciones']['monto']) . '</td></tr>';
+            $table .= '<tr><td>Feriado Proporcional (' . $datos['vacaciones']['dias'] . ' días)</td><td>' . Funciones::formatoPesos($datos['vacaciones']['monto']) . '</td></tr>';
         }
         
         if($datos['otros']){
@@ -3128,10 +5030,10 @@ class TrabajadoresController extends \BaseController {
         $rutTrabajador = $trabajador->rut_formato();
         $estadoCivilTrabajador = $ficha->estadoCivil->nombre;
         $fechaNacimientoPalabrasTrabajador = Funciones::obtenerFechaTexto($ficha->fecha_nacimiento);
-        $cargoTrabajador = $ficha->cargo->nombre;
+        $cargoTrabajador = $ficha->cargo ? $ficha->cargo->nombre : "";
         $domicilioTrabajador = $ficha->domicilio();
-        $trabajadorAfp = $ficha->afp->glosa;
-        $trabajadorIsapre = $ficha->isapre->glosa;
+        $trabajadorAfp = $ficha->afp ? $ficha->afp->glosa : "";
+        $trabajadorIsapre = $ficha->isapre ? $ficha->isapre->glosa : "";
         
         $sb = Funciones::convertir($ficha->sueldo_base, $ficha->moneda_sueldo);
         $sueldoBase = Funciones::formatoPesos($sb);
@@ -3198,10 +5100,10 @@ class TrabajadoresController extends \BaseController {
         $estadoCivilTrabajador = $ficha->estadoCivil->nombre;
         $fechaNacimientoPalabrasTrabajador = Funciones::obtenerFechaTexto($ficha->fecha_nacimiento);
         $fechaFiniquitoPalabras = Funciones::obtenerFechaTexto($fechaFiniquito);
-        $cargoTrabajador = $ficha->cargo->nombre;
+        $cargoTrabajador = $ficha->cargo ? $ficha->cargo->nombre : "";
         $domicilioTrabajador = $ficha->domicilio();
-        $trabajadorAfp = $ficha->afp->glosa;
-        $trabajadorIsapre = $ficha->isapre->glosa;
+        $trabajadorAfp = $ficha->afp ? $ficha->afp->glosa : '' ;
+        $trabajadorIsapre = $ficha->isapre ? $ficha->isapre->glosa : '';
         
         $sb = Funciones::convertir($ficha->sueldo_base, $ficha->moneda_sueldo);
         $sueldoBase = Funciones::formatoPesos($sb);
@@ -3257,7 +5159,7 @@ class TrabajadoresController extends \BaseController {
         $rutTrabajador = $trabajador->rut_formato();
         $estadoCivilTrabajador = $ficha->estadoCivil->nombre;
         $fechaNacimientoPalabrasTrabajador = Funciones::obtenerFechaTexto($ficha->fecha_nacimiento);
-        $cargoTrabajador = $ficha->cargo->nombre;
+        $cargoTrabajador = $ficha->cargo ? $ficha->cargo->nombre : "";
         $domicilioTrabajador = $ficha->domicilio();
         $trabajadorAfp = $ficha->afp->glosa;
         $trabajadorIsapre = $ficha->isapre->glosa;
@@ -3298,7 +5200,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array(), 'rmi' => null));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#reajuste-global');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#reajuste-global');
         $mesActual = \Session::get('mesActivo');
         $finMes = $mesActual->fechaRemuneracion;
         $mes = $mesActual->mes;
@@ -3315,10 +5217,13 @@ class TrabajadoresController extends \BaseController {
                         $listaTrabajadores[]=array(
                             'id' => $empleado->id,
                             'sid' => $trabajador->sid,
+                            'rut' => $trabajador->rut,
                             'rutFormato' => $trabajador->rut_formato(),
-                            'nombreCompleto' => $empleado->nombreCompleto(),
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),      
+                            'nombreCompleto' => $empleado->nombreCompleto(),      
                             'celular' => $empleado->celular,
                             'email' => $empleado->email,
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : "",
@@ -3337,7 +5242,8 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
-        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+                
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores,
@@ -3358,7 +5264,6 @@ class TrabajadoresController extends \BaseController {
         
         foreach($datos['trabajadores'] as $trab){
             $ficha = FichaTrabajador::find($trab['id']);
-
             if($ficha->mes_id!=$idMes){
                 $id = (FichaTrabajador::orderBy('id', 'DESC')->first()->id + 1);
                 $nuevaFicha = new FichaTrabajador();
@@ -3368,10 +5273,19 @@ class TrabajadoresController extends \BaseController {
                 $nuevaFicha->fecha = $mes;
                 $nuevaFicha->sueldo_base = $rmi;
                 $nuevaFicha->save(); 
+                $trabajador = $nuevaFicha->trabajador;
+                $id = $nuevaFicha->id;
+                $nombre = $nuevaFicha->nombreCompleto();
             }else{
                 $ficha->sueldo_base = $rmi;
                 $ficha->save(); 
+                $trabajador = $ficha->trabajador;
+                $id = $ficha->id;
+                $nombre = $ficha->nombreCompleto();
             }                
+            
+            Logs::crearLog('#reajuste-global', $trabajador->id, $trabajador->rut_formato(), 'Reajuste', $id, $nombre, NULL);
+            
         }
         
         $respuesta=array(
@@ -3395,11 +5309,11 @@ class TrabajadoresController extends \BaseController {
     public function store()
     {
         $datos = $this->get_datos_formulario();
+        $trabajador = new Trabajador();
         $errores = Trabajador::errores($datos);  
         $idMes = \Session::get('mesActivo')->id;  
         
         if(!$errores){
-            $trabajador = new Trabajador();
             $trabajador->sid = Funciones::generarSID();
             $trabajador->rut = $datos['rut'];            
             $trabajador->save();
@@ -3412,6 +5326,11 @@ class TrabajadoresController extends \BaseController {
             $ficha->nacionalidad_id = $datos['nacionalidad_id'];
             $ficha->sexo = $datos['sexo'];
             $ficha->gratificacion = $datos['gratificacion'];
+            $ficha->gratificacion_especial = $datos['gratificacion_especial'];
+            $ficha->moneda_gratificacion = $datos['moneda_gratificacion'];
+            $ficha->monto_gratificacion = $datos['monto_gratificacion'];
+            $ficha->gratificacion_proporcional_inasistencias =  $datos['gratificacion_proporcional_inasistencias'];
+            $ficha->gratificacion_proporcional_licencias =  $datos['gratificacion_proporcional_licencias'];
             $ficha->estado_civil_id = $datos['estado_civil_id'];
             $ficha->fecha_nacimiento = $datos['fecha_nacimiento'];
             $ficha->direccion = $datos['direccion'];
@@ -3432,6 +5351,7 @@ class TrabajadoresController extends \BaseController {
             $ficha->numero_cuenta = $datos['numero_cuenta'];
             $ficha->fecha_ingreso = $datos['fecha_ingreso'];
             $ficha->fecha_reconocimiento = $datos['fecha_reconocimiento'];
+            $ficha->fecha_reconocimiento_cesantia = $datos['fecha_reconocimiento_cesantia'];
             $ficha->tipo_contrato_id = $datos['tipo_contrato_id'];
             $ficha->fecha_vencimiento = $datos['fecha_vencimiento'];
             $ficha->tipo_jornada_id = $datos['tipo_jornada_id'];
@@ -3459,11 +5379,12 @@ class TrabajadoresController extends \BaseController {
             $ficha->sindicato = $datos['sindicato'];
             $ficha->moneda_sindicato = $datos['moneda_sindicato'];
             $ficha->monto_sindicato = $datos['monto_sindicato'];
+            $ficha->zona_id = $datos['zona_id'];
             $ficha->estado = $datos['estado'];
             
             if($ficha->estado=='Ingresado'){
                 $ficha->tramo_id = FichaTrabajador::calcularTramo(Funciones::convertir($datos['sueldo_base'], $datos['moneda_sueldo']));
-                $trabajador->crearUser($datos['estadoUser']);
+                //$trabajador->crearUser();
                 if($ficha->semana_corrida==1){
                     $trabajador->crearSemanaCorrida();
                 }
@@ -3475,38 +5396,14 @@ class TrabajadoresController extends \BaseController {
                 $trabajador->calcularMisVacaciones($ficha->fecha_reconocimiento);
             }
             
+            Logs::crearLog('#trabajadores', $trabajador->id, $trabajador->rut_formato(), 'Create', $ficha->id, $ficha->nombreCompleto(), 'Trabajadores'); 
+            
             $respuesta=array(
                 'success' => true,
                 'mensaje' => "La Información fue almacenada correctamente",
                 'sid' => $trabajador->sid
             );
-            
-            if($datos['apvs']){    
-                
-                $apvs = $datos['apvs'];
-                foreach($apvs as $apv){
-                    $afp = $apv['afp'];
-                    $formaPago = $apv['forma_pago'];
-                    $errores = Apv::errores($apv);
-                    if(!$errores){
-                        $nuevoApv = new Apv();
-                        $nuevoApv->sid = Funciones::generarSID();
-                        $nuevoApv->ficha_trabajador_id = $ficha->id;
-                        $nuevoApv->afp_id = $afp['id'];
-                        $nuevoApv->forma_pago = $formaPago['id'];
-                        $nuevoApv->regimen = $apv['regimen'];
-                        $nuevoApv->moneda = $apv['moneda'];
-                        $nuevoApv->monto = $apv['monto'];
-                        $nuevoApv->save();                                                
-                    }else{
-                        $respuesta=array(
-                            'success' => false,
-                            'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada",
-                            'errores' => $errores
-                        );
-                    }
-                }
-            }
+                    
             if($datos['descuentos']){    
                 
                 $descuentos = $datos['descuentos'];
@@ -3569,33 +5466,7 @@ class TrabajadoresController extends \BaseController {
                     }
                 }
             }
-            if($datos['cargas']){    
-                
-                $cargas = $datos['cargas'];
-                foreach($cargas as $carga){
-                    $tipo = $carga['tipo'];
-                    $errores = Carga::errores($carga);
-                    if(!$errores){
-                        $nuevaCarga = new Carga();
-                        $nuevaCarga->sid = Funciones::generarSID();
-                        $nuevaCarga->ficha_trabajador_id = $ficha->id;
-                        $nuevaCarga->parentesco = $carga['parentesco'];
-                        $nuevaCarga->tipo_carga_id = $tipo['id'];
-                        $nuevaCarga->rut = $carga['rut'];
-                        $nuevaCarga->nombre_completo = $carga['nombreCompleto'];
-                        $nuevaCarga->fecha_nacimiento = $carga['fechaNacimiento'];
-                        $nuevaCarga->sexo = $carga['sexo'];
-                        $nuevaCarga->es_carga = $carga['esCarga'];
-                        $nuevaCarga->save();                                                
-                    }else{
-                        $respuesta=array(
-                            'success' => false,
-                            'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada",
-                            'errores' => $errores
-                        );
-                    }
-                }
-            }
+            
         }else{
             $respuesta=array(
                 'success' => false,
@@ -3620,31 +5491,36 @@ class TrabajadoresController extends \BaseController {
     {
         $listaSecciones=array();
         Seccion::listaSecciones($listaSecciones, 0, 1);
-        
-        $finMes = \Session::get('mesActivo')->fechaRemuneracion;    
-        $trabajadores = Trabajador::all();
-        
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;    
+        $trabajadores = Trabajador::all();        
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
+                        
         $listaTrabajadores=array();
         if( $trabajadores->count() ){
             foreach( $trabajadores as $trabajador ){
                 $empleado = $trabajador->ficha();
                 if($empleado){
-                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMes && $empleado->fecha_finiquito >= $mesAnterior){
                         $listaTrabajadores[]=array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
                             'nombreCompleto' => $empleado->nombreCompleto(),
+                            'apellidos' => $empleado->apellidos,
                             'seccion' => array(
-                                'id' => $empleado->seccion->id,
-                                'sid' => $empleado->seccion->sid,
-                                'nombre' => $empleado->seccion->nombre
+                                'id' => $empleado->seccion ? $empleado->seccion->id : "",
+                                'sid' => $empleado->seccion ? $empleado->seccion->sid : "",
+                                'nombre' => $empleado->seccion ? $empleado->seccion->nombre : ""
                             )
                         );
                     }
                 }
             }
         }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
         
 		$datos=array(
 			'secciones' => $listaSecciones,
@@ -3659,22 +5535,31 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-inasistencias');
-        $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-inasistencias');
         $trabajadores = Trabajador::all();
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
         
         $listaTrabajadores = array();
         if($trabajadores->count()){
             foreach($trabajadores as $trabajador){
                 $empleado = $trabajador->ficha();
                 if($empleado){
-                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMes && $empleado->fecha_finiquito >= $mesAnterior){
                         $idTrabajador = $trabajador->id;
                         $listaTrabajadores[] = array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                            'cargo' => array(
+                                'id' => $empleado->cargo ? $empleado->cargo->id : "",
+                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
+                            ),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'totalInasistencias' => $trabajador->totalInasistencias()
                         );
@@ -3682,6 +5567,9 @@ class TrabajadoresController extends \BaseController {
                 }
             }
         }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores
@@ -3693,7 +5581,7 @@ class TrabajadoresController extends \BaseController {
     public function trabajadorInasistencias($sid)
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-inasistencias');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-inasistencias');
         
         $trabajadorInasistencias = array(
             'id' => $trabajador->id,
@@ -3715,30 +5603,39 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-licencias');
-        $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-licencias');
         $trabajadores = Trabajador::all();
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
         
         $listaTrabajadores = array();
         if($trabajadores->count()){
             foreach($trabajadores as $trabajador){
                 $empleado = $trabajador->ficha();
                 if($empleado){
-                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes){
-                        $idTrabajador = $trabajador->id;
-                        $listaTrabajadores[] = array(
-                            'id' => $trabajador->id,
-                            'sid' => $trabajador->sid,
-                            'rutFormato' => $trabajador->rut_formato(),
-                            'rut' => $trabajador->rut,
-                            'nombreCompleto' => $empleado->nombreCompleto(),
-                            'totalLicencias' => $trabajador->totalLicencias(),
-                            'totalDiasLicencias' => $trabajador->totalDiasLicencias()
-                        );
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMes && $empleado->fecha_finiquito >= $mesAnterior){
+                        $licencias = $trabajador->totalLicencias();
+                        if($licencias){
+                            $listaTrabajadores[] = array(
+                                'id' => $trabajador->id,
+                                'sid' => $trabajador->sid,
+                                'rutFormato' => $trabajador->rut_formato(),
+                                'rut' => $trabajador->rut,
+                                'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                'nombreCompleto' => $empleado->nombreCompleto(),
+                                'totalLicencias' => $licencias,
+                                'totalDiasLicencias' => $trabajador->totalDiasLicencias()
+                            );
+                        }
                     }
                 }
             }
         }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores
@@ -3750,7 +5647,7 @@ class TrabajadoresController extends \BaseController {
     public function trabajadorLicencias($sid)
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-licencias');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-licencias');
         
         $trabajadorLicencias = array(
             'id' => $trabajador->id,
@@ -3773,7 +5670,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-horas-extra');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-horas-extra');
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
         $trabajadores = Trabajador::all();
         
@@ -3789,6 +5686,13 @@ class TrabajadoresController extends \BaseController {
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                            'cargo' => array(
+                                'id' => $empleado->cargo ? $empleado->cargo->id : "",
+                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
+                            ),
+                            'tramos' => $trabajador->tramosHorasExtra(),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'totalHorasExtra' => $trabajador->totalHorasExtra()
                         );
@@ -3796,6 +5700,9 @@ class TrabajadoresController extends \BaseController {
                 }
             }
         }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores
@@ -3807,14 +5714,16 @@ class TrabajadoresController extends \BaseController {
     public function trabajadorHorasExtra($sid)
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-horas-extra');
+        $empleado = $trabajador->ficha();
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-horas-extra');
         
         $trabajadorHorasExtra = array(
             'id' => $trabajador->id,
             'sid' => $trabajador->sid,
             'rutFormato' => Funciones::formatear_rut($trabajador->rut),
             'rut' => $trabajador->rut,
-            'nombreCompleto' => $trabajador->ficha()->nombreCompleto(),
+            'nombreCompleto' => $empleado->nombreCompleto(),
+            'tramos' => $trabajador->tramosHorasExtra(),
             'horasExtra' => $trabajador->misHorasExtra()
         );
         $datos = array(
@@ -3830,7 +5739,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-prestamos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-prestamos');
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
         $trabajadores = Trabajador::all();
         
@@ -3846,6 +5755,7 @@ class TrabajadoresController extends \BaseController {
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'totalPrestamos' => $trabajador->totalPrestamos()
                         );
@@ -3853,6 +5763,9 @@ class TrabajadoresController extends \BaseController {
                 }
             }
         }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores
@@ -3864,7 +5777,7 @@ class TrabajadoresController extends \BaseController {
     public function trabajadorPrestamos($sid)
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-prestamos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-prestamos');
         
         $trabajadorPrestamos = array(
             'id' => $trabajador->id,
@@ -3882,12 +5795,80 @@ class TrabajadoresController extends \BaseController {
         return Response::json($datos);       
     }
     
+    public function trabajadoresApvs()
+    {
+        if(!\Session::get('empresa')){
+            return Response::json(array('datos' => array(), 'permisos' => array()));
+        }
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#apvs');
+        $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
+        $trabajadores = Trabajador::all();
+        
+        $listaTrabajadores = array();
+        if($trabajadores->count()){
+            foreach($trabajadores as $trabajador){
+                $empleado = $trabajador->ficha();
+                if($empleado){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes){
+                        $misApvs = $trabajador->misApvs();
+                        if(count($misApvs)){
+                            $listaTrabajadores[] = array(
+                                'id' => $trabajador->id,
+                                'sid' => $trabajador->sid,
+                                'rutFormato' => $trabajador->rut_formato(),
+                                'rut' => $trabajador->rut,
+                                'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                'nombreCompleto' => $empleado->nombreCompleto(),
+                                'apvs' => $misApvs,
+                                'regimen' => $trabajador->misRegimenes(),
+                                'total' => $trabajador->totalApv()
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $listaTrabajadores
+        );
+        
+        return Response::json($datos);     
+    }
+    
+    public function trabajadorApvs($sid)
+    {        
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#apvs');
+        $trabajador = Trabajador::whereSid($sid)->first();
+        $empleado = $trabajador->ficha();        
+        
+        $trabajadorApvs = array(
+            'id' => $trabajador->id,
+            'sid' => $trabajador->sid,
+            'rutFormato' => $trabajador->rut_formato(),
+            'rut' => $trabajador->rut,
+            'nombreCompleto' => $empleado->nombreCompleto(),
+            'apvs' => $trabajador->misApvs()
+            
+        );
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $trabajadorApvs
+        );
+        
+        return Response::json($datos);       
+    }
+    
     public function trabajadoresCargas()
     {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cargas-familiares');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cargas-familiares');
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
         $trabajadores = Trabajador::all();
         $tiposCargas = TipoCarga::listaTiposCarga();
@@ -3901,19 +5882,23 @@ class TrabajadoresController extends \BaseController {
                         $idTrabajador = $trabajador->id;
                         $listaTrabajadores[] = array(
                             'id' => $trabajador->id,
-                            'idFicha' => $empleado->id,
                             'sid' => $trabajador->sid,
+                            'tramo' => strtoupper($empleado->tramo_id),
                             'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
-                            'cargasFamiliares' => $empleado->totalCargasFamiliares(),
-                            'grupoFamiliar' => $empleado->totalGrupoFamiliar(),
-                            'cargasAutorizadas' => $empleado->totalCargasAutorizadas(),
+                            'cargasFamiliares' => $trabajador->totalCargasFamiliares(),
+                            'grupoFamiliar' => $trabajador->totalGrupoFamiliar(),
+                            'cargasAutorizadas' => $trabajador->totalCargasAutorizadas(),
                         );
                     }
                 }
             }
         }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTrabajadores,
@@ -3925,35 +5910,56 @@ class TrabajadoresController extends \BaseController {
     
     public function trabajadorCargas($sid)
     {        
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cargas-familiares');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cargas-familiares');
         $trabajador = Trabajador::whereSid($sid)->first();
-        $idTrabajador = $trabajador->id;
         $empleado = $trabajador->ficha();
         $tiposCargas = TipoCarga::listaTiposCarga();
+        $listaTramos = AsignacionFamiliar::listaAsignacionFamiliar();
         
         $trabajadorCargas = array(
             'id' => $trabajador->id,
             'sid' => $trabajador->sid,
             'rutFormato' => $trabajador->rut_formato(),
             'rut' => $trabajador->rut,
-            'esAutorizadas' => $empleado->tramo_id ? true : false,
-            'esCargas' => $empleado->isCargas($idTrabajador),
+            'tramo' => $empleado->tramo_id,
+            'esCargas' => $trabajador->isCargas(),
             'nombreCompleto' => $empleado->nombreCompleto(),
-            'cargas' => $empleado->miGrupoFamiliar($idTrabajador)
+            'cargas' => $trabajador->miGrupoFamiliar(),
+            'grupo' => $trabajador->miGrupo()
             
         );
         $datos = array(
             'accesos' => $permisos,
             'datos' => $trabajadorCargas,
+            'tramos' => $listaTramos,
             'tiposCargas' => $tiposCargas
         );
         
         return Response::json($datos);       
     }
     
+    public function cambiarTramo()
+    {        
+        $datos = Input::all();
+        $trabajador = Trabajador::find($datos['idTrabajador']);
+        $empleado = $trabajador->ficha();
+        $empleado->tramo_id = $datos['tramo']['tramo'];
+        $empleado->save();       
+        
+        Logs::crearLog('#cargas-familiares', $trabajador->id, $trabajador->rut_formato(), 'Update', $empleado->id, $empleado->nombreCompleto(), 'Cambiar Tramo');
+        
+        $respuesta = array(
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente",
+            'sid' => $trabajador->sid
+        );
+        
+        return Response::json($respuesta);       
+    }
+    
     public function trabajadorCargasAutorizar($sid)
     {        
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cargas-familiares');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cargas-familiares');
         $trabajador = Trabajador::whereSid($sid)->first();
         $listaTramos = AsignacionFamiliar::listaAsignacionFamiliar();
         $empleado = $trabajador->ficha();
@@ -3964,12 +5970,8 @@ class TrabajadoresController extends \BaseController {
             'rutFormato' => $trabajador->rut_formato(),
             'rut' => $trabajador->rut,
             'nombreCompleto' => $empleado->nombreCompleto(),
-            'cargas' => $empleado->misCargas()    ,
-            'tramo' => array(
-                'id' => $empleado->tramo_id ? $empleado->tramo_id : "",
-                'sid' => $empleado->tramo_id ? $empleado->tramo->sid : "",
-                'tramo' => $empleado->tramo_id ? $empleado->tramo->tramo : ""
-            )
+            'cargas' => $trabajador->misCargas(),
+            'tramo' => $empleado->tramo_id
         );
         $datos = array(
             'accesos' => $permisos,
@@ -4014,7 +6016,7 @@ class TrabajadoresController extends \BaseController {
     public function haberes($sid)
     {
         $trabajador = Trabajador::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-haberes');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-haberes');
         
         $trabajadorHaberes = array(
             'id' => $trabajador->id,
@@ -4022,7 +6024,7 @@ class TrabajadoresController extends \BaseController {
             'rutFormato' => $trabajador->rut_formato(),
             'rut' => $trabajador->rut,
             'nombreCompleto' => $trabajador->ficha()->nombreCompleto(),
-            'haberes' => $trabajador->misHaberes()
+            'haberes' => $trabajador->todosMisHaberes()
         );
         $datos = array(
             'accesos' => $permisos,
@@ -4035,7 +6037,7 @@ class TrabajadoresController extends \BaseController {
     public function descuentos($sid)
     {
         $trabajador = Trabajador::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-descuentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-descuentos');
         
         $trabajadorDescuentos = array(
             'id' => $trabajador->id,
@@ -4043,7 +6045,7 @@ class TrabajadoresController extends \BaseController {
             'rutFormato' => $trabajador->rut_formato(),
             'rut' => $trabajador->rut,
             'nombreCompleto' => $trabajador->ficha()->nombreCompleto(),
-            'descuentos' => $trabajador->misDescuentos()
+            'descuentos' => $trabajador->todosMisDescuentos()
         );
         $datos = array(
             'accesos' => $permisos,
@@ -4064,6 +6066,8 @@ class TrabajadoresController extends \BaseController {
         
         $listaSecciones=array();
         Seccion::listaSecciones($listaSecciones, 0, 1);
+        $listaCentrosCosto=array();
+        CentroCosto::listaCentrosCostoDependencia($listaCentrosCosto, 0, 1, 0);
         $datosTrabajador = array();
         
 		$datosFormulario=array(
@@ -4071,12 +6075,11 @@ class TrabajadoresController extends \BaseController {
 			'estadosCiviles' => EstadoCivil::listaEstadosCiviles(),
 			'cargos' => Cargo::listaCargos(),
 			'tiendas' => Tienda::listaTiendas(),
-			'centros' => CentroCosto::listaCentrosCosto(),
+			'centros' => $listaCentrosCosto,
 			'secciones' => $listaSecciones,
 			'titulos' => Titulo::listaTitulos(),
 			'tipos' => Glosa::listaTiposTrabajador(),
 			'tiposCuentas' => TipoCuenta::listaTiposCuenta(),
-			'tiposCargas' => TipoCarga::listaTiposCarga(),
 			'bancos' => Banco::listaBancos(),
 			'tiposContratos' => TipoContrato::listaTiposContrato(),
 			'tiposJornadas' => Jornada::listaJornadas(),			
@@ -4084,7 +6087,6 @@ class TrabajadoresController extends \BaseController {
 			'exCajas' => Glosa::listaExCajas(),
 			'afps' => Glosa::listaAfps(),
 			'afpsSeguro' => Glosa::listaAfpsSeguro(),
-			'afpsApvs' => Glosa::listaAfpsApvs(),
 			'formasPago' => Glosa::listaFormasPago(),
 			'isapres' => Glosa::listaIsapres(),
 			'tiposDescuento' => TipoDescuento::listaTiposDescuento(),
@@ -4093,7 +6095,8 @@ class TrabajadoresController extends \BaseController {
             'rti' => RentaTopeImponible::rti(),
             'tasasSeguroCesantia' => SeguroDeCesantia::listaSeguroDeCesantia(),
             'rentasTopesImponibles' => RentaTopeImponible::listaRentasTopeImponibles(),
-            'tablaImpuestoUnico' => TablaImpuestoUnico::tabla()
+            'tablaImpuestoUnico' => TablaImpuestoUnico::tabla(),
+            'zonas' => ZonaImpuestoUnico::listaZonas()
 		);
         
         if($sid){
@@ -4104,7 +6107,8 @@ class TrabajadoresController extends \BaseController {
             $empleado = $trabajador->ficha();
 
             $datosTrabajador = array(
-                'id' => $empleado->id,
+                'id' => $trabajador->id,
+                'idFicha' => $empleado->id,
                 'sid' => $trabajador->sid,
                 'rutFormato' => $trabajador->rut_formato(),
                 'rut' => $trabajador->rut,
@@ -4169,6 +6173,7 @@ class TrabajadoresController extends \BaseController {
                 'numeroCuenta' => $empleado->numero_cuenta,                
                 'fechaIngreso' => $empleado->fecha_ingreso,
                 'fechaReconocimiento' => $empleado->fecha_reconocimiento,
+                'fechaReconocimientoCesantia' => $empleado->fecha_reconocimiento_cesantia,
                 'fechaFiniquito' => $empleado->fecha_finiquito,
                 'tipoContrato' => array(
                     'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
@@ -4182,6 +6187,11 @@ class TrabajadoresController extends \BaseController {
                 'semanaCorrida' => $empleado->semana_corrida ? true : false,
                 'monedaSueldo' => $empleado->moneda_sueldo,
                 'gratificacion' => $empleado->gratificacion,
+                'gratificacionEspecial' => $empleado->gratificacion_especial ? true : false,
+                'monedaGratificacion' => $empleado->moneda_gratificacion,
+                'montoGratificacion' => $empleado->monto_gratificacion,
+                'proporcionalInasistencias' => $empleado->gratificacion_proporcional_inasistencias ? true : false,
+                'proporcionalLicencias' => $empleado->gratificacion_proporcional_licencias ? true : false,
                 'sueldoBase' => $empleado->sueldo_base,
                 'tipoTrabajador' => $empleado->tipo_trabajador,
                 'excesoRetiro' => $empleado->exceso_retiro,
@@ -4217,14 +6227,18 @@ class TrabajadoresController extends \BaseController {
                 'monedaSindicato' => $empleado->moneda_sindicato,
                 'montoSindicato' => $empleado->monto_sindicato,
                 'estado' => $empleado->estado,
-                'apvs' => $empleado->misApvs(),
                 'haberes' => $trabajador->misHaberesPermanentes(),
                 'descuentos' => $trabajador->misDescuentosPermanentes(),
                 'prestamos' => $trabajador->misPrestamos(),
-                'cargas' => $empleado->misCargas()
-
+                'zonaImpuestoUnico' => array(
+                    'id' => $empleado->zonaImpuestoUnico ? $empleado->zonaImpuestoUnico->id : "",
+                    'nombre' => $empleado->zonaImpuestoUnico ? $empleado->zonaImpuestoUnico->nombre : "",
+                    'porcentaje' => $empleado->zonaImpuestoUnico ? $empleado->zonaImpuestoUnico->porcentaje : ""
+                )
             );
         }
+
+
         
         $datos = array(
             'accesos' => array(
@@ -4267,14 +6281,17 @@ class TrabajadoresController extends \BaseController {
                         $listaActivos[] = array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
-                            'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'rutFormato' => $trabajador->rut_formato(),
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'fechaIngreso' => $empleado->fecha_ingreso,
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
                             ),
+                            'contratoOrden' => $empleado->tipoContrato ? ucwords(strtolower($empleado->tipoContrato->nombre)) : "", 
                             'tipoContrato' => array(
                                 'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
                                 'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
@@ -4299,14 +6316,17 @@ class TrabajadoresController extends \BaseController {
                         $listaInactivos[] = array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
-                            'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'rutFormato' => $trabajador->rut_formato(),
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'fechaIngreso' => $empleado->fecha_ingreso,
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
                             ),
+                            'contratoOrden' => $empleado->tipoContrato ? ucwords(strtolower($empleado->tipoContrato->nombre)) : "", 
                             'tipoContrato' => array(
                                 'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
                                 'nombre' => $empleado->tipoContrato ?$empleado->tipoContrato->nombre : ""
@@ -4319,6 +6339,9 @@ class TrabajadoresController extends \BaseController {
                 }
             }
         }
+        
+        $listaActivos = Funciones::ordenar($listaActivos, 'apellidos');
+        $listaInactivos = Funciones::ordenar($listaInactivos, 'apellidos');
         
         $datos = array(
             'accesos' => array(
@@ -4338,7 +6361,7 @@ class TrabajadoresController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('activos' => array(), 'conLiquidacion' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#archivo-previred');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#archivo-previred');
         $mesActual = \Session::get('mesActivo');
         $finMes = $mesActual->fechaRemuneracion;
         $mes = $mesActual->mes;
@@ -4357,11 +6380,14 @@ class TrabajadoresController extends \BaseController {
                             'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
                             'nombreCompleto' => $empleado->nombreCompleto(),
-                            'fechaIngreso' => $empleado->fecha_ingreso,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),      
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
-                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
-                            ),
+                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : "",
+                            ),             
+                            'fechaIngreso' => $empleado->fecha_ingreso,
+                            'contratoOrden' => $empleado->tipoContrato ? ucwords(strtolower($empleado->tipoContrato->nombre)) : "", 
                             'tipoContrato' => array(
                                 'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
                                 'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
@@ -4375,10 +6401,13 @@ class TrabajadoresController extends \BaseController {
                 }
             }
         }
+        
+        $listaActivos = Funciones::ordenar($listaActivos, 'apellidos');
                                     
         $datos = array(
             'accesos' => $permisos,
-            'datos' => $listaActivos
+            'datos' => $listaActivos,
+            'isLiquidaciones' => AnioRemuneracion::isLiquidaciones()
         );
         
         return Response::json($datos); 
@@ -4393,7 +6422,7 @@ class TrabajadoresController extends \BaseController {
         $finMes = \Session::get('mesActivo')->fechaRemuneracion;
         $mes = \Session::get('mesActivo')->mes;
         $trabajadores = Trabajador::all();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#finiquitar-trabajador');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#finiquitar-trabajador');
         
         $listaActivos = array();
         if($trabajadores){
@@ -4406,12 +6435,15 @@ class TrabajadoresController extends \BaseController {
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'fechaIngreso' => $empleado->fecha_ingreso,
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
                             ),
+                            'contratoOrden' => $empleado->tipoContrato ? ucwords(strtolower($empleado->tipoContrato->nombre)) : "", 
                             'tipoContrato' => array(
                                 'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
                                 'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
@@ -4436,13 +6468,16 @@ class TrabajadoresController extends \BaseController {
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
                             'rut' => $trabajador->rut,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
                             'nombreCompleto' => $empleado->nombreCompleto(),
                             'fechaIngreso' => $empleado->fecha_ingreso,
                             'fechaFiniquito' => $empleado->fecha_finiquito,
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
                                 'id' => $empleado->cargo ? $empleado->cargo->id : "",
                                 'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
                             ),
+                            'contratoOrden' => $empleado->tipoContrato ? ucwords(strtolower($empleado->tipoContrato->nombre)) : "", 
                             'tipoContrato' => array(
                                 'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
                                 'nombre' => $empleado->tipoContrato ?$empleado->tipoContrato->nombre : ""
@@ -4454,6 +6489,9 @@ class TrabajadoresController extends \BaseController {
                 }
             }
         }
+        
+        $listaActivos = Funciones::ordenar($listaActivos, 'apellidos');
+        $listaInactivos = Funciones::ordenar($listaInactivos, 'apellidos');
         
         $datos = array(
             'accesos' => $permisos,
@@ -4468,7 +6506,7 @@ class TrabajadoresController extends \BaseController {
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
         $empleado = $trabajador->ficha();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#finiquitar-trabajador');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#finiquitar-trabajador');
         
         $trabajadorFiniquitos = array(
             'id' => $trabajador->id,
@@ -4504,114 +6542,6 @@ class TrabajadoresController extends \BaseController {
         
         return Response::json($datos);     
     }
-    
-    public function liquidacion()
-    {
-        $datos = Input::all();
-        $liquidaciones = array();
-        foreach($datos['trabajadores'] as $sid){
-            
-            $trabajador = Trabajador::whereSid($sid['sid'])->first();   
-            $empleado = $trabajador->ficha();
-            $idTrabajador = $trabajador->id;
-            $liquidaciones[] = array(
-                'id' => $trabajador->id,
-                'sid' => $trabajador->sid,
-                'rutFormato' => $trabajador->rut_formato(),
-                'rut' => $trabajador->rut,
-                'nombres' => $empleado->nombres,
-                'apellidos' => $empleado->apellidos,
-                'nombreCompleto' => $empleado->nombreCompleto(),
-                'cargo' => array(
-                    'id' => $empleado->cargo ? $empleado->cargo->id : "",
-                    'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
-                ),
-                'seccion' => array(
-                    'id' => $empleado->seccion ? $empleado->seccion->id : "",
-                    'nombre' => $empleado->seccion ? $empleado->seccion->nombre : ""
-                ),
-                'fechaIngreso' => $empleado->fecha_ingreso,
-                'tipoContrato' => array(
-                    'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
-                    'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
-                ),
-                'monedaSueldo' => $empleado->moneda_sueldo,
-                'sueldoBase' => $empleado->sueldo_base,
-                'colacion' => array(
-                    'moneda' => $empleado->moneda_colacion,
-                    'monto' => $empleado->monto_colacion,
-                    'montoPesos' => $trabajador->totalColacion(),
-                    'proporcional' => $empleado->proporcional_colacion ? true : false
-                ),
-                'movilizacion' => array(
-                    'moneda' => $empleado->moneda_movilizacion,
-                    'monto' => $empleado->monto_movilizacion,
-                    'montoPesos' => $trabajador->totalMovilizacion(),
-                    'proporcional' => $empleado->proporcional_movilizacion ? true : false
-                ),
-                'viatico' => array(
-                    'moneda' => $empleado->moneda_viatico,
-                    'monto' => $empleado->monto_viatico,
-                    'montoPesos' => $trabajador->totalViatico(),
-                    'proporcional' => $empleado->proporcional_viatico ? true : false
-                ),
-                'afp' => array(
-                    'id' => $empleado->afp ? $empleado->afp->id : "",
-                    'nombre' => $empleado->afp ? $empleado->afp->glosa : ""
-                ),
-                'seguroDesempleo' => $empleado->seguro_desempleo ? true : false,
-                'afpSeguro' => array(
-                    'id' => $empleado->afpSeguro ? $empleado->afpSeguro->id : "",
-                    'nombre' => $empleado->afpSeguro ? $empleado->afpSeguro->glosa : ""
-                ),
-                'isapre' => array(
-                    'id' => $empleado->isapre ? $empleado->isapre->id : "",
-                    'nombre' => $empleado->isapre ? $empleado->isapre->glosa : ""
-                ),
-                'cotizacionIsapre' => $empleado->cotizacion_isapre,
-                'montoIsapre' => $empleado->monto_isapre,
-                'sindicato' => $empleado->sindicato ? true : false,
-                'monedaSindicato' => $empleado->moneda_sindicato,
-                'montoSindicato' => $empleado->monto_sindicato,
-                'estado' => $empleado->estado,
-                'diasTrabajados' => $trabajador->diasTrabajados(),
-                'sueldoDiario' => $trabajador->sueldoDiario(),
-                'sueldo' => $trabajador->sueldo(),
-                'gratificacion' => $trabajador->gratificacion(),
-                'horasExtra' => $trabajador->horasExtraPagar(),
-                'imponibles' => $trabajador->sumaImponibles(),
-                'cargasFamiliares' => $empleado->cargasFamiliares(),
-                'noImponibles' => $trabajador->noImponibles(),
-                'rentaImponible' => $trabajador->rentaImponible(),
-                'tasaAfp' => $trabajador->tasaAfp(),
-                'totalAfp' => $trabajador->totalAfp(),
-                'totalSalud' => $trabajador->totalSalud(),
-                'totalSeguroCesantia' => $trabajador->totalSeguroCesantia(),
-                'totalDescuentosPrevisionales' => $trabajador->totalDescuentosPrevisionales(),
-                'baseImpuestoUnico' => $trabajador->baseImpuestoUnico(),
-                'tramoImpuesto' => $trabajador->tramoImpuesto()->factor,
-                'impuestoDeterminado' => $trabajador->impuestoDeterminado(),
-                'totalOtrosDescuentos' => $trabajador->totalOtrosDescuentos(),
-                'totalAnticipos' => $trabajador->totalAnticipos(),
-                'totalHaberes' => $trabajador->totalHaberes(),
-                'apvs' => $empleado->misApvs(),
-                'haberes' => $trabajador->misHaberes(),
-                'descuentos' => $trabajador->misDescuentos(),
-                'prestamos' => $trabajador->misCuotasPrestamo(),
-                'sueldoLiquido' => $trabajador->sueldoLiquido()
-            );
-        }
-        
-        $data = array(
-            'accesos' => array(
-                'ver' => true,
-                'editar' => true
-            ),
-            'datos' => $liquidaciones
-        );
-        
-        return Response::json($data);   
-    }
   
   	public function comprobarLiquidaciones($trabajadores)
     {
@@ -4627,6 +6557,22 @@ class TrabajadoresController extends \BaseController {
         }
         
         return $liquidaciones;
+    }
+    
+    public function comprobarDeclaraciones($trabajadores, $anio)
+    {
+        $trabajadores = (array) $trabajadores;
+        $sid = Trabajador::whereIn('sid', $trabajadores)->lists('id');
+        $declaraciones = DeclaracionTrabajador::whereIn('trabajador_id', $sid)->where('anio_id', $anio->id)->get();
+        foreach($declaraciones as $declaracion){
+            if(file_exists(public_path() . '/stories/' . $declaracion->nombre_archivo)){
+                unlink(public_path() . '/stories/' . $declaracion->nombre_archivo);
+            }
+
+            $declaracion->delete();                
+        }
+        
+        return $declaraciones;
     }
     
     public function miLiquidacion()
@@ -4646,14 +6592,23 @@ class TrabajadoresController extends \BaseController {
 		$empresa = \Session::get('empresa');
 		$rutEmpresa = Funciones::formatear_rut($empresa->rut);
         $liquidaciones = array();
+        $cliente = Config::get('cliente.CLIENTE.EMPRESA');
         
         foreach($trabajadores as $trabajador){
             $empleado = $trabajador->ficha();
-            $apvs = $empleado->misApvs();
+            $observacion = LiquidacionObservacion::where('periodo', $mes->mes)->where('trabajador_id', $trabajador->id )->first();
+            $sis = 0;
+            $apvs = $trabajador->misApvsPagar();
             $apvc = $trabajador->apvc();
-            $diasTrabajados = $trabajador->misDiasTrabajados();
+            $diasDescontados = $trabajador->diasDescontados();
+            $diasTrabajados = $trabajador->diasTrabajados();
             $horasExtra = $trabajador->horasExtraPagar();
             $totalAfp = $trabajador->totalAfp();
+            
+            if($totalAfp['pagaSis']=='empleado'){
+                $sis = $totalAfp['sis'];
+            }
+            
             $tasaAfp = $trabajador->tasaAfp();
             $totalSalud = $trabajador->totalSalud();
             $totalSeguroCesantia = $trabajador->totalSeguroCesantia();
@@ -4665,12 +6620,12 @@ class TrabajadoresController extends \BaseController {
             $totalOtrosDescuentos = $trabajador->totalOtrosDescuentos();
             $totalAnticipos = $trabajador->totalAnticipos();
             $totalDescuentosPrevisionales = $trabajador->totalDescuentosPrevisionales();
+            $otrosImponibles = $trabajador->otrosImponibles();
             $rentaImponible = $trabajador->rentaImponible();
             $totalHaberes = $trabajador->totalHaberes();
-            $cargasFamiliares = $empleado->cargasFamiliares();
-            $asignacionRetroactiva = $empleado->asignacionRetroactiva();
+            $cargasFamiliares = $trabajador->cargasFamiliares();
+            $asignacionRetroactiva = $trabajador->asignacionRetroactiva();
             $sueldo = $trabajador->sueldo();
-            $diasDescontados = $trabajador->diasDescontados();
             $sueldoDiario = $trabajador->sueldoDiario();
             $sueldoLiquido = $trabajador->sueldoLiquido();
             $gratificacion = $trabajador->gratificacion();
@@ -4685,6 +6640,12 @@ class TrabajadoresController extends \BaseController {
             $prestamos = $trabajador->misCuotasPrestamo();
             $totalAportes = ($totalMutual + $totalSeguroCesantia['totalEmpleador'] + $totalSalud['montoCaja'] + $totalSalud['montoFonasa']);
             $movimientoPersonal = $trabajador->movimientoPersonal();
+            $prestamosCaja = $trabajador->prestamosCaja();
+            
+            $filename = date("m-Y", strtotime($mes->mes))."_".$empresa->rut."_Liquidacion_".$trabajador->rut. '.pdf';
+            $alias = 'Liquidación de Sueldo ' . $empleado->nombreCompleto() . ' ' . $mes->nombre . ' del ' . $mes->anio . '.pdf';
+            
+            
             $miLiquidacion = array(
                 'mes' => $mes->nombre . ' del ' . $mes->anio,
                 'empresa' => $empresa,
@@ -4694,7 +6655,7 @@ class TrabajadoresController extends \BaseController {
                 'rutFormato' => $trabajador->rut_formato(),
                 'rut' => $trabajador->rut,
                 'nombres' => $empleado->nombres,
-                'apellidos' => $empleado->apellidos,
+                'apellidos' => ucwords(strtolower($empleado->apellidos)),
                 'nombreCompleto' => $empleado->nombreCompleto(),
                 'cargo' => array(
                     'id' => $empleado->cargo ? $empleado->cargo->id : "",
@@ -4723,6 +6684,10 @@ class TrabajadoresController extends \BaseController {
                 'afp' => array(
                     'id' => $empleado->afp ? $empleado->afp->id : "",
                     'nombre' => $empleado->afp ? strtoupper($empleado->afp->glosa) : ""
+                ),
+                'prevision' => array(
+                    'id' => $empleado->prevision ? $empleado->prevision->id : "",
+                    'nombre' => $empleado->prevision ? strtoupper($empleado->prevision->glosa) : ""
                 ),
                 'seguroDesempleo' => $empleado->seguro_desempleo ? true : false,
                 'afpSeguro' => array(
@@ -4755,7 +6720,7 @@ class TrabajadoresController extends \BaseController {
                 'isSemanaCorrida' => $empleado->semana_corrida ? true : false,
                 'rentaImponible' => $rentaImponible,
                 'tasaAfp' => $tasaAfp['tasaTrabajador'],
-                'tasaEmpleador' => $tasaAfp['tasaEmpleador'],
+                'tasaSis' => $tasaAfp['tasaSis'],
                 'totalMutual' => $totalMutual,
                 'totalAfp' => $totalAfp['totalTrabajador'],
                 'totalAfpEmpleador' => $totalAfp['totalEmpleador'],
@@ -4767,6 +6732,7 @@ class TrabajadoresController extends \BaseController {
                 'tramoImpuesto' => $tramoImpuesto,
                 'impuestoDeterminado' => $impuestoDeterminado,
                 'totalOtrosDescuentos' => $totalOtrosDescuentos,
+                'otrosImponibles' => $otrosImponibles,
                 'totalAportes' => $totalAportes,
                 'apvs' => $apvs,
                 'haberes' => $haberes,
@@ -4776,17 +6742,22 @@ class TrabajadoresController extends \BaseController {
                 'prestamos' => $prestamos,
                 'sueldoLiquidoPalabras' => strtoupper(Funciones::convertirPalabras($sueldoLiquido)),
                 'sueldoLiquido' => $sueldoLiquido,
+                'prop' => $trabajador->gratificacionProporcional(),
                 'banco' => $empleado->banco ? $empleado->banco->nombre : "",
-                'cuenta' => $empleado->numero_cuenta ? $empleado->numero_cuenta : ""
+                'cuenta' => $empleado->numero_cuenta ? $empleado->numero_cuenta : "",
+                'sis' => $sis,
+                'uf' => $mes->uf,
+                'observacion' => $observacion? $observacion->observaciones : "",
+                'nombreDocumento' => $filename,
+                'aliasDocumento' => $alias
             );
             
-            $filename = date("m-Y")."_Liquidacion_".$trabajador->rut. '.pdf';
             $documento = new Documento();
             $documento->sid = Funciones::generarSID();
             $documento->trabajador_id = $trabajador->id;
             $documento->tipo_documento_id = 4;
             $documento->nombre = $filename;
-            $documento->alias = 'Liquidación de Sueldo ' . $empleado->nombreCompleto() . $mes->nombre . ' del ' . $mes->anio . '.pdf';
+            $documento->alias = $alias;
             $documento->descripcion = 'Liquidación de Sueldo de ' . $empleado->nombreCompleto() . ' del mes de ' . $mes->nombre . ' del ' . $mes->anio;
             $documento->save();
           
@@ -4798,6 +6769,12 @@ class TrabajadoresController extends \BaseController {
                 }
             }
             
+            $html = "";
+            $view = View::make('pdf.liquidacion', [
+                'liquidacion' => $miLiquidacion
+            ]);
+            $html = $view->render();
+            
             $liquidacion = new Liquidacion();
             $liquidacion->sid = Funciones::generarSID();
             $liquidacion->trabajador_id = $trabajador->id;
@@ -4807,24 +6784,25 @@ class TrabajadoresController extends \BaseController {
             $liquidacion->empresa_rut = $empresa->rut;
             $liquidacion->empresa_direccion = $empresa->direccion;
             $liquidacion->inasistencias = $trabajador->totalInasistencias();
-            $liquidacion->encargado_id = $trabajador->id;
+            $liquidacion->encargado_id = Auth::usuario()->user()->id;
             $liquidacion->mes = $mes->mes;
             $liquidacion->folio = 45646548;
-            $liquidacion->estado = 1;
+            $liquidacion->estado = ($empleado->estado=='Ingresado') ? 1 : 0;
             $liquidacion->trabajador_rut = $trabajador->rut;
             $liquidacion->trabajador_nombres = $empleado->nombres;
             $liquidacion->trabajador_apellidos = $empleado->apellidos;
-            $liquidacion->trabajador_cargo = $empleado->cargo->nombre;
-            $liquidacion->trabajador_seccion = $empleado->seccion->nombre;
+            $liquidacion->trabajador_cargo = $empleado->cargo ? $empleado->cargo->nombre : "";
+            $liquidacion->trabajador_seccion = $empleado->miSeccion();
+            $liquidacion->trabajador_tienda = $empleado->miTienda();
             $liquidacion->trabajador_fecha_ingreso = $empleado->fecha_ingreso;
             $liquidacion->uf = $mes->uf;
             $liquidacion->utm = $mes->utm;
-            $liquidacion->dias_trabajados = $trabajador->diasTrabajados();
+            $liquidacion->dias_trabajados = $diasTrabajados;
             $liquidacion->horas_extra = $horasExtra['cantidad'];
             $liquidacion->total_horas_extra = $horasExtra['total'];
             $liquidacion->tipo_contrato = $empleado->tipoContrato->nombre;
-            $liquidacion->sueldo_base = $empleado->sueldo_base;
-            $liquidacion->seguro_cesantia = $empleado->seguro_desempleo;
+            $liquidacion->sueldo_base = Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo);
+            $liquidacion->seguro_cesantia = $empleado->seguro_desempleo ? $empleado->seguro_desempleo : 0;
             $liquidacion->base_impuesto_unico = $baseImpuestoUnico;
             $liquidacion->impuesto_determinado = $impuestoDeterminado;
             $liquidacion->tramo_impuesto = $tramoImpuesto;
@@ -4833,9 +6811,10 @@ class TrabajadoresController extends \BaseController {
             $liquidacion->total_otros_descuentos = $totalOtrosDescuentos;
             $liquidacion->total_anticipos = $totalAnticipos;
             $liquidacion->total_descuentos_previsionales = $totalDescuentosPrevisionales;
-            $liquidacion->total_descuentos = ($totalDescuentosPrevisionales + $totalOtrosDescuentos);
+            $liquidacion->total_descuentos = ($totalDescuentosPrevisionales + $totalOtrosDescuentos + $impuestoDeterminado);
             $liquidacion->total_aportes = $totalAportes;
             $liquidacion->renta_imponible = $rentaImponible;
+            $liquidacion->otros_imponibles = $otrosImponibles;
             $liquidacion->total_haberes = $totalHaberes;
             $liquidacion->total_cargas = $cargasFamiliares['monto'];
             $liquidacion->cantidad_cargas = $cargasFamiliares['cantidad'];
@@ -4851,12 +6830,14 @@ class TrabajadoresController extends \BaseController {
             $liquidacion->colacion = $totalColacion;
             $liquidacion->movilizacion = $totalMovilizacion;
             $liquidacion->viatico = $totalViatico;
-            $liquidacion->centro_costo_id = '';
             $liquidacion->movimiento_personal = $movimientoPersonal['codigo'];
             $liquidacion->fecha_desde = $movimientoPersonal['fechaDesde'];
             $liquidacion->fecha_hasta = $movimientoPersonal['fechaHasta'];
-            $liquidacion->tramo_id = $empleado->tramo_id;
+            $liquidacion->tramo_id = $empleado->tramo_id ? $empleado->tramo_id : 'a';
             $liquidacion->prevision_id = $empleado->prevision_id;
+            $liquidacion->observacion = $observacion? $observacion->observaciones : "";
+            $liquidacion->centro_costo_id = $empleado->centro_costo_id;
+            $liquidacion->cuerpo = $html;
             
             $liquidacion->save();
             
@@ -4867,6 +6848,9 @@ class TrabajadoresController extends \BaseController {
                 $detalleAfp->renta_imponible = $rentaImponible;
                 $detalleAfp->cotizacion = $totalAfp['cotizacion'];
                 $detalleAfp->sis = $totalAfp['sis'];
+                $detalleAfp->paga_sis = $totalAfp['pagaSis'];
+                $detalleAfp->porcentaje_cotizacion = $totalAfp['porcentajeCotizacion'];
+                $detalleAfp->porcentaje_sis = $totalAfp['porcentajeSis'];
                 $detalleAfp->cuenta_ahorro_voluntario = $totalAfp['cuentaAhorroVoluntario'];
                 $detalleAfp->renta_sustitutiva = 0;
                 $detalleAfp->tasa_sustitutiva = 0;
@@ -4877,7 +6861,9 @@ class TrabajadoresController extends \BaseController {
                 $detalleAfp->puesto_trabajo_pesado = null;
                 $detalleAfp->porcentaje_trabajo_pesado = 0;
                 $detalleAfp->cotizacion_trabajo_pesado = 0;
-                $detalleAfp->save();
+                //$detalleAfp->save();
+                
+                $liquidacion->setRelation('detalleAfp', $detalleAfp);
             }
             
             if($totalColacion>0){                
@@ -4893,8 +6879,10 @@ class TrabajadoresController extends \BaseController {
                 $detalleLiquidacion->valor_4 = null;
                 $detalleLiquidacion->valor_5 = null;
                 $detalleLiquidacion->valor_6 = null;
-                $detalleLiquidacion->detalle_id = 4;
-                $detalleLiquidacion->save(); 
+                $detalleLiquidacion->detalle_id = 3;
+                //$detalleLiquidacion->save(); 
+                
+                $liquidacion->detalles->add( $detalleLiquidacion );
             }
             if($totalMovilizacion>0){                
                 $detalleLiquidacion = new DetalleLiquidacion();
@@ -4903,14 +6891,16 @@ class TrabajadoresController extends \BaseController {
                 $detalleLiquidacion->nombre = 'Movilización';
                 $detalleLiquidacion->tipo = 'no imponible';
                 $detalleLiquidacion->tipo_id = 1;
-                $detalleLiquidacion->valor = $totalColacion;
-                $detalleLiquidacion->valor_2 = $empleado->monto_colacion;
-                $detalleLiquidacion->valor_3 = $empleado->moneda_colacion;
+                $detalleLiquidacion->valor = $totalMovilizacion;
+                $detalleLiquidacion->valor_2 = $empleado->monto_movilizacion;
+                $detalleLiquidacion->valor_3 = $empleado->moneda_movilizacion;
                 $detalleLiquidacion->valor_4 = null;
                 $detalleLiquidacion->valor_5 = null;
                 $detalleLiquidacion->valor_6 = null;
                 $detalleLiquidacion->detalle_id = 4;
-                $detalleLiquidacion->save(); 
+                //$detalleLiquidacion->save(); 
+                
+                $liquidacion->detalles->add( $detalleLiquidacion );
             }
             if($totalViatico>0){                
                 $detalleLiquidacion = new DetalleLiquidacion();
@@ -4920,13 +6910,33 @@ class TrabajadoresController extends \BaseController {
                 $detalleLiquidacion->tipo = 'no imponible';
                 $detalleLiquidacion->tipo_id = 1;
                 $detalleLiquidacion->valor = $totalColacion;
-                $detalleLiquidacion->valor_2 = $empleado->monto_colacion;
-                $detalleLiquidacion->valor_3 = $empleado->moneda_colacion;
+                $detalleLiquidacion->valor_2 = $empleado->monto_viatico;
+                $detalleLiquidacion->valor_3 = $empleado->moneda_viatico;
                 $detalleLiquidacion->valor_4 = null;
                 $detalleLiquidacion->valor_5 = null;
                 $detalleLiquidacion->valor_6 = null;
                 $detalleLiquidacion->detalle_id = 5;
-                $detalleLiquidacion->save(); 
+                //$detalleLiquidacion->save(); 
+                
+                $liquidacion->detalles->add( $detalleLiquidacion );
+            }  
+            if($semanaCorrida>0){                
+                $detalleLiquidacion = new DetalleLiquidacion();
+                $detalleLiquidacion->sid = Funciones::generarSID();
+                $detalleLiquidacion->liquidacion_id = $liquidacion->id;
+                $detalleLiquidacion->nombre = 'Semana Corrida';
+                $detalleLiquidacion->tipo = 'imponible';
+                $detalleLiquidacion->tipo_id = 1;
+                $detalleLiquidacion->valor = $semanaCorrida;
+                $detalleLiquidacion->valor_2 = $semanaCorrida;
+                $detalleLiquidacion->valor_3 = '$';
+                $detalleLiquidacion->valor_4 = null;
+                $detalleLiquidacion->valor_5 = null;
+                $detalleLiquidacion->valor_6 = null;
+                $detalleLiquidacion->detalle_id = 6;
+                //$detalleLiquidacion->save(); 
+                
+                $liquidacion->detalles->add( $detalleLiquidacion );
             }            
             if($haberes){                
                 foreach($haberes as $haber)
@@ -4944,7 +6954,9 @@ class TrabajadoresController extends \BaseController {
                     $detalleLiquidacion->valor_5 = null;
                     $detalleLiquidacion->valor_6 = null;
                     $detalleLiquidacion->detalle_id = $haber['tipo']['id'];
-                    $detalleLiquidacion->save(); 
+                    //$detalleLiquidacion->save(); 
+                    
+                    $liquidacion->detalles->add($detalleLiquidacion);
                 }
             }
             
@@ -4979,7 +6991,9 @@ class TrabajadoresController extends \BaseController {
                     }
                     $detalleLiquidacion->detalle_id = $descuento['tipo']['id'];
                     
-                    $detalleLiquidacion->save(); 
+                    //$detalleLiquidacion->save(); 
+                    
+                    $liquidacion->detalles->add($detalleLiquidacion);
                 }
             }
             
@@ -4991,31 +7005,41 @@ class TrabajadoresController extends \BaseController {
                     $detalleApvi->afp_id = $apv['afp']['id'];
                     $detalleApvi->numero_contrato = $apv['numeroContrato'];
                     $detalleApvi->forma_pago_id = $apv['formaPago']['id'];
-                    $detalleApvi->monto = $apv['monto'];
+                    $detalleApvi->monto = $apv['montoPesos'];
                     $detalleApvi->moneda = $apv['moneda'];
-                    $detalleApvi->cotizacion = $apv['montoPesos'];
+                    $detalleApvi->regimen = strtolower($apv['regimen']);
+                    $detalleApvi->cotizacion = $apv['monto'];
                     $detalleApvi->cotizacion_depositos_convenidos = 0;
-                    $detalleApvi->save();
+                    //$detalleApvi->save();
+                    
+                    $liquidacion->detalleApvi->add($detalleApvi);
                 }
             }
             
             if($prestamos){                    
                 foreach($prestamos as $prestamo)
                 {
+                    $prestamo = (array) $prestamo;
                     $detalleLiquidacion = new DetalleLiquidacion();
                     $detalleLiquidacion->sid = Funciones::generarSID();
                     $detalleLiquidacion->liquidacion_id = $liquidacion->id;
                     $detalleLiquidacion->nombre = $prestamo['nombreLiquidacion'];
                     $detalleLiquidacion->tipo = 'prestamo';
                     $detalleLiquidacion->tipo_id = 4;
-                    $detalleLiquidacion->valor = $prestamo['cuotaPagar']['monto'];
+                    $detalleLiquidacion->valor = $prestamo['montoCuotaPagar'];
                     $detalleLiquidacion->valor_2 = $prestamo['monto'];
                     $detalleLiquidacion->valor_3 = $prestamo['moneda'];
-                    $detalleLiquidacion->valor_4 = $prestamo['cuotaPagar']['numero'];
+                    $detalleLiquidacion->valor_4 = $prestamo['numeroCuotaPagar'];
                     $detalleLiquidacion->valor_5 = $prestamo['cuotas'];
-                    $detalleLiquidacion->valor_6 = null;
+                    if($prestamo['prestamoCaja']){
+                        $detalleLiquidacion->valor_6 = 1;
+                    }else if($prestamo['leasingCaja']){
+                        $detalleLiquidacion->valor_6 = 2;
+                    }
                     $detalleLiquidacion->detalle_id = null;
-                    $detalleLiquidacion->save(); 
+                    //$detalleLiquidacion->save(); 
+                    
+                    $liquidacion->detalles->add( $detalleLiquidacion );
                 }
             }
             
@@ -5029,7 +7053,9 @@ class TrabajadoresController extends \BaseController {
                 $detalleApvc->moneda = $apvc['moneda'];
                 $detalleApvc->cotizacion_trabajador = $apvc['cotizacionTrabajador'];
                 $detalleApvc->cotizacion_empleador = $apvc['cotizacionEmpleador'];
-                $detalleApvc->save();
+                //$detalleApvc->save();
+                
+                $liquidacion->detalleApvc->add($detalleApvc);
             }
         
             $detalleIpsIslFonasa = new DetalleIpsIslFonasa();
@@ -5053,20 +7079,41 @@ class TrabajadoresController extends \BaseController {
             }else{
                 $detalleIpsIslFonasa->cotizacion_fonasa = 0;
             }
-            $detalleIpsIslFonasa->cotizacion_isl = $totalMutual;
+            if($empresa->mutual_id==263){
+                $detalleIpsIslFonasa->cotizacion_isl = $totalMutual;                
+            }else{
+                $detalleIpsIslFonasa->cotizacion_isl = 0;
+            }
             $detalleIpsIslFonasa->bonificacion = 0;
             $detalleIpsIslFonasa->descuento_cargas_isl = 0;
             $detalleIpsIslFonasa->bonos_gobierno = 0;
-            $detalleIpsIslFonasa->save();      
+            //$detalleIpsIslFonasa->save();   
+            
+            $liquidacion->setRelation('detalleIpsIslFonasa', $detalleIpsIslFonasa);
             
             $detalleSalud = new DetalleSalud();
             $detalleSalud->liquidacion_id = $liquidacion->id;
             $detalleSalud->salud_id = $empleado->isapre_id;
+            
             if($empleado->salud_id!=240 & $empleado->salud_id!=246){
                 $detalleSalud->numero_fun = 145652;
                 $detalleSalud->renta_imponible = $rentaImponible;
-                $detalleSalud->moneda = $empleado->cotizacion_isapre;
-                $detalleSalud->cotizacion_pactada = $empleado->monto_isapre;
+                if($empleado->cotizacion_isapre=='UF'){
+                    $mon = 'UF';
+                    $pac = $empleado->monto_isapre;
+                }else{
+                    $mon = '$';
+                    if($empleado->cotizacion_isapre=='7%'){
+                        $pac = round($rentaImponible * 0.07);
+                    }else if($empleado->cotizacion_isapre=='7% + UF'){
+                        $pac = round($rentaImponible * 0.07);
+                        $pac += Funciones::convertirUF($empleado->monto_isapre);
+                    }else{
+                        $pac = $empleado->monto_isapre;
+                    }
+                }
+                $detalleSalud->moneda = $mon;
+                $detalleSalud->cotizacion_pactada = $pac;
                 $detalleSalud->cotizacion_obligatoria = $totalSalud['obligatorio'];
                 $detalleSalud->cotizacion_adicional = $totalSalud['adicional'];
                 $detalleSalud->ges = 0;
@@ -5079,16 +7126,18 @@ class TrabajadoresController extends \BaseController {
                 $detalleSalud->cotizacion_adicional = 0;
                 $detalleSalud->ges = 0;
             }
-            $detalleSalud->save(); 
+            //$detalleSalud->save(); 
+            
+            $liquidacion->setRelation('detalleSalud', $detalleSalud);
             
             if($empresa->caja_id!=257){
                 $detalleCaja = new DetalleCaja();
                 $detalleCaja->liquidacion_id = $liquidacion->id;
                 $detalleCaja->caja_id = $empresa->caja_id;
                 $detalleCaja->renta_imponible = $rentaImponible;
-                $detalleCaja->creditos_personales = 0;
+                $detalleCaja->creditos_personales = $prestamosCaja['caja'];
                 $detalleCaja->descuento_dental = 0;
-                $detalleCaja->descuentos_leasing = 0;
+                $detalleCaja->descuentos_leasing = $prestamosCaja['leasing'];
                 $detalleCaja->descuentos_seguro = 0;
                 $detalleCaja->otros_descuentos = 0;
                 $detalleCaja->cotizacion = $totalSalud['montoCaja'];
@@ -5096,8 +7145,10 @@ class TrabajadoresController extends \BaseController {
                 $detalleCaja->otros_descuentos_1 = 0;
                 $detalleCaja->otros_descuentos_2 = 0;
                 $detalleCaja->bonos_gobierno = 0;
-                $detalleCaja->codigo_sucursal = '';
-                $detalleCaja->save();
+                $detalleCaja->codigo_sucursal = '';                
+                //$detalleCaja->save();
+                
+                $liquidacion->setRelation('detalleCaja', $detalleCaja);
             }
             
             if($empresa->mutual_id!=263){
@@ -5107,18 +7158,23 @@ class TrabajadoresController extends \BaseController {
                 $detalleMutual->renta_imponible = $rentaImponible;
                 $detalleMutual->cotizacion_accidentes = $totalMutual;
                 $detalleMutual->codigo_sucursal = 0;
-                $detalleMutual->save();
+                //$detalleMutual->save();
+                
+                $liquidacion->setRelation('detalleMutual', $detalleMutual);
             }
             
             if($empleado->seguro_desempleo==1){
                 $detalleSeguroCesantia = new DetalleSeguroCesantia();
                 $detalleSeguroCesantia->liquidacion_id = $liquidacion->id;
-                $detalleSeguroCesantia->renta_imponible = $rentaImponible;
+                $detalleSeguroCesantia->renta_imponible = $totalSeguroCesantia['rentaImponible'];
+                $detalleSeguroCesantia->afp_id = $empleado->afp_seguro_id;
                 $detalleSeguroCesantia->aporte_trabajador = $totalSeguroCesantia['total'];
                 $detalleSeguroCesantia->afc_trabajador = $totalSeguroCesantia['afc'];
                 $detalleSeguroCesantia->aporte_empleador = $totalSeguroCesantia['totalEmpleador'];
                 $detalleSeguroCesantia->afc_empleador = $totalSeguroCesantia['afcEmpleador'];
-                $detalleSeguroCesantia->save();
+                //$detalleSeguroCesantia->save();
+                
+                $liquidacion->setRelation('detalleSeguroCesantia', $detalleSeguroCesantia);
             }
             
             if($liquidacion->movimiento_personal==3){
@@ -5126,15 +7182,18 @@ class TrabajadoresController extends \BaseController {
                 $detallePagadorSubsidio->liquidacion_id = $liquidacion->id;
                 $detallePagadorSubsidio->rut = 0;
                 $detallePagadorSubsidio->digito = 0;
-                $detallePagadorSubsidio->save();
+                //$detallePagadorSubsidio->save();
+                
+                $liquidacion->setRelation('detallePagadorSubsidio', $detallePagadorSubsidio);
             }
             
+            $liquidacion->push();
+            
+            Logs::crearLog('#liquidaciones-de-sueldo', $documento->id, $documento->alias, 'Create', $documento->trabajador_id, $empleado->nombreCompleto(), 'Liquidaciones Trabajadores');
                                   
             $liquidaciones[] = $miLiquidacion;
-            $listaPDF[] = array(
-                'liquidacion' => $miLiquidacion,
-                'sidDocumento' => $documento->sid
-            );
+            $miLiquidacion['sidDocumento'] = $documento->sid;
+            $listaPDF[] = $miLiquidacion;
             $destination = public_path() . '/stories/' . $filename;
             //$dompdf->set_option('isHtml5ParserEnabled', true);
             //$html = View::make('pdf.liquidacion', array('liquidaciones' => $liquidaciones))->render();
@@ -5142,139 +7201,30 @@ class TrabajadoresController extends \BaseController {
             //File::put($destination, PDF::load(utf8_decode($html), 'A4', 'portrait')->output());
             $pdf = new \Thujohn\Pdf\Pdf();
             $content = $pdf->load(View::make('pdf.liquidacion', array('liquidacion' => $miLiquidacion)))->output();
-            File::put($destination, $content);
+            File::put($destination, $content);            
         }
         
         PDF::clear();
         
-        
-        /*$filename = date("d-m-Y-H-i-s") . "_Liquidacion_" . $mes->nombre . "_" . $mes->anio . ".xls";
-        
-        Excel::create("Liquidacion", function($excel) use($liquidacion) {
-            $excel->sheet("Liquidacion", function($sheet) use($liquidacion) {
-                $sheet->loadView('pdf.liquidacion')->with('liquidacion', $liquidacion);
-            });
-        })->store('xls', public_path('stories'));
-        
-        $destination = public_path('stories/' . $filename);*/
         if(count($liquidaciones)>1){
             $mensaje = "Las Liquidaciones de Sueldo fueron ingresadas correctamente";
         }else{
             $mensaje = "La Liquidación de Sueldo fue ingresada correctamente";
         }
-
+        $listaPDF = Funciones::ordenar($listaPDF, 'apellidos');
         $datos = array(
             'success' => true,
             'mensaje' => $mensaje,
             'datos' => $listaPDF,
-            'trabajadores' => $trabajadores
+            'html' => $html
         );
         
         return Response::json($datos);
-        /*
-            $trabajador = Trabajador::whereSid($sid)->first();   
-            $empleado = $trabajador->ficha();
-            $idTrabajador = $trabajador->id;
-            $liquidacion = array(
-                'id' => $trabajador->id,
-                'sid' => $trabajador->sid,
-                'rutFormato' => $trabajador->rut_formato(),
-                'rut' => $trabajador->rut,
-                'nombres' => $empleado->nombres,
-                'apellidos' => $empleado->apellidos,
-                'nombreCompleto' => $empleado->nombreCompleto(),
-                'cargo' => array(
-                    'id' => $empleado->cargo ? $empleado->cargo->id : "",
-                    'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
-                ),
-                'seccion' => array(
-                    'id' => $empleado->seccion ? $empleado->seccion->id : "",
-                    'nombre' => $empleado->seccion ? $empleado->seccion->nombre : ""
-                ),
-                'fechaIngreso' => $empleado->fecha_ingreso,
-                'tipoContrato' => array(
-                    'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
-                    'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
-                ),
-                'monedaSueldo' => $empleado->moneda_sueldo,
-                'sueldoBase' => $empleado->sueldo_base,
-                'colacion' => array(
-                    'moneda' => $empleado->moneda_colacion,
-                    'monto' => $empleado->monto_colacion,
-                    'montoPesos' => $trabajador->totalColacion(),
-                    'proporcional' => $empleado->proporcional_colacion ? true : false
-                ),
-                'movilizacion' => array(
-                    'moneda' => $empleado->moneda_movilizacion,
-                    'monto' => $empleado->monto_movilizacion,
-                    'montoPesos' => $trabajador->totalMovilizacion(),
-                    'proporcional' => $empleado->proporcional_movilizacion ? true : false
-                ),
-                'viatico' => array(
-                    'moneda' => $empleado->moneda_viatico,
-                    'monto' => $empleado->monto_viatico,
-                    'montoPesos' => $trabajador->totalViatico(),
-                    'proporcional' => $empleado->proporcional_viatico ? true : false
-                ),
-                'afp' => array(
-                    'id' => $empleado->afp ? $empleado->afp->id : "",
-                    'nombre' => $empleado->afp ? $empleado->afp->glosa : ""
-                ),
-                'seguroDesempleo' => $empleado->seguro_desempleo ? true : false,
-                'afpSeguro' => array(
-                    'id' => $empleado->afpSeguro ? $empleado->afpSeguro->id : "",
-                    'nombre' => $empleado->afpSeguro ? $empleado->afpSeguro->glosa : ""
-                ),
-                'isapre' => array(
-                    'id' => $empleado->isapre ? $empleado->isapre->id : "",
-                    'nombre' => $empleado->isapre ? $empleado->isapre->glosa : ""
-                ),
-                'cotizacionIsapre' => $empleado->cotizacion_isapre,
-                'montoIsapre' => $empleado->monto_isapre,
-                'sindicato' => $empleado->sindicato ? true : false,
-                'monedaSindicato' => $empleado->moneda_sindicato,
-                'montoSindicato' => $empleado->monto_sindicato,
-                'estado' => $empleado->estado,
-                'diasTrabajados' => $trabajador->diasTrabajados(),
-                'sueldoDiario' => $trabajador->sueldoDiario(),
-                'sueldo' => $trabajador->sueldo(),
-                'gratificacion' => $trabajador->gratificacion(),
-                'horasExtra' => $trabajador->horasExtraPagar(),
-                'imponibles' => $trabajador->sumaImponibles(),
-                'cargasFamiliares' => $empleado->cargasFamiliares(),
-                'noImponibles' => $trabajador->noImponibles(),
-                'rentaImponible' => $trabajador->rentaImponible(),
-                'tasaAfp' => $trabajador->tasaAfp(),
-                'totalAfp' => $trabajador->totalAfp(),
-                'totalSalud' => $trabajador->totalSalud(),
-                'totalSeguroCesantia' => $trabajador->totalSeguroCesantia(),
-                'totalDescuentosPrevisionales' => $trabajador->totalDescuentosPrevisionales(),
-                'baseImpuestoUnico' => $trabajador->baseImpuestoUnico(),
-                'tramoImpuesto' => $trabajador->tramoImpuesto()->factor,
-                'impuestoDeterminado' => $trabajador->impuestoDeterminado(),
-                'totalOtrosDescuentos' => $trabajador->totalOtrosDescuentos(),
-                'apvs' => $empleado->misApvs(),
-                'haberes' => $trabajador->misHaberes(),
-                'descuentos' => $trabajador->misDescuentos(),
-                'prestamos' => $trabajador->misCuotasPrestamo(),
-                'sueldoLiquido' => $trabajador->sueldoLiquido()
-            );
-        
-        $data = array(
-            'accesos' => array(
-                'ver' => true,
-                'editar' => true
-            ),
-            'datos' => $liquidacion
-        );
-        
-        return View::make('liquidacion', ['trabajador' => $liquidacion]);
-        //return Response::json($data);  
-        */ 
+    
     }
     
     
-    public function liquidacionPDF($sid)
+    public function documentoPDF($sid)
     {
         $name = Documento::whereSid($sid)->first()['nombre'];
         
@@ -5314,12 +7264,18 @@ class TrabajadoresController extends \BaseController {
         $ficha = FichaTrabajador::find($idFicha);
         $errores = Trabajador::errores($datos);              
         $ficha = FichaTrabajador::find($idFicha);    
-        if($datos['nueva_ficha'] && $ficha->mes_id!=$idMes){
+        $fichaAnterior = null;
+        if($datos['nueva_ficha']){
+            $fichaAnterior = FichaTrabajador::where('trabajador_id', $trabajador->id)->where('fecha', $mes)->first();
+            if($fichaAnterior){
+                $fichaAnterior->delete();
+            }
             $ficha = new FichaTrabajador();
             $ficha->trabajador_id = $trabajador->id;            
             $ficha->fecha = $mes;
             $ficha->mes_id = $idMes;
         }
+        
         if($ficha->estado==='Finiquitado' && $ficha->fecha_finiquito){
             $ficha->fecha_finiquito = null;            
         }
@@ -5327,7 +7283,7 @@ class TrabajadoresController extends \BaseController {
             $ficha->tramo_id = FichaTrabajador::calcularTramo(Funciones::convertir($datos['sueldo_base'], $datos['moneda_sueldo']));
             if($ficha->estado==='En Creación'){
                 $trabajador->calcularMisVacaciones($ficha->fecha_reconocimiento);
-                $trabajador->crearUser($datos['estadoUser']);
+                //$trabajador->crearUser();
                 $ficha->tramo_id = FichaTrabajador::calcularTramo(Funciones::convertir($datos['sueldo_base'], $datos['moneda_sueldo']));         
                 if($ficha->semana_corrida==1){
                     $trabajador->crearSemanaCorrida();
@@ -5356,6 +7312,11 @@ class TrabajadoresController extends \BaseController {
             $ficha->cargo_id = $datos['cargo_id'];
             $ficha->titulo_id = $datos['titulo_id'];
             $ficha->gratificacion = $datos['gratificacion'];
+            $ficha->gratificacion_especial = $datos['gratificacion_especial'];
+            $ficha->moneda_gratificacion = $datos['moneda_gratificacion'];
+            $ficha->monto_gratificacion = $datos['monto_gratificacion'];
+            $ficha->gratificacion_proporcional_inasistencias =  $datos['gratificacion_proporcional_inasistencias'];
+            $ficha->gratificacion_proporcional_licencias =  $datos['gratificacion_proporcional_licencias'];
             $ficha->tienda_id = $datos['tienda_id'];
             $ficha->centro_costo_id = $datos['centro_costo_id'];
             $ficha->seccion_id = $datos['seccion_id'];
@@ -5364,6 +7325,7 @@ class TrabajadoresController extends \BaseController {
             $ficha->numero_cuenta = $datos['numero_cuenta'];
             $ficha->fecha_ingreso = $datos['fecha_ingreso'];
             $ficha->fecha_reconocimiento = $datos['fecha_reconocimiento'];
+            $ficha->fecha_reconocimiento_cesantia = $datos['fecha_reconocimiento_cesantia'];
             $ficha->tipo_contrato_id = $datos['tipo_contrato_id'];
             $ficha->fecha_vencimiento = $datos['fecha_vencimiento'];
             $ficha->tipo_jornada_id = $datos['tipo_jornada_id'];
@@ -5391,162 +7353,12 @@ class TrabajadoresController extends \BaseController {
             $ficha->sindicato = $datos['sindicato'];
             $ficha->moneda_sindicato = $datos['moneda_sindicato'];
             $ficha->monto_sindicato = $datos['monto_sindicato'];
+            $ficha->zona_id = $datos['zona_id'];
             $ficha->estado = $datos['estado'];            
-            $ficha->save();            
+            $ficha->save();              
             
-            $misHaberes = $trabajador->comprobarHaberes($datos['haberes']);
-            $misDescuentos = $trabajador->comprobarDescuentos($datos['descuentos']);
-            $misApvs = $ficha->comprobarApvs($datos['apvs']);
-            $misCargas = $ficha->comprobarCargas($datos['cargas']);
-            
-            if($misHaberes['create']){
-                foreach($misHaberes['create'] as $haber){
-                    $nuevoHaber = new Haber();
-                    $nuevoHaber->sid = Funciones::generarSID();
-                    $nuevoHaber->trabajador_id = $trabajador->id;
-                    $nuevoHaber->tipo_haber_id = $haber['tipo_haber_id'];
-                    $nuevoHaber->mes_id = null;
-                    $nuevoHaber->por_mes = 0;
-                    $nuevoHaber->rango_meses = 0;
-                    $nuevoHaber->permanente = 1;
-                    $nuevoHaber->todos_anios = 0;
-                    $nuevoHaber->mes = null;
-                    $nuevoHaber->desde = null;
-                    $nuevoHaber->hasta = null;
-                    $nuevoHaber->moneda = $haber['moneda'];
-                    $nuevoHaber->monto = $haber['monto'];
-                    $nuevoHaber->save();  
-                }
-            }elseif($misHaberes['destroy']){
-                foreach($misHaberes['destroy'] as $haber){
-                    $id = $haber['id'];
-                    Haber::find($id)->delete();
-                }
-            }elseif($misHaberes['update']){
-                foreach($misHaberes['update'] as $haber){
-                    $id = $haber['id'];
-                    $nuevoHaber = Haber::find($id);
-                    $nuevoHaber->tipo_haber_id = $haber['tipo_haber_id'];
-                    $nuevoHaber->mes_id = null;
-                    $nuevoHaber->por_mes = 0;
-                    $nuevoHaber->rango_meses = 0;
-                    $nuevoHaber->permanente = 1;
-                    $nuevoHaber->todos_anios = 0;
-                    $nuevoHaber->mes = null;
-                    $nuevoHaber->desde = null;
-                    $nuevoHaber->hasta = null;
-                    $nuevoHaber->moneda = $haber['moneda'];
-                    $nuevoHaber->monto = $haber['monto'];
-                    $nuevoHaber->save();  
-                }
-            }
-            
-            if($misDescuentos['create']){
-                foreach($misDescuentos['create'] as $descuento){
-                    $nuevoDescuento = new Descuento();
-                    $nuevoDescuento->sid = Funciones::generarSID();
-                    $nuevoDescuento->trabajador_id = $trabajador->id;
-                    $nuevoDescuento->tipo_descuento_id = $descuento['tipo_descuento_id'];
-                    $nuevoDescuento->mes_id = null;
-                    $nuevoDescuento->por_mes = 0;
-                    $nuevoDescuento->rango_meses = 0;
-                    $nuevoDescuento->permanente = 1;
-                    $nuevoDescuento->todos_anios = 0;
-                    $nuevoDescuento->mes = null;
-                    $nuevoDescuento->desde = null;
-                    $nuevoDescuento->hasta = null;
-                    $nuevoDescuento->moneda = $descuento['moneda'];
-                    $nuevoDescuento->monto = $descuento['monto'];
-                    $nuevoDescuento->save();  
-                }
-            }elseif($misDescuentos['destroy']){
-                foreach($misDescuentos['destroy'] as $descuento){
-                    $id = $descuento['id'];
-                    Descuento::find($id)->delete();
-                }
-            }elseif($misDescuentos['update']){
-                foreach($misDescuentos['update'] as $descuento){
-                    $id = $descuento['id'];
-                    $nuevoDescuento = Descuento::find($id);
-                    $nuevoDescuento->tipo_descuento_id = $descuento['tipo_descuento_id'];
-                    $nuevoDescuento->mes_id = null;
-                    $nuevoDescuento->por_mes = 0;
-                    $nuevoDescuento->rango_meses = 0;
-                    $nuevoDescuento->permanente = 1;
-                    $nuevoDescuento->todos_anios = 0;
-                    $nuevoDescuento->mes = null;
-                    $nuevoDescuento->desde = null;
-                    $nuevoDescuento->hasta = null;
-                    $nuevoDescuento->moneda = $descuento['moneda'];
-                    $nuevoDescuento->monto = $descuento['monto'];
-                    $nuevoDescuento->save(); 
-                }
-            }
-            
-            if($misApvs['create']){
-                foreach($misApvs['create'] as $apv){
-                    $nuevoApv = new Apv();
-                    $nuevoApv->sid = Funciones::generarSID();
-                    $nuevoApv->ficha_trabajador_id = $ficha->id;
-                    $nuevoApv->afp_id = $apv['afp_id'];
-                    $nuevoApv->forma_pago = $apv['forma_pago'];
-                    $nuevoApv->moneda = $apv['moneda'];
-                    $nuevoApv->regimen = strtolower($apv['regimen']);
-                    $nuevoApv->monto = $apv['monto'];
-                    $nuevoApv->save();  
-                }
-            }elseif($misApvs['destroy']){
-                foreach($misApvs['destroy'] as $apv){
-                    $id = $apv['id'];
-                    Apv::find($id)->delete();
-                }
-            }elseif($misApvs['update']){
-                foreach($misApvs['update'] as $apv){
-                    $id = $apv['id'];
-                    $nuevoApv = Apv::find($id);
-                    $nuevoApv->afp_id = $apv['afp_id'];
-                    $nuevoApv->forma_pago = $apv['forma_pago'];
-                    $nuevoApv->moneda = $apv['moneda'];
-                    $nuevoApv->regimen = strtolower($apv['regimen']);
-                    $nuevoApv->monto = $apv['monto'];
-                    $nuevoApv->save(); 
-                }
-            }
-            
-            if($misCargas['create']){
-                foreach($misCargas['create'] as $carga){
-                    $nuevaCarga = new Carga();
-                    $nuevaCarga->sid = Funciones::generarSID();
-                    $nuevaCarga->ficha_trabajador_id = $ficha->id;
-                    $nuevaCarga->tipo_carga_id = $carga['tipo'];
-                    $nuevaCarga->parentesco = $carga['parentesco'];
-                    $nuevaCarga->es_carga = $carga['esCarga'];
-                    $nuevaCarga->nombre_completo = $carga['nombreCompleto'];
-                    $nuevaCarga->rut = $carga['rut'];
-                    $nuevaCarga->fecha_nacimiento = $carga['fechaNacimiento'];
-                    $nuevaCarga->sexo = $carga['sexo'];
-                    $nuevaCarga->save();  
-                }
-            }elseif($misCargas['destroy']){
-                foreach($misCargas['destroy'] as $carga){
-                    $id = $carga['id'];
-                    Carga::find($id)->delete();
-                }
-            }elseif($misCargas['update']){
-                foreach($misCargas['update'] as $carga){
-                    $id = $carga['id'];
-                    $nuevaCarga = Carga::find($id);
-                    $nuevaCarga->parentesco = $carga['parentesco'];
-                    $nuevaCarga->es_carga = $carga['esCarga'];
-                    $nuevaCarga->tipo_carga_id = $carga['tipo'];
-                    $nuevaCarga->nombre_completo = $carga['nombreCompleto'];
-                    $nuevaCarga->rut = $carga['rut'];
-                    $nuevaCarga->fecha_nacimiento = $carga['fechaNacimiento'];
-                    $nuevaCarga->sexo = $carga['sexo'];
-                    $nuevaCarga->save();  
-                }
-            }                        
-            
+            Logs::crearLog('#trabajadores', $trabajador->id, $trabajador->rut_formato(), 'Update', $ficha->id, $ficha->nombreCompleto(), 'Trabajadores');  
+
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -5574,6 +7386,8 @@ class TrabajadoresController extends \BaseController {
     {
         $mensaje="La Información fue eliminada correctamente";
         $trabajador = Trabajador::whereSid($sid)->first();
+        $empleado = $trabajador->ficha();
+        Logs::crearLog('#trabajadores', $trabajador->id, $trabajador->rut_formato(), 'Delete', $empleado->id, $empleado->nombreCompleto(), 'Trabajadores'); 
         $trabajador->eliminarDatos();
         $trabajador->delete();        
         
@@ -5584,8 +7398,9 @@ class TrabajadoresController extends \BaseController {
     {
         $datos = array(
             'rut' => Input::get('rut'),
+            'id' => Input::get('id'),
             'nueva_ficha' => Input::get('nuevaFicha'),
-            'ficha_id' => Input::get('id'),
+            'ficha_id' => Input::get('idFicha'),
             'nombres' => Input::get('nombres'),
             'apellidos' => Input::get('apellidos'),
             'nacionalidad_id' => Input::get('nacionalidad')['id'],
@@ -5608,6 +7423,7 @@ class TrabajadoresController extends \BaseController {
             'numero_cuenta' => Input::get('numeroCuenta'),
             'fecha_ingreso' => Input::get('fechaIngreso'),
             'fecha_reconocimiento' => Input::get('fechaReconocimiento'),
+            'fecha_reconocimiento_cesantia' => Input::get('fechaReconocimientoCesantia'),
             'tipo_contrato_id' => Input::get('tipoContrato')['id'],
             'fecha_vencimiento' => Input::get('fechaVencimiento'),
             'tipo_jornada_id' => Input::get('tipoJornada')['id'],
@@ -5638,12 +7454,16 @@ class TrabajadoresController extends \BaseController {
             'moneda_sindicato' => Input::get('monedaSindicato'),
             'monto_sindicato' => Input::get('montoSindicato'),
             'gratificacion' => Input::get('gratificacion'),
+            'gratificacion_especial' => Input::get('gratificacionEspecial'),
+            'moneda_gratificacion' => Input::get('monedaGratificacion'),
+            'monto_gratificacion' => Input::get('montoGratificacion'),
+            'gratificacion_proporcional_inasistencias' => Input::get('proporcionalInasistencias'),
+            'gratificacion_proporcional_licencias' => Input::get('proporcionalLicencias'),
             'estado' => Input::get('estado'),
-            'apvs' => Input::get('apvs'),
             'descuentos' => Input::get('descuentos'),
             'haberes' => Input::get('haberes'),
-            'estadoUser' => Input::get('estadoUser'),
-            'cargas' => Input::get('cargas')
+            'zona_id' => Input::get('zonaImpuestoUnico')['id'],
+            'estadoUser' => Input::get('estadoUser')
         );
         return $datos;
     }

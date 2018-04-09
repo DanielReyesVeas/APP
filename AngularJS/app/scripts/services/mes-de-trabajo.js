@@ -20,11 +20,20 @@ angular.module('angularjsApp')
           }
         );
       },
-      centralizar : function(){
-        return $resource(constantes.URL + 'mes-de-trabajo/cuentas/obtener',
+      preCentralizar : function(){
+        return $resource(constantes.URL + 'mes-de-trabajo/pre-centralizar/obtener',
             {},
             { post : { 'method': 'POST' } }
         );
+      },
+      centralizar : function(){
+        return $resource(constantes.URL + 'mes-de-trabajo/centralizar/obtener',
+            {},
+            { post : { 'method': 'POST' } }
+        );
+      },
+      detalleCentralizacion : function(){
+        return $resource(constantes.URL + 'mes-de-trabajo/detalle-centralizacion/obtener/:mes');
       }
     };
   });

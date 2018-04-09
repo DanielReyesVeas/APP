@@ -28,13 +28,14 @@
           <tbody>
             <tr ng-repeat="dato in datos">
               <td>{{ $index+1 }}</td>
-              <td>{{ dato.liquidacion.rutFormato }}</td>
-              <td>{{ dato.liquidacion.nombreCompleto }}</td>
-              <td>{{ dato.liquidacion.cargo.nombre }}</td>
-              <td>${{ dato.liquidacion.sueldoLiquido | currency:'':0 }}</td>
+              <td>{{ dato.rutFormato }}</td>
+              <td>{{ dato.nombreCompleto }}</td>
+              <td>{{ dato.cargo.nombre }}</td>
+              <td>${{ dato.sueldoLiquido | currency:'':0 }}</td>
               <td>
-                <a href="javascript:void(0);" ng-click="openLiquidacion(dato);"><i class="fa fa-search"></i></a>
-                <a href="javascript:void(0);" confirmation-click="eliminarLiquidacion(dato)" confirmation-needed="La Liquidación de Sueldo seleccionada será eliminada del sistema. ¿Desea continuar?"><i class="fa fa-trash"></i></a>
+                <a href="javascript:void(0);" ng-click="openLiquidacion(dato, false)"><i class="fa fa-window-maximize"></i></a>
+                <a href="javascript:void(0);" ng-click="detalle(dato)"><i class="fa fa-window-restore"></i></a>
+                <!--<a href="javascript:void(0);" confirmation-click="eliminarLiquidacion(dato)" confirmation-needed="La Liquidación de Sueldo seleccionada será eliminada del sistema. ¿Desea continuar?"><i class="fa fa-trash"></i></a>-->
               </td>
             </tr>
           </tbody>

@@ -43,6 +43,7 @@ angular.module('angularjsApp')
       var miModal = $uibModal.open({
         animation: true,
         backdrop: false,
+        size: 'md',
         templateUrl: 'views/forms/form-finiquitar-trabajador.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
         controller: 'FormFiniquitarTrabajadorCtrl',
         resolve: {
@@ -95,7 +96,7 @@ angular.module('angularjsApp')
   })
   .controller('FormDetalleFiniquitosCtrl', function ($rootScope, $uibModal, $filter, $scope, $uibModalInstance, objeto, trabajador, finiquito, Notification, causalFiniquito, constantes) {
     $scope.trabajador = angular.copy(objeto.datos);
-    $scope.accesos = angular.copy(objeto.accesos);
+    $scope.accesos = angular.copy(objeto.accesos);    
     $scope.constantes = constantes;
 
     function cargarDatos(tra){
@@ -165,7 +166,7 @@ angular.module('angularjsApp')
     $scope.datos = angular.copy(objeto.detalle);    
     $scope.sueldoNormal = angular.copy(objeto.sueldoNormal);
     $scope.sueldoVariable = angular.copy(objeto.sueldoVariable);
-    $scope.suma = angular.copy(objeto.suma);
+    $scope.suma = angular.copy(objeto.suma);    
     
     function crearModels(){
       if($scope.concepto==='Imponibles'){       
@@ -201,14 +202,14 @@ angular.module('angularjsApp')
 
     function sumar(index){
       var suma = 0;
-      if(index===null){        
+      if(index===null){   
         if($scope.datos.imponibles.sueldo.check){
           suma = (suma + $scope.datos.imponibles.sueldo.monto);   
         }
         if($scope.datos.imponibles.gratificacion.check){
           suma = (suma + $scope.datos.imponibles.gratificacion.monto);
         }
-        if($scope.datos.imponibles.haberes.check){
+        if($scope.datos.imponibles.haberes.check){          
           suma = (suma + $scope.datos.imponibles.haberes.suma);
         }
       }else{
@@ -244,7 +245,7 @@ angular.module('angularjsApp')
       return bool;
     }
 
-    $scope.select = function(check, index){
+    $scope.select = function(check, index){      
       if($scope.concepto==='Imponibles'){
         if(check){
           if($scope.datos.imponibles.sueldo.check && $scope.datos.imponibles.gratificacion.check && $scope.datos.imponibles.haberes.check){
@@ -473,7 +474,6 @@ angular.module('angularjsApp')
     $scope.trabajador = angular.copy(objeto.trabajador);
     $scope.plantillasFiniquitos = angular.copy(objeto.plantillasFiniquitos);
     $scope.fecha = angular.copy(objeto.fecha);
-    console.log($scope.fecha)
     $scope.idCausal = angular.copy(objeto.idCausal);
 
     $scope.imponibles = angular.copy(objeto.imponibles);
@@ -883,7 +883,7 @@ angular.module('angularjsApp')
           break;
         }
       }
-      return bool;
+      return bool;      
     }
 
     $scope.select = function(check){
@@ -978,6 +978,7 @@ angular.module('angularjsApp')
     $scope.totalFiniquito = angular.copy(objeto.totalFiniquito);
 
     $scope.ingresar = function(){
+
       var finiq = { plantilla_finiquito_id : $scope.plantilla.id, totalFiniquito : $scope.totalFiniquito, noImponibles : $scope.mesAviso.noImponibles.suma, mesAviso : $scope.mesAviso.imponibles.suma, vacaciones : $scope.vacaciones, indemnizacion : $scope.indemnizacion, sueldoNormal : $scope.sueldoNormal, sueldoVariable : $scope.sueldoVariable, causal : $scope.causal, trabajador : $scope.trabajador, encargado_id : $scope.trabajador.id, empresa : $scope.empresa, fecha : $scope.fecha, folio : 4548452, cuerpo : $scope.finiquito.cuerpo };
       $rootScope.cargando=true;
       var response;
@@ -1026,7 +1027,9 @@ angular.module('angularjsApp')
   })
   .controller('FormFiniquitarTrabajadorCtrl', function ($rootScope, $uibModal, $scope, $uibModalInstance, objeto, causalFiniquito, finiquito, Notification, causales, $filter, fecha) {
 
-    $scope.causales = angular.copy(causales);   
+    $scope.causales = angular.copy(causales); 
+    var mesActual = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
+      
     $scope.meses = [ 
             { id : 2, nombre : '2 meses' },
             { id : 3, nombre : '3 meses' },
@@ -1064,11 +1067,12 @@ angular.module('angularjsApp')
     }else{
       $scope.trabajador = angular.copy(objeto);
       $scope.monedaActual = 'pesos';
-      $scope.finiquito = { sueldoNormal : true, sueldoVariable : false, vacaciones : false, vacacionesManual : false, mesAviso : false, noImponibles : false, indemnizacion : false, meses : $scope.meses[1], tope : $scope.anios[0] };
+      $scope.finiquito = { fecha : fecha.fechaActiva(), sueldoNormal : true, sueldoVariable : false, vacaciones : false, vacacionesManual : false, mesAviso : false, gratificacionMesAviso : false, noImponibles : false, indemnizacion : false, gratificacionIndemnizacion : false, meses : $scope.meses[1], tope : $scope.anios[0] };
+
       $scope.isEdit = false;
       $scope.titulo = 'Finiquitar Trabajador';
     }    
-
+    
     $scope.fnAntiguedad = function(){
       return function(item) {
         if(item.id < $scope.trabajador.mesesAntiguedad){
@@ -1106,6 +1110,9 @@ angular.module('angularjsApp')
     }    
 
     $scope.finiquitar = function(finiq, trab){
+      if(finiq.fecha==fecha.fechaActiva()){
+        finiq.fecha = fecha.convertirFecha(fecha.convertirFechaFormato(finiq.fecha));
+      }
       var datosFiniquito = { idTrabajador : trab.id, fecha : finiq.fecha, idCausalFiniquito : finiq.causal.id, vacaciones : finiq.vacaciones, vacacionesManual : finiq.vacacionesManual, diasVacaciones : finiq.diasVacaciones, meses : finiq.meses, tope : finiq.tope, sueldoNormal : finiq.sueldoNormal, sueldoVariable : finiq.sueldoVariable, mesAviso : finiq.mesAviso, indemnizacion : finiq.indemnizacion };
       $rootScope.cargando=true;
       var datos;
@@ -1127,7 +1134,7 @@ angular.module('angularjsApp')
     }
 
     $scope.calcular = function(fin){
-      var detalles = { idTrabajador : $scope.trabajador.id, fecha : fecha.convertirFechaFormato(fin.fecha), indemnizacion : fin.indemnizacion, mesAviso : fin.mesAviso, noImponibles : fin.noImponibles, sueldoNormal : fin.sueldoNormal, sueldoVariable : fin.sueldoVariable, vacaciones : fin.vacaciones, vacacionesManual : fin.vacacionesManual, diasVacaciones : fin.diasVacaciones, meses : fin.meses, tope : fin.tope, idCausal : fin.causal.id };
+      var detalles = { idTrabajador : $scope.trabajador.id, fecha : fecha.convertirFechaFormato(fin.fecha), indemnizacion : fin.indemnizacion, gratificacionIndemnizacion : fin.gratificacionIndemnizacion, mesAviso : fin.mesAviso, gratificacionMesAviso : fin.gratificacionMesAviso, noImponibles : fin.noImponibles, sueldoNormal : fin.sueldoNormal, sueldoVariable : fin.sueldoVariable, vacaciones : fin.vacaciones, vacacionesManual : fin.vacacionesManual, diasVacaciones : fin.diasVacaciones, meses : fin.meses, tope : fin.tope, idCausal : fin.causal.id };
       $rootScope.cargando = true;
       var datos = finiquito.calcular().post(detalles);
       datos.$promise.then(function(response){
@@ -1181,50 +1188,15 @@ angular.module('angularjsApp')
 
     // Fecha 
 
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
-
     $scope.dateOptions = {
-      dateDisabled: disabled,
       formatYear: 'yy',
-      maxDate: new Date(2020, 5, 22),
-      minDate: new Date(),
+      maxDate: fecha.convertirFecha(mesActual.fechaRemuneracion),
+      minDate: fecha.convertirFecha(mesActual.mes),
       startingDay: 1
     };  
 
-    function disabled(data) {
-      var date = data.date,
-        mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
-
     $scope.openFecha = function() {
       $scope.popupFecha.opened = true;
-    };
-
-    $scope.dateOptionsMes = {
-      showWeeks: false,
-      viewMode: "months", 
-      minMode: 'month',
-      format: "mm/yyyy"
-    };
-
-    $scope.setDate = function(year, month) {
-      $scope.fecha = new Date(year, month);
     };
 
     $scope.format = ['dd-MMMM-yyyy'];
@@ -1232,20 +1204,5 @@ angular.module('angularjsApp')
     $scope.popupFecha = {
       opened: false
     };
-
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
 
   });

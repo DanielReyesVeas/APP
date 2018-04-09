@@ -178,7 +178,7 @@ angular.module('angularjsApp')
     };
 
     $scope.dateOptions = {
-      dateDisabled: disabled,
+      //dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: new Date(2020, 5, 22),
       minDate: new Date(),

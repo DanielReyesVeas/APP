@@ -55,11 +55,11 @@
               <div class="col-sm-2">{{ objeto.descuento.mes | date : "MM-y" }}</div>
             </div>
 
-            <div ng-show="objeto.descuento.rangoMeses">
+            <div ng-if="objeto.descuento.rangoMeses">
               <label class="col-sm-1 control-label required">Hasta:</label>            
               <div class="col-sm-3">
                 <div class="input-group"> 
-                  <input type="text" class="form-control form-white" uib-datepicker-popup="MM-yyyy" regularFecha ng-model="objeto.descuento.hasta" is-open="popupFechaHasta.opened" datepicker-options="dateOptionsMes" close-text="Close" />
+                  <input type="text" class="form-control form-white" uib-datepicker-popup="MM-yyyy" regularFecha ng-model="objeto.descuento.hasta" is-open="popupFechaHasta.opened" datepicker-options="dateOptionsMes" close-text="Close" required />
                   <span class="input-group-btn">
                     <button type="button" class="btn btn-default" ng-click="openFechaHasta()">
                       <i class="fa fa-calendar"></i>
@@ -86,7 +86,8 @@
   </form>
   <div class="modal-footer">
     <div class="pull-right" style="padding: 6px;">
-      <button class="btn btn-primary" type="button" confirmation-click="ingresoMasivoDescuento( datos.descuento, descuento );" confirmation-needed="El Descuento <b>{{descuento.nombre}}</b> será ingresado a los trabajadores seleccionados. ¿Desea continuar?" ng-disabled="haberForm.$invalid" ng-show="!isEdit">Ingresar Descuento</button>
+      <button class="btn btn-primary" type="button" confirmation-click="ingresoMasivoDescuento( false );" confirmation-needed="El Descuento <b>{{descuento.nombre}}</b> será ingresado a los trabajadores seleccionados. ¿Desea continuar?" ng-disabled="descuentoMesesForm.$invalid" ng-class="{ 'hidden' : objeto.descuento.permanente }">Ingresar Descuento</button>
+      <button class="btn btn-primary" type="button" confirmation-click="confirmacion( datos.descuento, descuento );" confirmation-needed="El Descuento <b>{{descuento.nombre}}</b> será ingresado a los trabajadores seleccionados. ¿Desea continuar?" ng-disabled="descuentoMesesForm.$invalid" ng-class="{ 'hidden' : !objeto.descuento.permanente }">Ingresar Descuento</button>
       <button class="btn btn-warning" type="button" ng-click="$dismiss()">Cancelar</button>
     </div>
   </div>

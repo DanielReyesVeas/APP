@@ -13,7 +13,7 @@ class CausalesFiniquitoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#causales-finiquito');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#causales-finiquito');
         $causalesFiniquito = CausalFiniquito::all();
         $listaCausalesFiniquito=array();
         if( $causalesFiniquito->count() ){

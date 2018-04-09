@@ -63,7 +63,7 @@ angular.module('angularjsApp')
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
         cargarDatos();         
       }, function () {
-        javascript:void(0)
+        cargarDatos();
       });
     };
 
@@ -121,7 +121,7 @@ angular.module('angularjsApp')
   .controller('FormDetalleCertificadosCtrl', function ($rootScope, constantes, $uibModal, $filter, $scope, $uibModalInstance, objeto, trabajador, certificado, Notification) {
     $scope.trabajador = angular.copy(objeto.datos);
     $scope.accesos = angular.copy(objeto.accesos);
-    var constantes = constantes;
+    $scope.constantes = constantes;
 
     function cargarDatos(tra){
       $rootScope.cargando = true;
@@ -148,7 +148,7 @@ angular.module('angularjsApp')
     $scope.detalle = function(cert, tra){
       $rootScope.cargando=true;
       console.log(cert)
-      var url = constantes.URL + 'trabajadores/documento/obtener/' + cert.documentoSid;
+      var url = $scope.constantes.URL + 'trabajadores/documento/obtener/' + cert.documento.sid;
       window.open(url);
       $rootScope.cargando=false;
       //$scope.result = certificado.datos().get({ sid: cert.sid });

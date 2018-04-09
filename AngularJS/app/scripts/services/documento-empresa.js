@@ -31,6 +31,9 @@ angular.module('angularjsApp')
                     {},
                     { post : { 'method': 'POST' } }
                 );
+            },
+            publicos : function(){
+                return $resource(constantes.URL + 'documentos-empresa/publicos/obtener');
             }
         };
   });

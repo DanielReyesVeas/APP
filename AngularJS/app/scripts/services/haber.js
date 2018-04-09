@@ -16,7 +16,7 @@ angular.module('angularjsApp')
                     {   
                         update : { 'method': 'PUT' },
                         delete : { 'method': 'DELETE' },
-                        create : { 'method': 'POST' }
+                        create : { 'method': 'POST' }   
                     }
                 );
             },
@@ -26,8 +26,20 @@ angular.module('angularjsApp')
                     { post : { 'method': 'POST' } }
                 );
             },
+            eliminarPermanente : function(){
+              return $resource(constantes.URL + 'haberes/permanentes/eliminar',
+                  {},
+                  { post : { 'method': 'POST' } }
+              );
+            },
             importar : function(){
                 return $resource(constantes.URL + 'haberes/generar-ingreso/masivo',
+                    {},
+                    { post : { 'method': 'POST' } }
+                );
+            },
+            importarMasivo : function(){
+                return $resource(constantes.URL + 'haberes/generar-ingreso-masivo/masivo',
                     {},
                     { post : { 'method': 'POST' } }
                 );

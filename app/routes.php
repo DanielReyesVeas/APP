@@ -6,7 +6,7 @@ use GuzzleHttp\Client;
 //ini_set('display_errors', 'On');
 
 ini_set('max_execution_time', 30000);
-define('VERSION_SISTEMA', '1.0.9');
+define('VERSION_SISTEMA', '1.4.9');
 ini_set('memory_limit', '3048M');
 
 if(Config::get('cliente.LOCAL')){
@@ -28,9 +28,274 @@ Route::get('/', function(){
     return View::make('index');
 });
 
+
+Route::group(array('prefix' => 'rest/cme', 'before'=>'auth_ajax'), function() {
+    
+    Route::post('registrar-centralizacion', function(){
+        $rut = Input::get('rutEmpresa');
+        $periodo = Input::get('periodo');
+        $numero = Input::get('numero');
+        $empresa = Empresa::where('rut', $rut)->first();
+        $datos=array('success' => false, 'rut' => $rut);
+        
+        if($empresa){
+            \Session::put('basedatos', $empresa->base_datos);
+            \Session::put('empresa', $empresa);
+            Config::set('database.default', $empresa->base_datos);
+
+            $comprobante = ComprobanteCentralizacion::where('mes', $periodo)->first();
+            if($comprobante){
+                $comprobante->numero = $numero;
+                $comprobante->save();
+            }
+        }
+    });
+    
+    Route::post('eliminar-centralizacion', function(){
+        $rut = Input::get('rutEmpresa');
+        $periodo = Input::get('periodo');
+        $empresa = Empresa::where('rut', $rut)->first();
+        if($empresa){
+            \Session::put('basedatos', $empresa->base_datos);
+            \Session::put('empresa', $empresa);
+            Config::set('database.default', $empresa->base_datos);
+
+            $comprobante = ComprobanteCentralizacion::where('mes', $periodo)->first();
+            if($comprobante){
+                $detalles = $comprobante->detalles;
+                if($detalles->count()){
+                    foreach($detalles as $detalle){
+                        $detalle->delete();
+                    }
+                }
+                $comprobante->delete();
+            }
+        }
+    });
+    
+    Route::post('datos-empresa', function(){
+        $rut = Input::get('rutEmpresa');
+        $empresa = Empresa::where('rut', $rut)->first();
+        $datos=array('success' => false, 'rut' => $rut);
+        if($empresa){
+
+            \Session::put('basedatos', $empresa->base_datos);
+            \Session::put('empresa', $empresa);
+            Config::set('database.default', $empresa->base_datos);
+
+            $cuentas = Cuenta::listaCuentas();
+            $listaCentrosCostos = CentroCosto::listaCentrosCosto();
+            $listaCentrosCostosCuentas= CentroCosto::listaCentrosCostoCuentas();
+
+            $cuentasCodigo=null;
+            $listaCuentas=array();
+            $cuentasCotizaciones=array();
+            $cuentasRemuneraciones =array();
+            if (count($cuentas)) {
+                foreach ($cuentas as $cuenta) {
+                    $listaCuentas[$cuenta['codigo']] = $cuenta;
+                }
+                $cuentasCodigo = Funciones::array_column($listaCuentas, 'codigo', 'id');
+            }
+            if( $empresa->centro_costo ){
+                if (count($listaCuentas)) {
+                
+                    $remuneraciones = Aporte::where('tipo_aporte', 7)->first();
+                    if(count($listaCentrosCostos)){
+                        foreach ($listaCentrosCostos as $key => $value) {
+                            $cuentasRemuneraciones[ $value['id'] ] = $remuneraciones->cuenta($cuentasCodigo, $value['id']);
+                        }
+                    }
+
+                    $cotizaciones = Aporte::where('tipo_aporte', 8)->first();
+                    if(count($listaCentrosCostos)){
+                        foreach ($listaCentrosCostos as $key => $value) {
+                            $cuentasCotizaciones[ $value['id'] ] = $cotizaciones->cuenta($cuentasCodigo, $value['id']);
+                        }
+                    }
+                }
+
+            }else{
+                $remuneraciones = Aporte::where('tipo_aporte', 7)->first();
+                $cuentasRemuneraciones= $remuneraciones->cuenta($cuentasCodigo, 0);
+
+                $cotizaciones = Aporte::where('tipo_aporte', 8)->first();
+                $cuentasCotizaciones = $cotizaciones->cuenta($cuentasCodigo, 0);
+            }
+
+            $datos=array(
+                'success' => true,
+                'razonSocial' => $empresa->razon_social, 
+                'centroCosto' => $empresa->centro_costo? true : false,
+                'nivelesCentroCosto' => $empresa->niveles_centro_costo,
+                'listaCentrosCostos' => $listaCentrosCostos,
+                'listaCentrosCostosCuentas' => $listaCentrosCostosCuentas,
+                'cuentaCotizaciones' => $cuentasCotizaciones,
+                'cuentaRemuneraciones' => $cuentasRemuneraciones
+            );
+        }
+        return Response::json($datos);
+    });
+});
+
+Route::get('restablecer/{sid}/{portal?}', function($sid, $portal=null){
+
+    $usuario=null;
+    $trabajador=null;
+    $empresa="";
+    if(!$portal) {
+        $usuario = User::where('recuperacion', $sid)->first();
+    }else{
+        $empresa = base64_decode($portal);
+        $emp = Empresa::where('portal', $empresa)->first();
+        if( $emp ){
+            Config::set('database.default', $emp->base_datos);
+            $trabajador = Usuario::where('recuperacion', $sid)->first();
+        }
+    }
+    if($usuario || $trabajador){
+
+        // se genera una nueva contraseña
+        if($usuario){
+            $correo = $usuario->funcionario->email;
+        }else{
+            $correo = $trabajador->trabajador->fichaTrabajodorUltima->email;
+        }
+
+        if($correo) {
+            $pass=rand(1000, 9999);
+            if( $usuario ) {
+                $usuario->password = Hash::make($pass);
+                $usuario->recuperacion = "";
+                $usuario->save();
+            }else{
+                $trabajador->password = Hash::make($pass);
+                $trabajador->recuperacion = "";
+                $trabajador->save();
+            }
+
+
+            $config = array(
+                'driver' => 'smtp',
+                'host' => 'smtp.gmail.com',
+                'port' => 465,
+                'from' => array('address' => 'no-reply@easysystems.cl', 'name' => 'Soporte EasySystems'),
+                'encryption' => 'ssl',
+                'username' => 'soporte@easysystems.cl',
+                'password' => 'easy1q2w3e',
+                'sendmail' => '/usr/sbin/sendmail -bs',
+                'pretend' => false
+            );
+
+            Config::set('mail', $config);
+
+            $datos=array(
+                'pass' => $pass,
+                'empresa' => $empresa
+            );
+
+            Mail::send('envio_password', $datos, function ($message) use ($correo) {
+                $message->to($correo);
+                $message->from('no-reply@easysystems.cl', 'EasySystems - Restablecer Contraseña de Acceso');
+                $message->replyTo('no-reply@easysystems.cl', 'EasySystems - Restablecer Contraseña de Acceso');
+                $message->subject("Nueva Contraseña de Acceso");
+            });
+            return View::make('password_enviada')->with('email', $correo)->with('empresa', $empresa);
+        }
+    }elseif($empresa){
+        echo "<html><head> <meta http-equiv=\"refresh\" content=\"0; url=http://".$_SERVER['SERVER_NAME']."/#/login/".$empresa."\" /> </head><body>recurso no encontrado</body></html>";
+    }else{
+        echo "<html><head> <meta http-equiv=\"refresh\" content=\"0; url=http://".$_SERVER['SERVER_NAME']."/\" /> </head><body>recurso no encontrado</body></html>";
+    }
+});
+
+
+Route::post('login/password/reestablecer', function (){
+    $usuario = Input::get('usuario');
+    $email = Input::get('email');
+    $empresa = Input::get('empresa');
+
+    $trabajador=null;
+    $funcionario=null;
+    if( !$empresa ) {
+        // se busca en funcionarios
+        $funcionario = Funcionario::where('email', $email)->whereHas('usuario', function ($sq) use ($usuario) {
+            $sq->where('username', $usuario);
+        })->first();
+    }else{
+        $emp = Empresa::where('portal', $empresa)->first();
+        if( $emp ){
+            Config::set('database.default', $emp->base_datos);
+            $trabajador = Usuario::whereHas('trabajador', function($sq) use($email){
+                $sq->whereHas('fichaTrabajodorUltima', function($sq2) use($email){
+                    $sq2->where('email', $email);
+                });
+            })->where('username', $usuario)->first();
+        }
+    }
+
+    if($funcionario or $trabajador){
+        $sid = Funciones::generarSID();
+        $dominio  = $_SERVER['SERVER_NAME'];
+        $urlRecuperacion = $dominio."/restablecer/".$sid."/";
+        if($trabajador){
+            $urlRecuperacion.=base64_encode($empresa);
+        }
+
+        $datos=array(
+            'url' => $urlRecuperacion
+        );
+
+        if($funcionario)  $correo = $funcionario->email;
+        elseif($trabajador){
+            $correo = $trabajador->trabajador->fichaTrabajodorUltima->email;
+        }
+
+        $config = array(
+            'driver' => 'smtp',
+            'host' => 'smtp.gmail.com',
+            'port' => 465,
+            'from' => array('address' => 'no-reply@easysystems.cl', 'name' => 'Soporte EasySystems'),
+            'encryption' => 'ssl',
+            'username' => 'soporte@easysystems.cl',
+            'password' => 'easy1q2w3e',
+            'sendmail' => '/usr/sbin/sendmail -bs',
+            'pretend' => false
+        );
+
+        Config::set('mail', $config);
+
+        Mail::send('restablecer_password', $datos, function ($message) use ($correo) {
+            $message->to($correo);
+            $message->from('no-reply@easysystems.cl', 'EasySystems - Restablecer Contraseña de Acceso');
+            $message->replyTo('no-reply@easysystems.cl', 'EasySystems - Restablecer Contraseña de Acceso');
+            $message->subject("Restablecer Contraseña de Acceso");
+        });
+
+        if($funcionario) {
+            $funcionario->usuario->recuperacion = $sid;
+            $funcionario->usuario->save();
+        }else{
+            $trabajador->recuperacion = $sid;
+            $trabajador->save();
+        }
+
+        $resultado=array(
+            'success' => true,
+            'mensaje' => 'Un enlace para restablecer su contraseña fue enviado a su correo electrónico'
+        );
+    }else{
+        $resultado=array(
+            'success' => false,
+            'mensaje' => 'El Nombre de Usuario y/o Correo Electrónico ingresado son incorrectos!'
+        );
+    }
+    return Response::json($resultado);
+});
+
 Route::get('inicio/version', function(){
     // comprobar sesion activa
-    if (Auth::guest()) return Response::make('login-error-status', 200);
+    if (Auth::usuario()->guest() && Auth::empleado()->guest()) return Response::make('login-error-status', 200);
     return Response::json(array('version' => VERSION_SISTEMA ));
 });
 
@@ -56,8 +321,314 @@ Route::get('actualizacion-sql', function(){
         }
         echo "Finalizo el Proceso de Actualización";
     }else{
-        echo "No se encontro el archivo de actualizacion";
+        echo "No se encontro el archivo de actualización";
     }
+});
+
+Route::get('crear-factores', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $jornadas = array();
+            Config::set('database.default', $empresa->base_datos);
+            DB::table('jornadas_tramos')->delete();
+            $jornadas = Jornada::all();
+            foreach($jornadas as $jornada){
+                $jornadaTramo = new JornadaTramo();
+                $jornadaTramo->jornada_id = $jornada->id;
+                $jornadaTramo->tramo_id = $jornada->tramo_hora_extra_id;
+                $jornadaTramo->save();
+
+                echo 'jornada : ' . $jornada->nombre . '<br />';
+            }
+        }
+        
+    }else{
+        echo "Sin Empresas";
+    }
+});
+
+Route::get('crear-usuarios', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $empleados = array();
+            Config::set('database.default', $empresa->base_datos);
+            DB::table('usuarios')->delete();
+            DB::table('permisos')->delete();
+            $empleados = Trabajador::all();
+            foreach($empleados as $empleado){
+                $ultimaFicha = $empleado->ultimaFicha();
+                if($ultimaFicha->estado!='En Creación'){
+                    $user = new Usuario();
+                    $user->sid = Funciones::generarSID();
+                    $user->funcionario_id = $empleado->id;
+                    $user->username = $empleado->rut;
+                    $pass = $user->generarClave();
+                    $user->password = Hash::make($pass);
+                    $user->activo = 2;
+                    $user->save();
+
+                    $permiso = new Permiso();
+                    $permiso->usuario_id = $user->id;
+                    $permiso->documentos_empresa = 1;
+                    $permiso->cartas_notificacion = 1;
+                    $permiso->certificados = 1;
+                    $permiso->liquidaciones = 1;
+                    $permiso->solicitudes = 1;
+                    $permiso->save();
+
+                    echo 'user_id : ' . $empleado->rut . '<br />';
+                    echo 'empresa_id : ' . $empresa->id . '<br />';
+                    echo 'pass : ' . $pass . '<br /><br />';
+                }
+            }
+        }
+        
+    }else{
+        echo "Sin Usuarios";
+    }
+});
+Route::get('session', function(){
+
+    session_destroy();
+});
+
+Route::get('crear-cuentas-centros-costo', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            if($empresa->razon_social=='Comercial e Importadora Audiomusica Spa'){                
+                Config::set('database.default', $empresa->base_datos);
+                $aportes = Aporte::all();
+                $haberes = TipoHaber::all();
+                $descuentos = TipoDescuento::all();
+                $centrosCosto = CentroCosto::all();
+                foreach($aportes as $aporte){
+                    if($aporte->cuenta_id){
+                        foreach($centrosCosto as $centroCosto){
+                            if($centroCosto->id==3){
+                                DB::table('cuenta_centro_costo')->insert(array(
+                                    array( 'centro_costo_id' => $centroCosto->id, 'concepto' => 'aporte', 'concepto_id' => $aporte->id, 'cuenta_id' => $aporte->cuenta_id)
+                                ));
+                            }
+                        }
+                    }
+                }
+                foreach($haberes as $haber){
+                    if($haber->cuenta_id){
+                        foreach($centrosCosto as $centroCosto){
+                            if($centroCosto->id==3){
+                                DB::table('cuenta_centro_costo')->insert(array(
+                                    array( 'centro_costo_id' => $centroCosto->id, 'concepto' => 'haber', 'concepto_id' => $haber->id, 'cuenta_id' => $haber->cuenta_id)
+                                ));
+                            }
+                        }
+                    }
+                }
+                foreach($descuentos as $descuento){
+                    if($descuento->cuenta_id){
+                        foreach($centrosCosto as $centroCosto){
+                            if($centroCosto->id==3){
+                            DB::table('cuenta_centro_costo')->insert(array(
+                                array( 'centro_costo_id' => $centroCosto->id, 'concepto' => 'descuento', 'concepto_id' => $descuento->id, 'cuenta_id' => $descuento->cuenta_id)
+                            ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+    }else{
+        echo "Sin Usuarios";
+    }
+});
+
+Route::get('eliminar-trabajadores', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            Config::set('database.default', $empresa->base_datos);
+            $trabajadores = DB::table('trabajadores')->get();
+            echo "<br /><br />Empresa: ".$empresa->razon_social."<br />";
+            if(count($trabajadores)){                
+                foreach($trabajadores as $trabajador){
+                    if($trabajador->deleted_at){
+                        echo '<br />user_id : ' . $trabajador->rut;
+                        DB::table('trabajadores')->where('id', $trabajador->id)->delete();
+                    }
+                }
+            }else{
+                echo "<br />Sin Trabajadores";
+            }
+        }
+        
+    }else{
+        echo "<br />Sin Empresas";
+    }
+});
+
+Route::get('crear-mutual-ccfa', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            Config::set('database.default', $empresa->base_datos);
+            $anios = DB::table('anios_remuneraciones')->get();
+            DB::table('mutuales')->delete();
+            DB::table('cajas')->delete();
+            echo "<br /><br />Empresa: ".$empresa->razon_social."<br />";
+            if(count($anios)){                
+                foreach($anios as $anio){
+                    echo "Anios: ".$anio->anio."<br />";
+                    DB::table('mutuales')->insert(array(
+                        array( 'mutual_id' => $empresa->mutual_id, 'tasa_fija' => $empresa->tasa_fija_mutual, 'tasa_adicional' => $empresa->tasa_adicional_mutual, 'codigo' => $empresa->codigo_mutual, 'anio_id' => $anio->id )
+                    ));
+                    DB::table('cajas')->insert(array(
+                        array( 'caja_id' => $empresa->caja_id, 'codigo' => $empresa->codigo_mutual, 'anio_id' => $anio->id )
+                    ));
+                }
+            }else{
+                echo "<br />No hay Años";
+            }
+        }
+        
+    }else{
+        echo "<br />Sin Empresas";
+    }
+});
+
+Route::get('crear-codigos-secciones', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $secciones = array();
+            Config::set('database.default', $empresa->base_datos);
+            $secciones = Seccion::all();
+            if($secciones->count()){
+                echo '<br />Empresa : ' . $empresa->razon_social . '<br />';
+                foreach($secciones as $seccion){
+                    if(!$seccion->codigo){
+                        $seccion->codigo = $seccion->nombre;
+                        $seccion->save();
+
+                        echo 'Sección : ' . $seccion->nombre . '<br />';
+                        echo 'Código : ' . $seccion->codigo . '<br />';
+                    }
+                }
+            }
+        }
+        
+    }else{
+        echo "No empresas";
+    }
+});
+
+Route::get('crear-vacaciones', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $empleados = array();
+            Config::set('database.default', $empresa->base_datos);
+            DB::table('vacaciones')->truncate();
+            echo '<br />Empresa : ' . $empresa->razon_social . '<br /><br />';
+            $empleados = Trabajador::all();
+            foreach($empleados as $empleado){
+                $ficha = $empleado->ultimaFicha();
+                if($ficha){
+                    $fichas = FichaTrabajador::where('trabajador_id', $empleado->id)->get();
+                    foreach($fichas as $f){
+                        $f->vacaciones = 0;
+                        $f->save();
+                    }
+                    $empleado->recalcularVacaciones(0);
+                    echo 'Trabajador : ' . $ficha->nombreCompleto() . '<br />';
+                }                
+            }
+        }
+        
+    }else{
+        echo "Sin Empleados";
+    }
+});
+
+Route::get('corregir-observaciones', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $empleados = array();
+            Config::set('database.default', $empresa->base_datos);
+            
+            echo '<br />Empresa : ' . $empresa->razon_social . '<br /><br />';
+            
+            $observaciones = LiquidacionObservacion::where('periodo', '2018-01-01')->get();
+            foreach($observaciones as $observacion){
+                $ficha = FichaTrabajador::find($observacion->trabajador_id);
+                if($ficha){
+                    if($ficha->trabajador_id==$observacion->trabajador_id){
+                        echo 'Iguales<br />';
+                    }else{
+                        $observacion->trabajador_id = $ficha->trabajador_id;
+                        $observacion->save();
+                        echo $ficha->nombres . '<br />';
+                        echo $observacion->trabajador_id . '<br />';
+                        echo $ficha->trabajador_id . '<br />';
+                    }
+                }else{
+                    echo $observacion->trabajador_id;
+                    echo '<br /> Sin Ficha <br />';
+                }
+
+            }
+            
+            
+
+
+        }
+        
+    }else{
+        echo "Sin Empleados";
+    }
+});
+
+
+Route::get('empresas/datos-empresa/portal-trabajador/{portal}', function($portal){
+    $datos=array(
+        'empresa' => '',
+        'logo' => ''
+    );
+    $empresa = Empresa::where('portal', $portal)->first();
+    if($empresa){
+        $datos=array(
+            'empresa' => $empresa->razon_social,
+            'logo' => $empresa->logo
+        );
+    }
+    return $datos;
 });
 
 Route::get('empresas/lista-empresas/json', 'EmpresasController@lista_empresas_select');
@@ -71,7 +642,6 @@ Route::group(array('before'=>'auth_ajax'), function() {
         }
         $urlActual = Input::get('actual');
         $empresa = Empresa::find($empresa_id);
-        $empresa->isCME = Empresa::isCME();
         \Session::put('empresa', $empresa);
         if($empresa){
             $recargar=false;
@@ -79,15 +649,15 @@ Route::group(array('before'=>'auth_ajax'), function() {
             Config::set('database.default', $empresa->base_datos);
             $menuController = new MenuController();
             // se carga el menu con los permisos permitidos para la empresa
-            if( Auth::user()->id > 1 ){
+            if( Auth::usuario()->user()->id > 1 ){
                 $MENU_USUARIO = $menuController->generarMenuSistema($empresa_id, false);
                 // si la posicion actual esta en el menu de la empresa se realiza una recarga
                 // de lo contrario se deriva al inicio
                 $url = "#".substr($urlActual, 1, 1000);
-                $recargar = Auth::user()->comprobarUrlMenuEmpresa($url, $empresa_id);
+                $recargar = Auth::usuario()->user()->comprobarUrlMenuEmpresa($url, $empresa_id);
                 $recargar=true;
 
-            }elseif(Auth::user()->id == 1){
+            }elseif(Auth::usuario()->user()->id == 1){
                 $MENU_USUARIO = $menuController->generarMenuSistema($empresa_id, false);
                 $recargar=true;
             }
@@ -109,6 +679,8 @@ Route::group(array('before'=>'auth_ajax'), function() {
                 'logo' => $empresa->logo? "/stories/".$empresa->logo : "images/dashboard/EMPRESAS.png",
                 'empresa' => $empresa->razon_social,
                 'mesDeTrabajo' => $mesActual,
+                'ultimoMes' => $empresa->ultimoMes(),
+                'primerMes' => $empresa->primerMes(),
                 'rutFormato' => $empresa->rut_formato(),
                 'rut' => $empresa->rut,
                 'direccion' => $empresa->direccion,
@@ -116,7 +688,12 @@ Route::group(array('before'=>'auth_ajax'), function() {
                 'tipoGratificacion' => $empresa->tipo_gratificacion,
                 'isMutual' => Empresa::isMutual(),
                 'isCaja' => Empresa::isCaja(),
-                'isCME' => Empresa::isCME(),
+                'cme' => $empresa->cme ? true : false,
+                'impuestoUnico' => $empresa->impuesto_unico,
+                'centroCosto' => array(
+                    'isCentroCosto' => $empresa->centro_costo ? true : false,
+                    'niveles' => $empresa->niveles_centro_costo
+                ),
                 'comuna' => array(
                     'id' => $empresa->comuna->id,
                     'nombre' => $empresa->comuna->comuna,
@@ -139,7 +716,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('mes-de-trabajo/cuentas/obtener', function(){
         
         $empresa = \Session::get('empresa');
-        $isCME = $empresa->isCME;
+        $isCME = $empresa->cme ? true : false;
         $datosConexionCME = array();
         if($isCME){
             //$rutEmpresa = $empresa->rut;
@@ -175,7 +752,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
         $lista = array();
         /*$data = Input::all();
         $idMes = $data['fechaRemuneracion'];*/
-        $lista = Trabajador::centralizar('2017/09/30', 2);
+        $lista = Trabajador::centralizar('2017/11/30', 2);
         
         return Response::json($lista);     
     });
@@ -219,51 +796,6 @@ Route::group(array('before'=>'auth_ajax'), function() {
 
         $datosConexionCME = $result->json(); 
         return Response::json($datosConexionCME);     
-    });
-    
-    Route::post('mes-de-trabajo/centralizar/enviar', function(){
-        
-        $lista = array();
-        $data = Input::all();
-        $idMes = $data['fechaRemuneracion'];
-        $mes = MesDeTrabajo::where('fecha_remuneracion', $idMes)->first();
-        $liquidaciones = Liquidacion::where('mes', $mes['mes'])->orderBy('trabajador_apellidos')->get();
-        
-        foreach($liquidaciones as $liquidacion){
-            $detalles = $liquidacion->detallesLiquidacion();
-            $lista[] = array(
-                'idTrabajador' => $liquidacion->trabajador_id,
-                'rut' => $liquidacion->trabajador_rut,
-                'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
-                'sueldoBase' => $liquidacion->sueldo_base,
-                'sueldo' => $liquidacion->sueldo,
-                'haberes' => $detalles['haberes'],
-                'descuentos' => $detalles['descuentos'],
-                'aportes' => $detalles['aportes'],
-                'rentaImponible' => $liquidacion->renta_imponible,
-                'sueldoLiquido' => $liquidacion->sueldo_liquido
-            );
-        }
-        
-        $datos = array(
-            'general' => array(
-                'rut' => '112223334',
-                'nombre' => 'Usuario Admin',
-                'periodo' => '2017-09-01'
-            ),
-            'detalle' => $lista                
-        );
-        
-        /*$client = new Client(); //GuzzleHttp\Client
-        $result = $client->post('http://demo.cme-es.com/empresas/id', [
-        $result = $client->get('http://demo.cme-es.com/empresas', [
-            'auth' => ['restfull', '1234'],
-            'debug' => false
-        ]);
-
-        $datosConexionCME = $result->json(); 
-        return Response::json($datosConexionCME);  */   
-        return Response::json($datos);     
     });
     
     Route::get('crear-empresa', function(){
@@ -399,6 +931,9 @@ c139f46406b37dedd4062fea30a5ccec
     /* MODIFICACION DE CONTRASENA Y VISTA A DATOS DEL PERFIL DE USUARIO */
     Route::get('misdatos', 'PerfilController@index');
     Route::post('misdatos', 'PerfilController@actualizar_password');
+    
+    /* MODIFICACION DE CONTRASENA Y VISTA A DATOS DEL PERFIL DE USUARIO EMPLEADOS */
+    Route::post('empleados/misdatos/cambiar', 'EmpleadosController@actualizar_password');
 
 });
 
@@ -427,13 +962,19 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('usuarios/buscar-todos/json', "UsuariosController@ajax_buscador_todos_usuarios");
     Route::get('usuarios/buscar-vendedor/json', "UsuariosController@ajax_buscador_vendedores");
     Route::get('usuarios/buscar-productManager/json', "UsuariosController@ajax_buscador_productManager");
-    Route::get('usuarios/empleados/obtener', "UsuariosController@empleados");
-    Route::get('usuario/empleado/obtener/{sid}', "UsuariosController@showUsuario");
-    Route::post('usuarios/permisos/cambiar', "UsuariosController@cambiarPermisos");
-
     Route::get('usuarios/listado-vendedor/json', "UsuariosController@lista_vendedores");
     Route::get('usuarios/listado-productManager/json', "UsuariosController@lista_product_manager");
 
+    /*  EMPLEADOS    */
+    Route::resource('empleados', 'EmpleadosController');
+    Route::post('empleados/permisos/cambiar', "EmpleadosController@cambiarPermisos");
+    Route::post('empleados/permisos/cambiar-masivo', "EmpleadosController@cambiarPermisosMasivo");
+    Route::post('empleados/portal/activar', "EmpleadosController@activarUsuario");
+    Route::post('empleados/portal/activar-masivo', "EmpleadosController@activarMasivo");
+    Route::post('empleados/portal/desactivar-masivo', "EmpleadosController@desactivarMasivo");
+    Route::post('empleados/portal/reactivar', "EmpleadosController@reactivarUsuario");
+    Route::post('empleados/portal/generar-clave', "EmpleadosController@generarClave");
+    Route::post('empleados/portal/generar-clave-masivo', "EmpleadosController@generarClaveMasivo");
 
     /*  DEPARTAMENTOS   */
     Route::resource('departamentos', 'DepartamentosController');
@@ -449,6 +990,8 @@ Route::group(array('before'=>'auth_ajax'), function() {
     /*  APORTES    */
     Route::resource('aportes', 'AportesController');
     Route::post('aportes/cuentas/actualizar', 'AportesController@updateCuenta');
+    Route::post('aportes/cuentas-centros-costos/actualizar', 'AportesController@updateCuentaCentroCosto');
+    Route::get('aportes/centro-costo/obtener/{sid}', 'AportesController@cuentaAporteCentroCosto');
     
     /*  TRABAJADORES    */
     Route::resource('trabajadores', 'TrabajadoresController');
@@ -458,6 +1001,8 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('trabajadores/total-horas-extra/obtener', 'TrabajadoresController@trabajadoresHorasExtra');
     Route::get('trabajadores/total-prestamos/obtener', 'TrabajadoresController@trabajadoresPrestamos');
     Route::get('trabajadores/total-cargas-familiares/obtener', 'TrabajadoresController@trabajadoresCargas');
+    Route::get('trabajadores/total-apvs/obtener', 'TrabajadoresController@trabajadoresApvs');
+    Route::get('trabajadores/apvs/obtener/{sid}', 'TrabajadoresController@trabajadorApvs');
     Route::get('trabajadores/inasistencias/obtener/{sid}', 'TrabajadoresController@trabajadorInasistencias');
     Route::get('trabajadores/licencias/obtener/{sid}', 'TrabajadoresController@trabajadorLicencias');
     Route::get('trabajadores/horas-extra/obtener/{sid}', 'TrabajadoresController@trabajadorHorasExtra');
@@ -470,15 +1015,20 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('trabajadores/descuentos/obtener/{sid}', 'TrabajadoresController@descuentos');
     Route::get('trabajadores/opciones/afps', 'TrabajadoresController@listaAfps');
     Route::get('trabajadores/input/obtener', 'TrabajadoresController@input');
+    Route::get('trabajadores/input-activos/obtener', 'TrabajadoresController@inputActivos');
     Route::get('trabajadores/secciones/formulario', 'TrabajadoresController@seccionesFormulario');
     Route::get('trabajadores/seccion/obtener/{sid}', 'TrabajadoresController@seccion');
     Route::post('trabajadores/liquidacion/generar', 'TrabajadoresController@miLiquidacion');
+    Route::post('trabajadores/f1887-trabajadores/generar', 'TrabajadoresController@generarF1887Trabajadores');
+    Route::get('trabajadores/f1887/generar/{anio}', 'TrabajadoresController@generarF1887');
+    Route::get('trabajadores/f1887/ver/{anio}', 'TrabajadoresController@verF1887');
     Route::get('trabajadores/ingresados/obtener', 'TrabajadoresController@ingresados');
     Route::get('trabajadores/archivo-previred/obtener', 'TrabajadoresController@archivoPrevired');
     Route::get('trabajadores/trabajadores-finiquitos/obtener', 'TrabajadoresController@trabajadoresFiniquitos');
     Route::get('trabajadores/trabajadores-documentos/obtener', 'TrabajadoresController@trabajadoresDocumentos');
     Route::get('trabajadores/vigentes/obtener', 'TrabajadoresController@vigentes');
     Route::get('trabajadores/trabajadores-liquidaciones/obtener', 'TrabajadoresController@trabajadoresLiquidaciones');
+    Route::get('trabajadores/trabajadores-f1887/obtener/{sid}', 'TrabajadoresController@trabajadoresF1887');
     Route::get('trabajadores/planilla-costo-empresa/obtener', 'TrabajadoresController@planillaCostoEmpresa');
     Route::get('trabajadores/trabajadores-cartas-notificacion/obtener', 'TrabajadoresController@trabajadoresCartasNotificacion');
     Route::get('trabajadores/trabajadores-cartas-notificacion/obtener', 'TrabajadoresController@trabajadoresCartasNotificacion');
@@ -490,6 +1040,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('trabajadores/finiquitos/obtener/{sid}', 'TrabajadoresController@trabajadorFiniquitos');
     Route::get('trabajadores/certificados/obtener/{sid}', 'TrabajadoresController@trabajadorCertificados');
     Route::get('trabajadores/contratos/obtener/{sid}', 'TrabajadoresController@trabajadorContratos');
+    Route::get('trabajadores/fichas/obtener/{sid}', 'TrabajadoresController@trabajadorFichas');
     Route::get('trabajadores/documento/obtener/{sid}', 'DocumentosController@documentoPDF');
     Route::get('trabajadores/reajuste/obtener', 'TrabajadoresController@reajuste');    
     Route::post('trabajadores/reajuste/masivo', 'TrabajadoresController@reajustarRMI');
@@ -507,11 +1058,14 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('trabajadores/planilla-costo-empresa/descargar-excel/{nombre}', 'TrabajadoresController@descargarPlanillaExcel');
     Route::get('trabajadores/archivo-previred/descargar-excel', 'TrabajadoresController@descargarArchivoPreviredExcel');
     Route::get('trabajadores/planilla/descargar-excel/{tipo}', 'TrabajadoresController@descargarPlantilla');
+    Route::get('trabajadores/planilla-masivo/descargar-excel/{tipo}', 'TrabajadoresController@descargarPlantillaMasivo');
     Route::get('trabajadores/planilla-trabajadores/descargar', 'TrabajadoresController@descargarPlantillaTrabajadores');
-    Route::get('trabajadores/liquidacion/descargar-pdf/{nombre}', 'TrabajadoresController@liquidacionPDF');
+    Route::get('trabajadores/documento/descargar-pdf/{nombre}', 'TrabajadoresController@documentoPDF');
     Route::post('trabajadores/semana-corrida/actualizar', 'TrabajadoresController@updateSemanaCorrida');
     Route::post('trabajadores/planilla/importar', 'TrabajadoresController@importarPlanilla');
     Route::post('trabajadores/generar-ingreso/masivo', 'TrabajadoresController@generarIngresoMasivo');
+    Route::post('trabajadores/tramo/cambiar', 'TrabajadoresController@cambiarTramo');
+    Route::post('trabajadores/liquidacion/registro-observaciones', 'TrabajadoresController@miLiquidacionObservaciones_store');
     
     
     /*   NACIONALIDADES    */
@@ -544,16 +1098,25 @@ Route::group(array('before'=>'auth_ajax'), function() {
     /*   TIPOS_CARGA    */
     Route::resource('tipos-carga', 'TiposCargaController');
     
+    /*   FICHAS    */
+    Route::resource('fichas', 'FichasTrabajadoresController');
+    Route::resource('fichas/unificar/obtener', 'FichasTrabajadoresController@unificar');
+    
     /*   TIPOS_HABER    */
     Route::resource('tipos-haber', 'TiposHaberController');
     Route::get('tipos-haber/ingreso-haberes/obtener', 'TiposHaberController@ingresoHaberes');    
+    Route::get('tipos-haber/cuentas/obtener/{sid}', 'TiposHaberController@cuentaHaber');
+    Route::get('tipos-haber/centro-costo/obtener/{sid}', 'TiposHaberController@cuentaHaberCentroCosto');
     Route::post('tipos-haber/cuentas/actualizar', 'TiposHaberController@updateCuenta');
+    Route::post('tipos-haber/cuentas-centros-costos/actualizar', 'TiposHaberController@updateCuentaCentroCosto');
 
     /*   TIPOS_DESCUENTO    */
     Route::resource('tipos-descuento', 'TiposDescuentoController');
     Route::get('tipos-descuento/ingreso-descuentos/obtener', 'TiposDescuentoController@ingresoDescuentos');
     Route::get('tipos-descuento/cuentas/obtener/{sid}', 'TiposDescuentoController@cuentaDescuento');
+    Route::get('tipos-descuento/centro-costo/obtener/{sid}', 'TiposDescuentoController@cuentaDescuentoCentroCosto');
     Route::post('tipos-descuento/cuentas/actualizar', 'TiposDescuentoController@updateCuenta');
+    Route::post('tipos-descuento/cuentas-centros-costos/actualizar', 'TiposDescuentoController@updateCuentaCentroCosto');
     
     /*   TIPOS_DOCUMENTO    */
     Route::resource('tipos-documento', 'TiposDocumentoController');
@@ -565,13 +1128,19 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::resource('haberes', 'HaberesController');
     Route::post('haberes/ingreso/masivo', 'HaberesController@ingresoMasivo');
     Route::post('haberes/planilla/importar', 'HaberesController@importarPlanilla');
+    Route::post('haberes/planilla/importar-masivo', 'HaberesController@importarPlanillaMasivo');
     Route::post('haberes/generar-ingreso/masivo', 'HaberesController@generarIngresoMasivo');
+    Route::post('haberes/generar-ingreso-masivo/masivo', 'HaberesController@generarIngresoMasivoHaberes');
+    Route::post('haberes/permanentes/eliminar', 'HaberesController@eliminarPermanente');
     
     /*   DESCUENTOS    */
     Route::resource('descuentos', 'DescuentosController');
     Route::post('descuentos/ingreso/masivo', 'DescuentosController@ingresoMasivo');
     Route::post('descuentos/planilla/importar', 'DescuentosController@importarPlanilla');
+    Route::post('descuentos/planilla/importar-masivo', 'DescuentosController@importarPlanillaMasivo');
     Route::post('descuentos/generar-ingreso/masivo', 'DescuentosController@generarIngresoMasivo');
+    Route::post('descuentos/generar-ingreso-masivo/masivo', 'DescuentosController@generarIngresoMasivoDescuentos');
+    Route::post('descuentos/permanentes/eliminar', 'DescuentosController@eliminarPermanente');
     
     /*   INASISTENCIAS    */
     Route::resource('inasistencias', 'InasistenciasController');
@@ -608,6 +1177,10 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::resource('tabla-impuesto-unico', 'TablaImpuestoUnicoController');
     Route::post('tabla-impuesto-unico/modificar/masivo', 'TablaImpuestoUnicoController@modificar');
     
+    /*   FACTORES_ACTUALIZACIÓN    */
+    Route::resource('factores-actualizacion', 'FactorActualizacionController');
+    Route::post('factores-actualizacion/modificar/masivo', 'FactorActualizacionController@modificar');
+    
     /*   TASAS_CAJAS_EX_REGIMEN   */
     Route::resource('tasas-cajas-ex-regimen', 'TasasCajasExRegimenController');
     Route::post('tasas-cajas-ex-regimen/modificar/masivo', 'TasasCajasExRegimenController@modificar');
@@ -624,7 +1197,10 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::resource('glosas', 'GlosasController');
     
     /*   MES_DE_TRABAJO    */
-    Route::resource('mes-de-trabajo', 'MesDeTrabajoController');    
+    Route::resource('mes-de-trabajo', 'MesDeTrabajoController');  
+    Route::get('mes-de-trabajo/detalle-centralizacion/obtener/{mes}', 'MesDeTrabajoController@detalleCentralizacion');
+    Route::post('mes-de-trabajo/pre-centralizar/obtener', 'MesDeTrabajoController@preCentralizar');
+    Route::post('mes-de-trabajo/centralizar/obtener', 'MesDeTrabajoController@centralizar');
     
     /*   ANIOS    */
     Route::resource('anios', 'AniosRemuneracionesController');
@@ -632,7 +1208,10 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::post('anio-remuneracion/cerrar-meses/generar', 'AniosRemuneracionesController@cerrarMeses');
     Route::post('anio-remuneracion/feriados/generar', 'AniosRemuneracionesController@feriados');
     Route::get('anio-remuneracion/calendario/obtener', 'AniosRemuneracionesController@calendario');
+    Route::post('anio-remuneracion/feriados-vacaciones/generar', 'AniosRemuneracionesController@feriadosVacaciones');
+    Route::get('anio-remuneracion/calendario-vacaciones/obtener', 'AniosRemuneracionesController@calendarioVacaciones');
     Route::post('anio-remuneracion/gratificacion/generar', 'AniosRemuneracionesController@gratificacion');
+    Route::get('anio-remuneracion/datos-centralizacion/obtener/{sid}', 'AniosRemuneracionesController@datosCentralizacion');
     
     /*   VALORES_INDICADORES    */
     Route::resource('valores-indicadores', 'ValoresIndicadoresController');
@@ -644,9 +1223,14 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::resource('liquidaciones', 'LiquidacionesController');
     Route::resource('liquidaciones/libro-remuneraciones/obtener', 'LiquidacionesController@libroRemuneraciones');
     Route::post('liquidaciones/eliminar/masivo', 'LiquidacionesController@eliminarMasivo');
+    Route::post('liquidaciones/imprimir/masivo', 'LiquidacionesController@imprimirMasivo');
     
     /*   LIBRO_REMUNERACIONES    */
     Route::resource('libro-remuneraciones', 'LibrosRemuneracionesController');   
+    
+    /*   DECLARACIONES    */
+    Route::resource('declaraciones-trabajadores', 'DeclaracionesTrabajadoresController');
+    Route::post('declaraciones-trabajadores/eliminar/masivo', 'DeclaracionesTrabajadoresController@eliminarMasivo');
     
     /*  CAUSALES_FINIQUITO    */
     Route::resource('causales-finiquito', 'CausalesFiniquitoController');
@@ -694,16 +1278,20 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::resource('documentos', 'DocumentosController');
     Route::post('documentos/archivo/importar', 'DocumentosController@importarDocumento');
     Route::post('documentos/archivo/subir', 'DocumentosController@subirDocumento');
+    Route::post('documentos/archivo/eliminar', 'DocumentosController@eliminarDocumento');
     
     /*  DOCUMENTOS_EMPRESA    */
     Route::resource('documentos-empresa', 'DocumentosEmpresaController');
     Route::post('documentos-empresa/archivo/importar', 'DocumentosEmpresaController@importarDocumento');
     Route::post('documentos-empresa/archivo/subir', 'DocumentosEmpresaController@subirDocumento');
     Route::get('documentos-empresa/documento/descargar-documento/{sid}', 'DocumentosEmpresaController@documentoPDF');
+    Route::get('documentos-empresa/publicos/obtener', 'DocumentosEmpresaController@publicos');
     
     /*  VACACIONES    */
     Route::resource('vacaciones', 'VacacionesController');
-    Route::post('vacaciones/calculo/obtener', 'VacacionesController@calcularVacaciones');  
+    Route::post('vacaciones/recalculo/obtener', 'VacacionesController@recalcularVacaciones');  
+    Route::post('vacaciones/toma-vacaciones/obtener', 'VacacionesController@tomaVacaciones');  
+    Route::post('vacaciones/toma-vacaciones/eliminar', 'VacacionesController@eliminarTomaVacaciones');  
     
     /*   CENTROS_COSTO    */
     Route::resource('centros-costo', 'CentrosCostoController');
@@ -713,6 +1301,23 @@ Route::group(array('before'=>'auth_ajax'), function() {
     
     /*   CUENTAS    */
     Route::resource('cuentas', 'CuentasController');
+    
+    /*   REPORTES    */
+    Route::resource('reportes', 'LogsController');
+    
+    
+    
+    /*   PORTAL_EMPLEADOS    */
+    
+    
+    /*   MIS_LIQUIDACIONES    */
+    Route::resource('mis-liquidaciones', 'MisLiquidacionesController');
+    
+    /*   MIS_CARTAS_NOTIFICACIÓN    */
+    Route::resource('mis-cartas-notificacion', 'MisCartasNotificacionController');
+    
+    /*   MIS_CERTIFICADOS    */
+    Route::resource('mis-certificados', 'MisCertificadosController');
 
 });
 
@@ -724,155 +1329,214 @@ Route::post('login', function (){
         'username' => Input::get('username'),
         'password' => Input::get('password')
     );
-    if ( Auth::attempt($userdata) ){
+    $empresaDestino = Input::get('empresa') ? Input::get('empresa') : array();
+    if($empresaDestino){
         
-        $empresaDestino = Input::get('empresa') ? Input::get('empresa') : array();
-        if( array_key_exists('id', $empresaDestino) ){
-            $empresaDestinoId = $empresaDestino['id'];
-        }else{
-            $empresaDestinoId = 0;
-        }
-        $empresa_id=0;
-        $listaEmpresasPermisos=array();
-        $menuController = new MenuController();
-        if(Auth::user()->id > 1){
-            $empresas=Auth::user()->listaEmpresasPerfil();
-            $listaEmpresas=array();
-            if( !in_array(100000, $empresas) ) {
-                $empresas = Empresa::whereIn('id', $empresas)->orderBy('razon_social', 'ASC')->get();
-            }else{
-                $empresas = Empresa::orderBy('razon_social', 'ASC')->get();
-            }
-            if($empresas->count()){
-                foreach( $empresas as $empresa ){
-                    $listaEmpresas[]=array(
-                        'id' => $empresa->id,
-                        'empresa' => $empresa->razon_social,
-                        'rutFormato' => $empresa->rut_formato(),
-                        'rut' => $empresa->rut
-                    );
-                    $listaEmpresasPermisos[]=$empresa->id;
-                }
-            }
-
-            if( $empresaDestinoId > 0 and in_array($empresaDestinoId, $listaEmpresasPermisos) ) {
-                $empresa_id = $empresaDestinoId;
-            }
-            if(count($listaEmpresas)){
-                $empresa_id=$empresas[0]['id'];
-                $empresa = Empresa::find($empresa_id);
+        $empresa = Empresa::where('portal', $empresaDestino)->first();
+        \Session::put('basedatos', $empresa->base_datos);
+        Config::set('database.default', $empresa->base_datos);
+        
+        if(Auth::empleado()->attempt($userdata)){     
+            if(Auth::empleado()->user()->activo){
+                $listaMesesDeTrabajo = array();
+                $empresas = array();
                 \Session::put('basedatos', $empresa->base_datos);
-                $mesActual = MesDeTrabajo::selectMes();
-                \Session::put('mesActivo', $mesActual);  
-                $empresa->isCME = Empresa::isCME();
-                \Session::put('empresa', $empresa);
-                $MENU_USUARIO = $menuController->generarMenuSistema( $empresa_id, false );
-            }else{
-                $opciones = MenuSistema::where('administrador', '!=', '2')->get();
-                $MENU_USUARIO = $menuController->generarMenuSistema( 0, false );
-            }            
+                $listaEmpresas = array();
+                $menuController = new MenuController();
+                $MENU_USUARIO = $menuController->generarMenuEmpleado($empresa->id);
 
-        }else{
-            $listaEmpresas=array();
-            $empresas = Empresa::orderBy('razon_social', 'ASC')->get();
-            if($empresas->count()){
-                foreach( $empresas as $empresa ){
-                    $listaEmpresas[]=array(
-                        'id' => $empresa->id,
-                        'empresa' => $empresa->razon_social,
-                        'rutFormato' => $empresa->rut_formato(),
-                        'rut' => $empresa->rut
-                    );
-                    $listaEmpresasPermisos[]=$empresa->id;
-                }
+                $data = array(
+                    "success" => true, 
+                    "uf" => null, 
+                    "utm" => null, 
+                    "uta" => null, 
+                    "listaMesesDeTrabajo" => $listaMesesDeTrabajo, 
+                    "max" => 0, 
+                    "empresas" => $listaEmpresas, 
+                    "empresa" => $empresa, 
+                    "menu" => $MENU_USUARIO['menu'], 
+                    "inicio" => "/mis-liquidaciones", 
+                    "accesos" => $MENU_USUARIO['secciones'], 
+                    "nombre" => ucwords( mb_strtolower( Auth::empleado()->user()->nombreCompleto()) ) , 
+                    "imagen" => "images/usuario.png", 
+                    "usuario" => ucwords ( mb_strtolower( Auth::empleado()->user()->nombreCompleto() ) ), 
+                    "cliente" => Config::get('cliente.CLIENTE.NOMBRE'), 
+                    "uID" => Auth::empleado()->user()->id,
+                    'isEmpleado' => true
+                );
+
+                return Response::json($data);
+            }else{
+                return Response::json(array("success" => false, "mensaje" => "El Usuario se encuentra <b>Inactivo</b>. <br />Por favor comuníquse con el <b>Administrador</b>."));
             }
-            // el SUPERADMINISTRADOR carga el menu completamente
-            if( !count($listaEmpresas) ){
-                //no existen empresas por lo tanto solo se carga las opciones de administracion
-                $opciones = MenuSistema::where('administrador', '!=', '2')->get();
-                $MENU_USUARIO = $menuController->generarMenuSistema( 0, true );
-            }else{                
-                // se carga el menu completo
-                if( $empresaDestinoId > 0 and in_array($empresaDestinoId, $listaEmpresasPermisos) ) {
-                    $empresa_id = $empresaDestinoId;
+        }else{
+            return Response::json(array("success" => false, "mensaje" => "El Nombre de Usuario y/o la Contraseña son incorrectos"));
+        }
+    }else{ 
+        if ( Auth::usuario()->attempt($userdata) ){
+                    
+            $empresa_id=0;
+            $listaEmpresasPermisos=array();
+            $menuController = new MenuController();
+
+            if(Auth::usuario()->user()->id > 1){
+
+                $empresas=Auth::usuario()->user()->listaEmpresasPerfil();
+                $listaEmpresas=array();
+                if( !in_array(100000, $empresas) ) {
+                    $empresas = Empresa::whereIn('id', $empresas)->orderBy('razon_social', 'ASC')->get();
                 }else{
-                    $empresa_id=$empresas[0]['id'];
+                    $empresas = Empresa::orderBy('razon_social', 'ASC')->get();
                 }
-                $empresa = Empresa::find($empresa_id);
-                $empresa->isCME = Empresa::isCME();
-                \Session::put('empresa', $empresa);
-                \Session::put('basedatos', $empresa->base_datos);
-                                
-                $MENU_USUARIO = $menuController->generarMenuSistema( $empresa_id, false );
-            }
-        }
+                if($empresas->count()){
+                    foreach( $empresas as $empresa ){
+                        $listaEmpresas[]=array(
+                            'id' => $empresa->id,
+                            'empresa' => $empresa->razon_social,
+                            'rutFormato' => $empresa->rut_formato(),
+                            'rut' => $empresa->rut
+                        );
+                        $listaEmpresasPermisos[]=$empresa->id;
+                    }
+                }                
 
-        $varGlobal = VariableGlobal::where('variable', 'EMPRESAS')->first();
-        if(!$varGlobal){
-            $varGlobal = new VariableGlobal();
-            $varGlobal->variable = "EMPRESAS";
-            $varGlobal->valor = 5;
-            $varGlobal->save();
-        }
+                if(count($listaEmpresas)){
+                    $empresa_id=$empresas[0]['id'];
+                    $empresa = Empresa::find($empresa_id);
+                    Config::set('database.default', $empresa->base_datos);
+                    $mesActual = MesDeTrabajo::selectMes();
+                    \Session::put('basedatos', $empresa->base_datos);
+                    \Session::put('mesActivo', $mesActual);  
+                    \Session::put('empresa', $empresa);
+                    $MENU_USUARIO = $menuController->generarMenuSistema( $empresa_id, false );
+                }else{
+                    $opciones = MenuSistema::where('administrador', '!=', '2')->get();
+                    $MENU_USUARIO = $menuController->generarMenuSistema( 0, false );
+                }  
 
-        $empresaInicial="";
-        if( $empresa_id ){
-            $empresa = Empresa::find($empresa_id);
-            Config::set('database.default', $empresa->base_datos);
-            
-            $mesActual = MesDeTrabajo::selectMes();
-            \Session::put('mesActivo', $mesActual);
-            
-            if($mesActual){
-                $listaMesesDeTrabajo = MesDeTrabajo::listaMesesDeTrabajo();
+            }else{
+                $listaEmpresas=array();
+                $empresas = Empresa::orderBy('razon_social', 'ASC')->get();
+                if($empresas->count()){
+                    foreach( $empresas as $empresa ){
+                        $listaEmpresas[]=array(
+                            'id' => $empresa->id,
+                            'empresa' => $empresa->razon_social,
+                            'rutFormato' => $empresa->rut_formato(),
+                            'rut' => $empresa->rut
+                        );
+                        $listaEmpresasPermisos[]=$empresa->id;
+                    }
+                }
+                // el SUPERADMINISTRADOR carga el menu completamente
+                if( !count($listaEmpresas) ){
+                    //no existen empresas por lo tanto solo se carga las opciones de administracion
+                    $opciones = MenuSistema::where('administrador', '!=', '2')->get();
+                    $MENU_USUARIO = $menuController->generarMenuSistema( 0, true );
+                }else{                
+                    // se carga el menu completo
+                    $empresa_id=$empresas[0]['id'];
+                    $empresa = Empresa::find($empresa_id);
+                    Config::set('database.default', $empresa->base_datos);
+                    $mesActual = MesDeTrabajo::selectMes();
+                    \Session::put('basedatos', $empresa->base_datos);
+                    \Session::put('mesActivo', $mesActual);  
+                    \Session::put('empresa', $empresa);
+                    \Session::put('mesActivo', $mesActual); 
+
+                    $MENU_USUARIO = $menuController->generarMenuSistema( $empresa_id, false );
+                }
             }
-            $empresa->isCME = Empresa::isCME();
-            \Session::put('empresa', $empresa);
-            $empresaInicial = array(
-                'id' => $empresa->id,
-                'logo' => $empresa->logo? "/stories/".$empresa->logo : "images/dashboard/EMPRESAS.png",
-                'empresa' => $empresa->razon_social,
-                'mesDeTrabajo' => $mesActual,
-                'rutFormato' => $empresa->rut_formato(),
-                'rut' => $empresa->rut,
-                'direccion' => $empresa->direccion,
-                'gratificacion' => $empresa->gratificacion,
-                'tipoGratificacion' => $empresa->tipo_gratificacion,
-                'isCME' => Empresa::isCME(),
-                'isMutual' => Empresa::isMutual(),
-                'isCaja' => Empresa::isCaja(),
-                'comuna' => array(
-                    'id' => $empresa->comuna->id,
-                    'nombre' => $empresa->comuna->comuna,
-                    'provincia' => $empresa->comuna->provincia->provincia,
-                    'localidad' => $empresa->comuna->localidad(),
-                    'domicilio' => $empresa->domicilio()
-                )
+
+            $varGlobal = VariableGlobal::where('variable', 'EMPRESAS')->first();
+            if(!$varGlobal){
+                $varGlobal = new VariableGlobal();
+                $varGlobal->variable = "EMPRESAS";
+                $varGlobal->valor = 5;
+                $varGlobal->save();
+            }
+
+            $empresaInicial="";
+            
+            if( $empresa_id ){
+                
+                if($mesActual){                    
+                    $listaMesesDeTrabajo = MesDeTrabajo::listaMesesDeTrabajo();
+                }
+
+                $empresaInicial = array(
+                    'id' => $empresa->id,
+                    'logo' => $empresa->logo? "/stories/".$empresa->logo : "images/dashboard/EMPRESAS.png",
+                    'empresa' => $empresa->razon_social,
+                    'mesDeTrabajo' => $mesActual,
+                    'ultimoMes' => $empresa->ultimoMes(),
+                    'primerMes' => $empresa->primerMes(),
+                    'rutFormato' => $empresa->rut_formato(),
+                    'rut' => $empresa->rut,
+                    'direccion' => $empresa->direccion,
+                    'gratificacion' => $empresa->gratificacion,
+                    'tipoGratificacion' => $empresa->tipo_gratificacion,
+                    'cme' => $empresa->cme ? true : false,
+                    'impuestoUnico' => $empresa->impuesto_unico,
+                    'centroCosto' => array(
+                        'isCentroCosto' => $empresa->centro_costo ? true : false,
+                        'niveles' => $empresa->niveles_centro_costo
+                    ),
+                    'isMutual' => Empresa::isMutual(),
+                    'isCaja' => Empresa::isCaja(),
+                    'comuna' => array(
+                        'id' => $empresa->comuna->id,
+                        'nombre' => $empresa->comuna->comuna,
+                        'provincia' => $empresa->comuna->provincia->provincia,
+                        'localidad' => $empresa->comuna->localidad(),
+                        'domicilio' => $empresa->domicilio()
+                    )
+                );
+
+            }                        
+
+            if(isset($mesActual)){
+                $fecha = $mesActual->fechaRemuneracion;
+                $indicadores = ValorIndicador::valorFecha($fecha);
+            }
+
+            if(isset($indicadores)){
+                $uf = $indicadores->uf;
+                $utm = $indicadores->utm;
+                $uta = $indicadores->uta;
+            }else{
+                $uf = null;
+                $utm = null;
+                $uta = null;
+            }
+            if(!isset($listaMesesDeTrabajo)){
+                $listaMesesDeTrabajo = array();
+            }
+
+            $data = array(
+                "success" => true, 
+                "uf" => $uf, 
+                "utm" => $utm, 
+                "uta" => $uta, 
+                "listaMesesDeTrabajo" => $listaMesesDeTrabajo, 
+                "max" => $varGlobal->valor, 
+                "empresas" => $listaEmpresas, 
+                "empresa" => $empresaInicial ? $empresaInicial : "" , 
+                "menu" => $MENU_USUARIO['menu'], 
+                "inicio" => str_replace("#", "/", $MENU_USUARIO['inicio']), 
+                "accesos" => $MENU_USUARIO['secciones'], 
+                "nombre" => ucwords( mb_strtolower( Auth::usuario()->user()->nombreCompleto()) ) , 
+                "imagen" => "images/usuario.png", 
+                "usuario" => ucwords ( mb_strtolower( Auth::usuario()->user()->nombreCompleto() ) ), 
+                "cliente" => Config::get('cliente.CLIENTE.NOMBRE'), 
+                "uID" => Auth::usuario()->user()->id,
+                'isEmpleado' => false
             );
-                        
-        }                        
-        
-        if(isset($mesActual)){
-            $fecha = $mesActual->fechaRemuneracion;
-            $indicadores = ValorIndicador::valorFecha($fecha);
-        }
 
-        if(isset($indicadores)){
-            $uf = $indicadores->uf;
-            $utm = $indicadores->utm;
-            $uta = $indicadores->uta;
+            return Response::json($data);
         }else{
-            $uf = null;
-            $utm = null;
-            $uta = null;
+            return Response::json(array("success" => false, "mensaje" => "El Nombre de Usuario y/o la Contraseña son incorrectos"));
         }
-        if(!isset($listaMesesDeTrabajo)){
-            $listaMesesDeTrabajo = array();
-        }
-
-        return Response::json(array("success" => true, "uf" => $uf, "utm" => $utm, "uta" => $uta, "listaMesesDeTrabajo" => $listaMesesDeTrabajo, "max" => $varGlobal->valor, "empresas" => $listaEmpresas, "empresa" => $empresaInicial? $empresaInicial : "" , "menu" => $MENU_USUARIO['menu'], "inicio" => str_replace("#", "/", $MENU_USUARIO['inicio']), 'accesos' => $MENU_USUARIO['secciones'], "nombre" => ucwords( mb_strtolower( Auth::user()->funcionario->nombre_completo()) ) , "imagen" => Auth::user()->funcionario->fotografia ? URL::to('stories/min_'.Auth::user()->funcionario->fotografia) : "images/usuario.png" , "usuario" => ucwords ( mb_strtolower( Auth::user()->funcionario->nombre_completo() ) ), "uID" => Auth::user()->id ));
-    }else{
-        return Response::json(array("success" => false, "mensaje" => "El Nombre de Usuario y/o la Contraseña son incorrectos"));
     }
 });
 

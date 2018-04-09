@@ -14,27 +14,15 @@ angular.module('angularjsApp')
     $scope.constantes = constantes;
     $scope.cargado = false;
 
-    function isAllLiquidaciones(){
-      var bool = true;
-      for(var i=0,len=$scope.datos.length; i<len; i++){
-        if(!$scope.datos[i].isLiquidacion){
-          bool = false;
-          break;
-        }
-      }
-
-      $scope.isGenerar = bool;
-    }
-
     function cargarDatos(){
       $rootScope.cargando = true;
       var datos = trabajador.previred().get();
       datos.$promise.then(function(response){
         $scope.datos = response.datos;
         $scope.accesos = response.accesos;
+        $scope.isGenerar = response.isLiquidaciones;
         $rootScope.cargando = false;      
         $scope.cargado = true;  
-        isAllLiquidaciones();
       });
     };
 

@@ -15,3 +15,8 @@
 [0526/090619.821:ERROR:process_reader_win.cc(233)] ReadMemory at 0x7feeeac2968 of 12 bytes failed: Sólo se completó una parte de una solicitud ReadProcessMemory o WriteProcessMemory. (0x12B)
 [0526/090619.821:WARNING:process_snapshot_win.cc(68)] ReadMemory ExceptionInformation failed
 [0526/090619.821:WARNING:crash_report_exception_handler.cc(60)] ProcessSnapshotWin::Initialize failed
+[1207/103654.799:ERROR:file_io.cc(134)] WriteFile: Se está cerrando la canalización. (0xE8)
+[1219/160359.955:ERROR:settings.cc(258)] Settings magic is not 1129342067
+[0103/115205.487:ERROR:file_io.cc(134)] WriteFile: Se está cerrando la canalización. (0xE8)
+[0122/171952.752:ERROR:settings.cc(258)] Settings magic is not 1129342067
+[0215/102229.447:ERROR:file_io.cc(134)] WriteFile: Se está cerrando la canalización. (0xE8)

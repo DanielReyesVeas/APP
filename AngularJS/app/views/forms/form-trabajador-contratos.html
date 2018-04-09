@@ -35,7 +35,7 @@
               <td>{{ $index + 1 }}</td>
               <td>{{ dato.alias }}</td>
               <td><span ng-if="dato.descripcion">{{ dato.descripcion }}</span></td>
-              <td>{{ dato.fecha.date | date : "dd-MM-y" }}</td>
+              <td>{{ dato.fecha | date : "dd-MM-y" }}</td>
               <td>
                 <a href="javascript:void(0);" ng-click="editar(dato)"><i class="fa fa-pencil"></i></a>
                 <a href="javascript:void(0);" ng-click="frame(dato)"><i class="fa fa-search"></i></a>

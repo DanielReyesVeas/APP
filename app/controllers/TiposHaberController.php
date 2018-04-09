@@ -13,8 +13,8 @@ class TiposHaberController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'accesosTabla' => array(), 'accesosIngreso' => array()));
         }
-        $permisosTabla = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tabla-haberes');
-        $permisosIngreso = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-haberes');
+        $permisosTabla = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tabla-haberes');
+        $permisosIngreso = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-haberes');
         $tiposHaber = TipoHaber::all()->sortBy("codigo");
         $listaImponibles=array();
         $listaNoImponibles=array();
@@ -22,36 +22,34 @@ class TiposHaberController extends \BaseController {
         
         if($tiposHaber->count()){
             foreach($tiposHaber as $tipoHaber){
-                if($tipoHaber->id>15){
-                    if($tipoHaber->imponible){
-                        $listaImponibles[]=array(
-                            'id' => $tipoHaber->id,
-                            'sid' => $tipoHaber->sid,
-                            'codigo' => $tipoHaber->codigo,
-                            'nombre' => $tipoHaber->nombre,
-                            'tributable' => $tipoHaber->tributable ? true : false,
-                            'calculaHorasExtras' => $tipoHaber->calcula_horas_extras ? true : false,
-                            'proporcionalDiasTrabajados' => $tipoHaber->proporcional_dias_trabajados ? true : false,
-                            'calculaSemanaCorrida' => $tipoHaber->calcula_semana_corrida ? true : false,
-                            'imponible' => $tipoHaber->imponible ? true : false,
-                            'gratificacion' => $tipoHaber->gratificacion ? true : false,
-                            'cuenta' => $tipoHaber->cuenta($cuentas)
-                        );
-                    }else{
-                        $listaNoImponibles[]=array(
-                            'id' => $tipoHaber->id,
-                            'sid' => $tipoHaber->sid,
-                            'codigo' => $tipoHaber->codigo,
-                            'nombre' => $tipoHaber->nombre,
-                            'tributable' => $tipoHaber->tributable ? true : false,
-                            'calculaHorasExtras' => $tipoHaber->calcula_horas_extras ? true : false,
-                            'proporcionalDiasTrabajados' => $tipoHaber->proporcional_dias_trabajados ? true : false,
-                            'calculaSemanaCorrida' => $tipoHaber->calcula_semana_corrida ? true : false,
-                            'imponible' => $tipoHaber->imponible ? true : false,
-                            'gratificacion' => $tipoHaber->gratificacion ? true : false,
-                            'cuenta' => $tipoHaber->cuenta($cuentas)
-                        );
-                    }
+                if($tipoHaber->imponible){
+                    $listaImponibles[]=array(
+                        'id' => $tipoHaber->id,
+                        'sid' => $tipoHaber->sid,
+                        'codigo' => $tipoHaber->codigo,
+                        'nombre' => $tipoHaber->nombre,
+                        'tributable' => $tipoHaber->tributable ? true : false,
+                        'calculaHorasExtras' => $tipoHaber->calcula_horas_extras ? true : false,
+                        'proporcionalDiasTrabajados' => $tipoHaber->proporcional_dias_trabajados ? true : false,
+                        'calculaSemanaCorrida' => $tipoHaber->calcula_semana_corrida ? true : false,
+                        'imponible' => $tipoHaber->imponible ? true : false,
+                        'gratificacion' => $tipoHaber->gratificacion ? true : false,
+                        'cuenta' => $tipoHaber->cuenta($cuentas)
+                    );
+                }else{
+                    $listaNoImponibles[]=array(
+                        'id' => $tipoHaber->id,
+                        'sid' => $tipoHaber->sid,
+                        'codigo' => $tipoHaber->codigo,
+                        'nombre' => $tipoHaber->nombre,
+                        'tributable' => $tipoHaber->tributable ? true : false,
+                        'calculaHorasExtras' => $tipoHaber->calcula_horas_extras ? true : false,
+                        'proporcionalDiasTrabajados' => $tipoHaber->proporcional_dias_trabajados ? true : false,
+                        'calculaSemanaCorrida' => $tipoHaber->calcula_semana_corrida ? true : false,
+                        'imponible' => $tipoHaber->imponible ? true : false,
+                        'gratificacion' => $tipoHaber->gratificacion ? true : false,
+                        'cuenta' => $tipoHaber->cuenta($cuentas)
+                    );
                 }
             }
         }
@@ -73,14 +71,14 @@ class TiposHaberController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'accesosTabla' => array(), 'accesosIngreso' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-haberes');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-haberes');
         $tiposHaber = TipoHaber::all()->sortBy("codigo");
         $listaImponibles=array();
         $listaNoImponibles=array();
         
         if($tiposHaber->count()){
             foreach($tiposHaber as $tipoHaber){
-                if($tipoHaber->id>15 || $tipoHaber->id==10 || $tipoHaber->id==11){
+                if($tipoHaber->id>15 || $tipoHaber->id==10 || $tipoHaber->id==11 || $tipoHaber->id==4 || $tipoHaber->id==3 || $tipoHaber->id==5){
                     if($tipoHaber->imponible){
                         $listaImponibles[]=array(
                             'id' => $tipoHaber->id,
@@ -143,6 +141,9 @@ class TiposHaberController extends \BaseController {
             $tipoHaber->gratificacion = $datos['gratificacion'];
             $tipoHaber->cuenta_id = $datos['cuenta_id'];
             $tipoHaber->save();
+            
+            Logs::crearLog('#tabla-haberes', $tipoHaber->id, $tipoHaber->nombre, 'Create', $tipoHaber->codigo, $tipoHaber->cuenta_id);
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -166,7 +167,7 @@ class TiposHaberController extends \BaseController {
      */
     public function show($sid)
     {
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-haberes');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-haberes');
         $datosHaber = null;
         $cuentas = Cuenta::listaCuentas();
         if($sid){
@@ -196,6 +197,76 @@ class TiposHaberController extends \BaseController {
         
         return Response::json($datos);
     }
+    
+    public function cuentaHaber($sid)
+    {
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-haberes');
+        $datosHaber = null;
+        $cuentas = Cuenta::listaCuentas();
+        
+        if($sid){
+            $tipoHaber = TipoHaber::whereSid($sid)->first();
+            $datosHaber=array(
+                'id' => $tipoHaber->id,
+                'sid' => $tipoHaber->sid,
+                'codigo' => $tipoHaber->codigo,
+                'nombre' => $tipoHaber->nombre,
+                'tributable' => $tipoHaber->tributable ? true : false,
+                'calculaHorasExtras' => $tipoHaber->calcula_horas_extras ? true : false,
+                'proporcionalDiasTrabajados' => $tipoHaber->proporcional_dias_trabajados ? true : false,
+                'calculaSemanaCorrida' => $tipoHaber->calcula_semana_corrida ? true : false,
+                'imponible' => $tipoHaber->imponible ? true : false,
+                'gratificacion' => $tipoHaber->gratificacion ? true : false,
+                'haberes' => $tipoHaber->misHaberes(),
+                'cuenta' => $tipoHaber->cuenta()
+            );
+        }
+        
+                
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $datosHaber,
+            'cuentas' => array_values($cuentas)
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function cuentaHaberCentroCosto($sid)
+    {
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-haberes');
+        $datosHaber = null;
+        $cuentas = Cuenta::listaCuentas();        
+        
+        if($sid){
+            $tipoHaber = TipoHaber::whereSid($sid)->first();
+            $datosHaber=array(
+                'id' => $tipoHaber->id,
+                'sid' => $tipoHaber->sid,
+                'codigo' => $tipoHaber->codigo,
+                'nombre' => $tipoHaber->nombre,
+                'tributable' => $tipoHaber->tributable ? true : false,
+                'calculaHorasExtras' => $tipoHaber->calcula_horas_extras ? true : false,
+                'proporcionalDiasTrabajados' => $tipoHaber->proporcional_dias_trabajados ? true : false,
+                'calculaSemanaCorrida' => $tipoHaber->calcula_semana_corrida ? true : false,
+                'imponible' => $tipoHaber->imponible ? true : false,
+                'gratificacion' => $tipoHaber->gratificacion ? true : false,
+                'haberes' => $tipoHaber->misHaberes(),
+                'cuenta' => $tipoHaber->cuenta()
+            );
+        }
+        
+        $centrosCostos = CentroCosto::listaCentrosCostoCuentas($tipoHaber->id, 'haber', true);        
+                
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $datosHaber,
+            'cuentas' => array_values($cuentas),
+            'centrosCostos' => $centrosCostos
+        );
+        
+        return Response::json($datos);
+    }
 
     /**
      * Show the form for editing the specified resource.
@@ -218,7 +289,7 @@ class TiposHaberController extends \BaseController {
     {
         $tipoHaber = TipoHaber::whereSid($sid)->first();
         $datos = $this->get_datos_formulario();
-        $errores = TipoHaber::errores($datos);       
+        $errores = $tipoHaber->validar($datos);       
         
         if(!$errores and $tipoHaber){
             $tipoHaber->codigo = $datos['codigo'];
@@ -231,6 +302,9 @@ class TiposHaberController extends \BaseController {
             $tipoHaber->gratificacion = $datos['gratificacion'];
             $tipoHaber->cuenta_id = $datos['cuenta_id'];
             $tipoHaber->save();
+
+            Logs::crearLog('#tabla-haberes', $tipoHaber->id, $tipoHaber->nombre, 'Update', $tipoHaber->codigo, $tipoHaber->cuenta_id);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -262,6 +336,38 @@ class TiposHaberController extends \BaseController {
         
         return Response::json($respuesta);
     }
+    
+    public function updateCuentaCentroCosto()
+    {
+        $datos = Input::all();
+        
+        $ccc = CuentaCentroCosto::where('concepto_id', $datos['idConcepto'])->where('concepto', $datos['concepto'])->get();
+        
+        if($ccc->count()){
+            foreach($ccc as $c){
+                $c->delete();
+            }
+        }
+        
+        foreach($datos['centrosCosto'] as $dato){
+            if($dato['cuenta']){
+                $cuentaCentroCosto = new CuentaCentroCosto();
+                $cuentaCentroCosto->centro_costo_id = $dato['id'];
+                $cuentaCentroCosto->cuenta_id = $dato['cuenta']['id'];
+                $cuentaCentroCosto->concepto_id = $datos['idConcepto'];
+                $cuentaCentroCosto->concepto = $datos['concepto'];
+                $cuentaCentroCosto->save();
+            }
+        }
+
+        
+        $respuesta = array(
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente"
+        );
+        
+        return Response::json($respuesta);
+    }
 
     /**
      * Remove the specified resource from storage.
@@ -271,9 +377,26 @@ class TiposHaberController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        TipoHaber::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $tipoHaber = TipoHaber::whereSid($sid)->first();
+        
+        $errores = $tipoHaber->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#tabla-haberes', $tipoHaber->id, $tipoHaber->nombre, 'Delete', $tipoHaber->codigo, $tipoHaber->cuenta_id);       
+            $tipoHaber->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+        
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){

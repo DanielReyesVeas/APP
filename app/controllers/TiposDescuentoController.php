@@ -13,30 +13,97 @@ class TiposDescuentoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'accesosTabla' => array(), 'accesosIngreso' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tabla-descuentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tabla-descuentos');
         
         $tiposDescuento = TipoDescuento::all()->sortBy("codigo");
         $estructuras = EstructuraDescuento::estructuras();
         $listaDescuentos = array();
+        $listaDescuentosLegales = array();
+        $listaDescuentosCaja = array();
+        $listaDescuentosAfp = array();
         
         if( $tiposDescuento->count() ){
             foreach( $tiposDescuento as $tipoDescuento ){
-                if($tipoDescuento->estructura_descuento_id<3){
+                if($tipoDescuento->estructura_descuento_id==1 || $tipoDescuento->estructura_descuento_id==2){
                     $listaDescuentos[]=array(
                         'id' => $tipoDescuento->id,
                         'sid' => $tipoDescuento->sid,
                         'codigo' => $tipoDescuento->codigo,
                         'nombre' => $tipoDescuento->nombre,
                         'caja' => $tipoDescuento->caja ? true : false,
+                        'idEstructura' => $tipoDescuento->estructura_descuento_id,
                         'descripcion' => $tipoDescuento->descripcion
                     );                    
-                }
+                }else if($tipoDescuento->estructura_descuento_id==3){
+                    $listaDescuentosAfp[]=array(
+                        'id' => $tipoDescuento->id,
+                        'sid' => $tipoDescuento->sid,
+                        'codigo' => $tipoDescuento->codigo,
+                        'nombre' => 'APVC AFP ' . $tipoDescuento->nombreAfp(),
+                        'caja' => $tipoDescuento->caja ? true : false,
+                        'idEstructura' => $tipoDescuento->estructura_descuento_id,
+                        'descripcion' => $tipoDescuento->descripcion
+                    ); 
+                }else if($tipoDescuento->estructura_descuento_id==4){
+                    $listaDescuentosAfp[]=array(
+                        'id' => $tipoDescuento->id,
+                        'sid' => $tipoDescuento->sid,
+                        'codigo' => $tipoDescuento->codigo,
+                        'nombre' => 'APV Régimen A AFP ' . $tipoDescuento->nombreAfp(),
+                        'caja' => $tipoDescuento->caja ? true : false,
+                        'idEstructura' => $tipoDescuento->estructura_descuento_id,
+                        'descripcion' => $tipoDescuento->descripcion
+                    ); 
+                }else if($tipoDescuento->estructura_descuento_id==5){
+                    $listaDescuentosAfp[]=array(
+                        'id' => $tipoDescuento->id,
+                        'sid' => $tipoDescuento->sid,
+                        'codigo' => $tipoDescuento->codigo,
+                        'nombre' => 'APV Régimen B AFP ' . $tipoDescuento->nombreAfp(),
+                        'caja' => $tipoDescuento->caja ? true : false,
+                        'idEstructura' => $tipoDescuento->estructura_descuento_id,
+                        'descripcion' => $tipoDescuento->descripcion
+                    ); 
+                }else if($tipoDescuento->estructura_descuento_id==6){
+                    $listaDescuentosCaja[]=array(
+                        'id' => $tipoDescuento->id,
+                        'sid' => $tipoDescuento->sid,
+                        'codigo' => $tipoDescuento->codigo,
+                        'nombre' => $tipoDescuento->nombre,
+                        'caja' => $tipoDescuento->caja ? true : false,
+                        'idEstructura' => $tipoDescuento->estructura_descuento_id,
+                        'descripcion' => $tipoDescuento->descripcion
+                    );                    
+                }else if($tipoDescuento->estructura_descuento_id==7){
+                    $listaDescuentosAfp[]=array(
+                        'id' => $tipoDescuento->id,
+                        'sid' => $tipoDescuento->sid,
+                        'codigo' => $tipoDescuento->codigo,
+                        'nombre' => 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp(),
+                        'caja' => $tipoDescuento->caja ? true : false,
+                        'idEstructura' => $tipoDescuento->estructura_descuento_id,
+                        'descripcion' => $tipoDescuento->descripcion
+                    ); 
+                }else if($tipoDescuento->estructura_descuento_id==8){
+                    $listaDescuentosLegales[]=array(
+                        'id' => $tipoDescuento->id,
+                        'sid' => $tipoDescuento->sid,
+                        'codigo' => $tipoDescuento->codigo,
+                        'nombre' => $tipoDescuento->nombre,
+                        'caja' => $tipoDescuento->caja ? true : false,
+                        'idEstructura' => $tipoDescuento->estructura_descuento_id,
+                        'descripcion' => $tipoDescuento->descripcion
+                    );                    
+                } 
             }
         }
                 
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaDescuentos,
+            'legales' => $listaDescuentosLegales,
+            'caja' => $listaDescuentosCaja,
+            'afp' => $listaDescuentosAfp,
             'tipos' => $estructuras
         );
         
@@ -48,43 +115,47 @@ class TiposDescuentoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'accesosTabla' => array(), 'accesosIngreso' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-descuentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-descuentos');
         
         $tiposDescuento = TipoDescuento::all()->sortBy("codigo");
         $listaTiposDescuento=array();
-        $listaTiposDescuentoAfp=array();
+        $listaTiposDescuentoLegales=array();
         $listaTiposDescuentoCCAF=array();
         
         if( $tiposDescuento->count() ){
             foreach( $tiposDescuento as $tipoDescuento ){
-                if($tipoDescuento->estructura_descuento_id<3){                   
-                    $listaTiposDescuento[]=array(
-                        'id' => $tipoDescuento->id,
-                        'sid' => $tipoDescuento->sid,
-                        'codigo' => $tipoDescuento->codigo,
-                        'nombre' => $tipoDescuento->nombre
-                    );                    
-                }else if($tipoDescuento->estructura_descuento_id==6){
-                    $listaTiposDescuentoCCAF[]=array(
-                        'id' => $tipoDescuento->id,
-                        'sid' => $tipoDescuento->sid,
-                        'codigo' => $tipoDescuento->codigo,
-                        'nombre' => $tipoDescuento->nombre
-                    );
-                }else if($tipoDescuento->estructura_descuento_id==3){
-                    $listaTiposDescuentoAfp[]=array(
-                        'id' => $tipoDescuento->id,
-                        'sid' => $tipoDescuento->sid,
-                        'codigo' => $tipoDescuento->codigo,
-                        'nombre' => 'APVC AFP ' . $tipoDescuento->nombreAfp()
-                    );
-                }else if($tipoDescuento->estructura_descuento_id==7){
-                    $listaTiposDescuentoAfp[]=array(
-                        'id' => $tipoDescuento->id,
-                        'sid' => $tipoDescuento->sid,
-                        'codigo' => $tipoDescuento->codigo,
-                        'nombre' => 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp()
-                    );
+                if($tipoDescuento->id!=3){
+                    if($tipoDescuento->estructura_descuento_id<3){                   
+                        $listaTiposDescuento[]=array(
+                            'id' => $tipoDescuento->id,
+                            'sid' => $tipoDescuento->sid,
+                            'codigo' => $tipoDescuento->codigo,
+                            'nombre' => $tipoDescuento->nombre
+                        );                    
+                    }else if($tipoDescuento->estructura_descuento_id==6){
+                        if($tipoDescuento->nombre!='Caja de Compensación'){
+                            $listaTiposDescuentoCCAF[]=array(
+                                'id' => $tipoDescuento->id,
+                                'sid' => $tipoDescuento->sid,
+                                'codigo' => $tipoDescuento->codigo,
+                                'nombre' => $tipoDescuento->nombre
+                            );
+                        }
+                    }else if($tipoDescuento->estructura_descuento_id==3){
+                        $listaTiposDescuentoLegales[]=array(
+                            'id' => $tipoDescuento->id,
+                            'sid' => $tipoDescuento->sid,
+                            'codigo' => $tipoDescuento->codigo,
+                            'nombre' => 'APVC AFP ' . $tipoDescuento->nombreAfp()
+                        );
+                    }else if($tipoDescuento->estructura_descuento_id==7){
+                        $listaTiposDescuentoLegales[]=array(
+                            'id' => $tipoDescuento->id,
+                            'sid' => $tipoDescuento->sid,
+                            'codigo' => $tipoDescuento->codigo,
+                            'nombre' => 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp()
+                        );
+                    }
                 }
             }
         }
@@ -92,7 +163,7 @@ class TiposDescuentoController extends \BaseController {
         $datos = array(
             'accesos' => $permisos,
             'datos' => $listaTiposDescuento,
-            'datosAfp' => $listaTiposDescuentoAfp,
+            'datosAfp' => $listaTiposDescuentoLegales,
             'datosCCAF' => $listaTiposDescuentoCCAF
         );
         
@@ -128,6 +199,9 @@ class TiposDescuentoController extends \BaseController {
             $tipoDescuento->caja = false;
             $tipoDescuento->descripcion = $datos['descripcion'];
             $tipoDescuento->save();
+            
+            Logs::crearLog('#tabla-descuentos', $tipoDescuento->id, $tipoDescuento->nombre, 'Create', $tipoDescuento->codigo, $tipoDescuento->cuenta_id);
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -152,19 +226,33 @@ class TiposDescuentoController extends \BaseController {
     public function show($sid)
     {
         $tipoDescuento = TipoDescuento::whereSid($sid)->first();
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#ingreso-descuentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-descuentos');
         $cuentas = Cuenta::listaCuentas();
         $datosDescuento = null;
 
         if($sid){
+            if($tipoDescuento->estructuraDescuento->id==3){
+                $nombre = 'APVC AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==4){
+                $nombre = 'APV Régimen A AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==5){
+                $nombre = 'APV Régimen B AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==7){
+                $nombre = 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==9){
+                $nombre = $tipoDescuento->nombreIsapre();
+            }else{
+                $nombre = $tipoDescuento->nombre;
+            } 
             $datosDescuento=array(
                 'id' => $tipoDescuento->id,
                 'sid' => $tipoDescuento->sid,
                 'codigo' => $tipoDescuento->codigo,
-                'nombre' => $tipoDescuento->nombre,
+                'nombre' => $nombre,
                 'caja' => $tipoDescuento->caja ? true : false,
                 'descripcion' => $tipoDescuento->descripcion,
                 'descuentos' => $tipoDescuento->misDescuentos(),
+                'idEstructura' => $tipoDescuento->estructura_descuento_id,
                 'tipo' => array(
                     'id' => $tipoDescuento->estructuraDescuento->id,
                     'nombre' => $tipoDescuento->estructuraDescuento->nombre
@@ -184,6 +272,7 @@ class TiposDescuentoController extends \BaseController {
     {
         $tipoDescuento = TipoDescuento::whereSid($sid)->first();
         $cuentas = Cuenta::listaCuentas();
+        $cuentasIndexadas = Funciones::array_column($cuentas, 'nombre', 'id');
         $datosDescuento = null;
 
         if($sid){
@@ -192,7 +281,7 @@ class TiposDescuentoController extends \BaseController {
             }else if($tipoDescuento->estructuraDescuento->id==4){
                 $nombre = 'APV Régimen A AFP ' . $tipoDescuento->nombreAfp();
             }else if($tipoDescuento->estructuraDescuento->id==5){
-                $nombre = 'APV Régimen B ' . $tipoDescuento->nombreAfp();
+                $nombre = 'APV Régimen B AFP ' . $tipoDescuento->nombreAfp();
             }else if($tipoDescuento->estructuraDescuento->id==7){
                 $nombre = 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp();
             }else if($tipoDescuento->estructuraDescuento->id==9){
@@ -210,12 +299,66 @@ class TiposDescuentoController extends \BaseController {
                 'tipo' => array(
                     'id' => $tipoDescuento->estructuraDescuento->id,
                     'nombre' => $tipoDescuento->estructuraDescuento->nombre
+                ),
+                'cuenta' => array(
+                    'id' => $tipoDescuento->cuenta_id,
+                    'nombre' => array_key_exists($tipoDescuento->cuenta_id, $cuentasIndexadas)? $cuentasIndexadas[$tipoDescuento->cuenta_id] : ""
                 )
             );
         }
         
         $datos = array(
-            'cuentas' => $cuentas,
+            'cuentas' => array_values($cuentas),
+            'datos' => $datosDescuento
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function cuentaDescuentoCentroCosto($sid)
+    {
+        $tipoDescuento = TipoDescuento::whereSid($sid)->first();
+        $cuentas = Cuenta::listaCuentas();
+        $cuentasIndexadas = Funciones::array_column($cuentas, 'nombre', 'id');
+        $datosDescuento = null;
+
+        if($sid){
+            if($tipoDescuento->estructuraDescuento->id==3){
+                $nombre = 'APVC AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==4){
+                $nombre = 'APV Régimen A AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==5){
+                $nombre = 'APV Régimen B AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==7){
+                $nombre = 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp();
+            }else if($tipoDescuento->estructuraDescuento->id==9){
+                $nombre = $tipoDescuento->nombreIsapre();
+            }else{
+                $nombre = $tipoDescuento->nombre;
+            } 
+            $datosDescuento=array(
+                'id' => $tipoDescuento->id,
+                'sid' => $tipoDescuento->sid,
+                'codigo' => $tipoDescuento->codigo,
+                'nombre' => $nombre,
+                'caja' => $tipoDescuento->caja ? true : false,
+                'descripcion' => $tipoDescuento->descripcion,
+                'tipo' => array(
+                    'id' => $tipoDescuento->estructuraDescuento->id,
+                    'nombre' => $tipoDescuento->estructuraDescuento->nombre
+                ),
+                'cuenta' => array(
+                    'id' => $tipoDescuento->cuenta_id,
+                    'nombre' => array_key_exists($tipoDescuento->cuenta_id, $cuentasIndexadas)? $cuentasIndexadas[$tipoDescuento->cuenta_id] : ""
+                )
+            );
+        }
+        
+        $centrosCostos = CentroCosto::listaCentrosCostoCuentas($tipoDescuento->id, 'descuento', true);        
+        
+        $datos = array(
+            'cuentas' => array_values($cuentas),
+            'centrosCostos' => $centrosCostos,
             'datos' => $datosDescuento
         );
         
@@ -243,7 +386,7 @@ class TiposDescuentoController extends \BaseController {
     {
         $tipoDescuento = TipoDescuento::whereSid($sid)->first();
         $datos = $this->get_datos_formulario();
-        $errores = TipoDescuento::errores($datos);       
+        $errores = $tipoDescuento->validar($datos);    
         
         if(!$errores and $tipoDescuento){
             $tipoDescuento->estructura_descuento_id = $datos['estructura_descuento_id'];
@@ -251,6 +394,9 @@ class TiposDescuentoController extends \BaseController {
             $tipoDescuento->nombre = $datos['nombre'];
             $tipoDescuento->descripcion = $datos['descripcion'];      
             $tipoDescuento->save();
+            
+            Logs::crearLog('#tabla-descuentos', $tipoDescuento->id, $tipoDescuento->nombre, 'Update', $tipoDescuento->codigo, $tipoDescuento->cuenta_id);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -282,6 +428,38 @@ class TiposDescuentoController extends \BaseController {
         
         return Response::json($respuesta);
     }
+    
+    public function updateCuentaCentroCosto()
+    {
+        $datos = Input::all();
+        
+        $ccc = CuentaCentroCosto::where('concepto_id', $datos['idConcepto'])->where('concepto', $datos['concepto'])->get();
+        
+        if($ccc->count()){
+            foreach($ccc as $c){
+                $c->delete();
+            }
+        }
+        
+        foreach($datos['centrosCosto'] as $dato){
+            if($dato['cuenta']){
+                $cuentaCentroCosto = new CuentaCentroCosto();
+                $cuentaCentroCosto->centro_costo_id = $dato['id'];
+                $cuentaCentroCosto->cuenta_id = $dato['cuenta']['id'];
+                $cuentaCentroCosto->concepto_id = $datos['idConcepto'];
+                $cuentaCentroCosto->concepto = $datos['concepto'];
+                $cuentaCentroCosto->save();
+            }
+        }
+
+        
+        $respuesta = array(
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente"
+        );
+        
+        return Response::json($respuesta);
+    }
 
     /**
      * Remove the specified resource from storage.
@@ -290,24 +468,27 @@ class TiposDescuentoController extends \BaseController {
      * @return Response
      */
     public function destroy($sid)
-    {
+    {        
         $tipoDescuento = TipoDescuento::whereSid($sid)->first();
-        $descuentos = Descuento::where('tipo_descuento_id', $tipoDescuento->id)->get();
-        if($descuentos->count()){
-            $respuesta = array(
-            	'success' => false,
-            	'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada",
-                'errores' => 'El tipo de Descuento seleccionado posee datos que dependen de él. <br />Asegúrese que no existan dependencias sobre los datos que desea eliminar.'
+        
+        $errores = $tipoDescuento->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#tabla-descuentos', $tipoDescuento->id, $tipoDescuento->nombre, 'Delete', $tipoDescuento->codigo, $tipoDescuento->cuenta_id);       
+            $tipoDescuento->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
             );
         }else{
-            $respuesta = array(
-            	'success' => true,
-            	'mensaje' => "La Información fue eliminada correctamente",
-                'sid' => $tipoDescuento->sid
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
             );
-            $tipoDescuento->delete();
         }
-        return Response::json($respuesta);
+        
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){

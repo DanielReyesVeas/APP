@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS `aportes_cuentas` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=127 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=142 ;
 
 --
 -- Volcado de datos para la tabla `aportes_cuentas`
@@ -77,13 +77,13 @@ CREATE TABLE IF NOT EXISTS `aportes_cuentas` (
 INSERT INTO `aportes_cuentas` (`id`, `sid`, `nombre`, `cuenta_id`, `tipo_aporte`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, 'Z20171023162136JRE7265', 'ISL', NULL, 1, '2017-08-16 09:16:32', '2017-10-23 16:21:36', NULL),
 (2, 'E20171023162136UGW3169', 'Mutual de Seguridad', NULL, 1, '2017-08-16 09:19:50', '2017-10-23 16:21:36', NULL),
-(5, 'T20171023162136YLG3750', '40', NULL, 2, '2017-08-16 09:12:42', '2017-10-23 16:21:36', NULL),
+(5, 'T20171023162136YLG3750', '40', NULL, 2, '2017-08-16 09:12:42', '2017-11-16 17:49:58', NULL),
 (6, 'M20171023162136TDP5563', '36', NULL, 2, '2017-08-16 09:53:50', '2017-10-23 16:21:36', NULL),
 (7, 'K20171023162136IJA1421', '37', NULL, 2, '2017-08-16 09:53:59', '2017-10-23 16:21:36', NULL),
 (8, 'M20171023162136CUA1348', '39', NULL, 2, '2017-08-16 09:54:09', '2017-10-23 16:21:36', NULL),
 (9, 'X20171023162136AEZ4187', '38', NULL, 2, '2017-08-16 09:54:22', '2017-10-23 16:21:36', NULL),
 (10, 'K20171023162136VTO2437', '41', NULL, 2, '2017-08-16 09:54:32', '2017-10-23 16:21:36', NULL),
-(11, 'T20171023100006YLG0147', '40', NULL, 4, '2017-08-16 09:12:42', '2017-10-23 16:21:36', NULL),
+(11, 'T20171023100006YLG0147', '40', NULL, 4, '2017-08-16 09:12:42', '2017-11-16 17:50:11', NULL),
 (12, 'M20171023101486TDP4587', '36', NULL, 4, '2017-08-16 09:53:50', '2017-10-23 16:21:36', NULL),
 (13, 'K20171023198756IJA0025', '37', NULL, 4, '2017-08-16 09:53:59', '2017-10-23 16:21:36', NULL),
 (14, 'M20171023101476CUA9687', '39', NULL, 4, '2017-08-16 09:54:09', '2017-10-23 16:21:36', NULL),
@@ -198,7 +198,21 @@ INSERT INTO `aportes_cuentas` (`id`, `sid`, `nombre`, `cuenta_id`, `tipo_aporte`
 (123, 'Y20171023162137TPW4650', '212', NULL, 3, '0000-00-00 00:00:00', '2017-10-23 16:21:37', NULL),
 (124, 'E20171023162137HKH5901', '213', NULL, 3, '0000-00-00 00:00:00', '2017-10-23 16:21:37', NULL),
 (125, 'G20171023162137NRB4062', '214', NULL, 3, '0000-00-00 00:00:00', '2017-10-23 16:21:37', NULL),
-(126, 'F20171023162137EKW9456', '215', NULL, 3, '0000-00-00 00:00:00', '2017-10-23 16:21:37', NULL);
+(126, 'F20171023162137EKW9456', '215', NULL, 3, '0000-00-00 00:00:00', '2017-10-23 16:21:37', NULL),
+(127, 'T20171113113352QGE9036', '40', NULL, 5, '2017-11-13 14:33:54', '2017-11-13 14:33:54', NULL),
+(128, 'K20171113113406ECV8511', '36', NULL, 5, '2017-11-13 14:34:07', '2017-11-13 14:34:07', NULL),
+(129, 'N20171113113418WTT4056', '37', NULL, 5, '2017-11-13 14:34:19', '2017-11-13 14:34:19', NULL),
+(130, 'K20171113113431BYS1881', '39', NULL, 5, '2017-11-13 14:34:32', '2017-11-13 14:34:32', NULL),
+(132, 'S20171113113455CNR9623', '41', NULL, 5, '2017-11-13 14:34:56', '2017-11-13 14:34:56', NULL),
+(133, 'P20171113113507SAF6115', '38', NULL, 5, '2017-11-13 14:35:09', '2017-11-13 14:35:09', NULL),
+(134, 'P20171113110907ZTU1482', '40', NULL, 6, '2017-11-13 14:09:08', '2017-11-13 14:09:08', NULL),
+(135, 'R20171113111644HRK6705', '36', NULL, 6, '2017-11-13 14:16:45', '2017-11-13 14:16:45', NULL),
+(136, 'C20171113111730IPL9958', '37', NULL, 6, '2017-11-13 14:17:31', '2017-11-13 14:17:31', NULL),
+(137, 'M20171113111753FEI5726', '39', NULL, 6, '2017-11-13 14:17:54', '2017-11-13 14:17:54', NULL),
+(138, 'F20171113111817QDQ7262', '38', NULL, 6, '2017-11-13 14:18:19', '2017-11-13 14:18:19', NULL),
+(139, 'D20171113111836MDS2340', '41', NULL, 6, '2017-11-13 14:18:37', '2017-11-13 14:18:37', NULL),
+(140, 'D20852741963852MDS0025', 'Remuneraciones', NULL, 7, '2017-11-13 14:18:37', '2018-01-29 09:43:28', NULL),
+(141, 'I20852456753951HEU0024', 'Cotizaciones', NULL, 8, '0000-00-00 00:00:00', '2018-01-24 09:38:04', NULL);
 
 -- --------------------------------------------------------
 
@@ -209,17 +223,38 @@ INSERT INTO `aportes_cuentas` (`id`, `sid`, `nombre`, `cuenta_id`, `tipo_aporte`
 CREATE TABLE IF NOT EXISTS `apvs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `sid` varchar(50) NOT NULL,
-  `ficha_trabajador_id` int(11) NOT NULL,
+  `trabajador_id` int(11) NOT NULL,
   `numero_contrato` VARCHAR(255) NULL,
   `afp_id` int(11) NOT NULL,
   `forma_pago` int(11) NOT NULL DEFAULT '102',
   `regimen` CHAR(1) NOT NULL DEFAULT 'a',
   `moneda` varchar(50) NOT NULL,
   `monto` DECIMAL(12,3) NOT NULL,
+  `fecha_pago_desde` DATE NULL,
+  `fecha_pago_hasta` DATE NULL,
   `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `cajas`
+--
+
+CREATE TABLE IF NOT EXISTS `cajas` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `caja_id` int(11) NOT NULL,
+  `codigo` varchar(255) DEFAULT NULL,
+  `anio_id` int(11) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
 
 
 -- --------------------------------------------------------
@@ -231,16 +266,18 @@ CREATE TABLE IF NOT EXISTS `apvs` (
 CREATE TABLE IF NOT EXISTS `cargas_familiares` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `sid` varchar(50) NOT NULL,
-  `ficha_trabajador_id` int(11) NOT NULL,
+  `trabajador_id` int(11) NOT NULL,
   `tipo_carga_id` int(11) NOT NULL,
-  `parentesco` varchar(255) NOT NULL,
+  `parentesco` varchar(255) DEFAULT NULL,
   `es_carga` tinyint(1) DEFAULT '0',
-  `es_autorizada` tinyint(1) DEFAULT NULL,
-  `rut` varchar(15) NOT NULL,
-  `nombre_completo` varchar(255) NOT NULL,
-  `fecha_nacimiento` date NOT NULL,
+  `pago_diferenciado` tinyint(1) DEFAULT NULL,
+  `rut` varchar(15) DEFAULT NULL,
+  `nombre_completo` varchar(255) DEFAULT NULL,
+  `fecha_nacimiento` date DEFAULT NULL,
   `fecha_autorizacion` date DEFAULT NULL,
-  `sexo` char(1) NOT NULL,
+  `fecha_pago_desde` date DEFAULT NULL,
+  `fecha_pago_hasta` date DEFAULT NULL,
+  `sexo` char(1) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`)
@@ -383,6 +420,7 @@ CREATE TABLE IF NOT EXISTS `centros_costo` (
   `sid` varchar(50) NOT NULL,
   `codigo` varchar(50) NOT NULL,
   `nombre` varchar(255) NOT NULL,
+  `dependencia_id` int(11) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
@@ -458,7 +496,7 @@ INSERT INTO `clausulas_contrato` (`id`, `plantilla_contrato_id`, `sid`, `nombre`
 (8, 1, 'M20170424201748HCY9789', 'PROHIBICIONES', '<p>El trabajador estar&aacute; afecto a las siguientes prohibiciones:</p>\n<p><strong>a)</strong> Registrar la asistencia de otro trabajador.</p>\n<p><strong>b)</strong> Retirarse de su lugar de trabajo antes del t&eacute;rmino de la jornada pactada en el contrato de trabajo.</p>\n<p><strong>c)</strong> Realizar en el transcurso de su jornada de trabajo y/o en el recinto del empleador, cualquier actividad que no tenga relaci&oacute;n con las labores para las cuales fue contratado.</p>\n<p><strong>d)</strong> Sacar fuera de la empresa, cualquier tipo de elemento que pertenezcan a ella, ya sea personalmente o por medio de terceras personas. El incumplimiento de est&aacute; prohibici&oacute;n, que se califica de grave, dar&aacute; lugar a las acciones legales pertinentes.</p>\n<p><strong>e)</strong> Ejecutar, durante las horas de trabajo y en el desempe&ntilde;o de sus funciones, actividades ajenas a la labor y al establecimiento o dedicarse a atender asuntos particulares.</p>\n<p><strong>f)</strong> Ejecutar negociaciones que se encuentren comprendidas dentro del giro de la empresa.</p>\n<p><strong>g)</strong> Realizar cualquier conducta que se encuentre re&ntilde;ida con la moral.</p>', NULL, '2017-04-24 20:17:49', 2017, NULL),
 (9, 1, 'P20170424201905GMO2204', 'VIGENCIA', '<p>Se eleva a la calidad de esencial de este contrato, el que las partes, de consuno, consideran que &eacute;ste tiene es de car&aacute;cter ${contratoTrabajador}, ${vigenciaContrato}.</p>\n<p>Las partes pueden ponerle t&eacute;rmino, adem&aacute;s, de com&uacute;n acuerdo; y una de ellas, en la forma, las condiciones y las causales que se&ntilde;alan los art&iacute;culos 159, 160 y 161 del C&oacute;digo del Trabajo; especialmente, por infracciones al contrato; o por la conclusi&oacute;n de los trabajos que dieron origen a &eacute;ste.</p>', NULL, '2017-04-24 20:19:06', 2017, NULL),
 (10, 1, 'V20170424201957SBV7746', 'CONSTANCIA', '<p>Se deja constancia que el trabajador ingres&oacute;, al Servicio del empleador, el d&iacute;a <strong>${fechaInicialPalabras}.-</strong></p>', NULL, '2017-04-24 20:19:58', 2017, NULL),
-(11, 1, 'K20170424202052RVB7492', 'DOMICILIO Y JURISDICCIÓN', '<p>Para todos los efectos derivados de este contrato, las partes fijan su domicilio en la ciudad de Santiago y se someten a la Jurisdicci&oacute;n de sus Tribunales.</p>', NULL, '2017-04-24 20:20:53', 2017, NULL),
+(11, 1, 'K20170424202052RVB7492', 'DOMICILIO Y JURISDICCIÓN', '<p>Para todos los efectos derivados de este contrato, las partes fijan su domicilio en la ciudad de ${ciudadEmpresa} y se someten a la Jurisdicci&oacute;n de sus Tribunales.</p>', NULL, '2017-04-24 20:20:53', 2017, NULL),
 (12, 1, 'X20170424202122ZGC6118', 'NÚMERO DE EJEMPLARES', '<p>El presente contrato se firma en tres ejemplares, declarando, el trabajador, haber recibido un ejemplar de &eacute;l y que &eacute;ste es fiel reflejo de la relaci&oacute;n laboral existente entre las partes.</p>', NULL, '2017-04-24 20:21:23', 2017, NULL),
 (13, 2, 'E20170516162518HPP5152', 'FUNCIÓN O LABOR', '<p>El trabajador se compromete a desempe&ntilde;ar el trabajo que se le encomienda de ${cargoTrabajador}.</p>', NULL, '2017-05-16 16:25:19', 2017, NULL),
 (14, 2, 'V20170516164447NES1123', 'LUGAR DE PRESTACIÓN DE SERVICIOS', '<p>El trabajador cumplir&aacute; las labores para las cuales fue contratado en las instalaciones de la empresa ubicada en ${domicilioEmpresa}. Sin embargo, el empleador podr&aacute;, por causa justificada, naturaleza de los servicios, destinarle a cualquiera de las Sucursales, Locales u Oficinas de la empresa, dentro de la misma ciudad o comuna, con la sola limitaci&oacute;n de que se trate de labores similares, para lo cual, el empleador comunicar&aacute; tal circunstancia.</p>\n<p>Efectuada la comunicaci&oacute;n respectiva, por cualquier medio, el trabajador deber&aacute; presentarse a prestar servicios en el lugar y fecha se&ntilde;alada, obligaci&oacute;n que acepta en este acto, configurando su incumplimiento inasistencia injustificada al trabajo. Lo pactado precedentemente, es sin perjuicio del ejercicio del derecho que confiere el art&iacute;culo 12 del C&oacute;digo del Trabajo.</p>', NULL, '2017-05-16 16:44:48', 2017, NULL),
@@ -491,6 +529,26 @@ INSERT INTO `clausulas_finiquito` (`id`, `plantilla_finiquito_id`, `sid`, `nombr
 (1, 1, 'A20170613170427JTX7485', 'FUNCIÓN O LABOR', '<p>Don(&ntilde;a) ${nombreTrabajador} declara haber prestado servicios a ${nombreEmpresa} en calidad de ${cargoTrabajador} desde el ${fechaInicialPalabras}, hasta el ${fechaFiniquitoPalabras}, fecha esta &uacute;ltima de terminaci&oacute;n de sus servicios por la causa que se indica a continuaci&oacute;n: <em>"${causalFiniquito}"</em>, seg&uacute;n lo dispuesto en el art&iacute;culo N&deg; ${numeroArticulo}, c&oacute;digo N&deg; ${numeroCodigo} del C&oacute;digo del Trabajo.</p>', '2017-06-13 17:04:28', 2017, NULL),
 (2, 1, 'W20170613175155EMP7808', 'DETALLE VALORES', '<p>Don(&ntilde;a) ${nombreTrabajador} declara recibir en este acto, a su entera satisfacci&oacute;n de parte de ${nombreEmpresa} las sumas que a continuaci&oacute;n se indican, por los siguientes conceptos:</p>\n<p>&nbsp;</p>\n<p style="text-align: center;">${detalleFiniquito}</p>\n<p>&nbsp;</p>\n<p>En total ${totalFiniquito} son (${totalFiniquitoPalabras}).</p>', '2017-06-13 17:51:56', 2017, NULL),
 (3, 1, 'G20170613175549COK7324', 'CONSTANCIA', '<p>Don(&ntilde;a) ${nombreTrabajador} deja en constancia que durante todo el tiempo que le prest&oacute; servicios a ${nombreEmpresa}, recibi&oacute; correcta y oportunamente el total de las remuneraciones convenidas de acuerdo a su contrato de trabajo, clase de trabajo ejecutado, reajustes legales, pago de asignaciones familiares autorizadas por la respectiva Instituci&oacute;n Previsional, feriados legales, en conformidad a la ley, y que nada se le adeuda por los conceptos antes indicados ni por ning&uacute;n otro, sea de origen legal o contractual derivado de la prestaci&oacute;n de sus servicios, y motivo por el cual no teniendo reclamo ni cargo alguno que formular en contra del empleador, le otorga el m&aacute;s amplio y total finiquito, declaraci&oacute;n que formula libre y espont&aacute;neamente, en perfecto y cabal conocimiento de todos y cada uno de sus derechos.</p>\n<p>Para constancia firman las partes el presente finiquito en dos ejemplares, quedando uno de ellos en poder del empleador y el otro en poder del trabajador.</p>', '2017-06-13 17:55:50', 2017, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `comprobantes_centralizacion`
+--
+
+CREATE TABLE IF NOT EXISTS `comprobantes_centralizacion` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `fecha` date NOT NULL,
+  `mes` date NOT NULL,
+  `referencia` varchar(255) NOT NULL,
+  `empresa` varchar(255) NOT NULL,
+  `comentario` varchar(255) NOT NULL,
+  `numero` varchar(255) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
 
 -- --------------------------------------------------------
 
@@ -530,6 +588,26 @@ CREATE TABLE IF NOT EXISTS `contratos` (
 
 -- --------------------------------------------------------
 
+
+--
+-- Estructura de tabla para la tabla `cuenta_centro_costo`
+--
+
+CREATE TABLE IF NOT EXISTS `cuenta_centro_costo` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `centro_costo_id` int(11) NOT NULL,
+  `concepto` varchar(255) NOT NULL,
+  `concepto_id` int(11) NOT NULL,
+  `cuenta_id` int(11) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+
 --
 -- Estructura de tabla para la tabla `cuentas`
 --
@@ -567,6 +645,44 @@ CREATE TABLE IF NOT EXISTS `cuotas` (
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `declaraciones_trabajadores`
+--
+
+
+CREATE TABLE IF NOT EXISTS `declaraciones_trabajadores` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sid` varchar(255) NOT NULL,
+  `nombre_archivo` varchar(255) NOT NULL,
+  `folio` varchar(255) NOT NULL,
+  `trabajador_id` int(11) NOT NULL,
+  `anio_id` int(11) NOT NULL,
+  `sueldo` int(11) NOT NULL,
+  `cotizacion_previsional` int(11) NOT NULL,
+  `renta_imponible` int(11) NOT NULL,
+  `impuesto_unico` int(11) NOT NULL,
+  `mayor_retencion` int(11) NOT NULL,
+  `renta_total` int(11) NOT NULL,
+  `renta_no_gravada` int(11) NOT NULL,
+  `rebaja` int(11) NOT NULL,
+  `factor` decimal(6,3) NOT NULL,
+  `renta_afecta` int(11) NOT NULL,
+  `impuesto_unico_retenido` int(11) NOT NULL,
+  `mayor_retencion_impuesto` int(11) NOT NULL,
+  `renta_total_exenta` int(11) NOT NULL,
+  `renta_total_no_gravada` int(11) NOT NULL,
+  `rebaja_zonas_extremas` int(11) NOT NULL,
+  `actividad` varchar(12) NOT NULL,
+  `renta_imponible_actualizada` int(11) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
 
 
 -- --------------------------------------------------------
@@ -623,7 +739,7 @@ CREATE TABLE IF NOT EXISTS `detalles_afiliado_voluntario` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -638,6 +754,9 @@ CREATE TABLE IF NOT EXISTS `detalles_afp` (
   `renta_imponible` int(11) DEFAULT NULL,
   `cotizacion` int(11) DEFAULT NULL,
   `sis` int(11) DEFAULT NULL,
+  `paga_sis` varchar(255) NOT NULL DEFAULT 'empresa',
+  `porcentaje_cotizacion` decimal(6,2) NOT NULL,
+  `porcentaje_sis` decimal(6,2) NOT NULL,
   `cuenta_ahorro_voluntario` int(11) DEFAULT NULL,
   `renta_sustitutiva` int(11) DEFAULT NULL,
   `tasa_sustitutiva` int(11) DEFAULT NULL,
@@ -666,11 +785,11 @@ CREATE TABLE IF NOT EXISTS `detalles_apvc` (
   `liquidacion_id` int(11) NOT NULL,
   `afp_id` int(11) NOT NULL,
   `numero_contrato` varchar(255) DEFAULT NULL,
-  `forma_pago_id` int(11) NOT NULL DEFAULT '102',
+  `forma_pago_id` int(11) NOT NULL,
   `monto` int(11) NOT NULL,
   `moneda` varchar(10) NOT NULL,
-  `cotizacion_trabajador` DECIMAL(12,3) NOT NULL,
-  `cotizacion_empleador` DECIMAL(12,3) DEFAULT NULL,
+  `cotizacion_trabajador` decimal(12,3) NOT NULL,
+  `cotizacion_empleador` decimal(12,3) DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
@@ -688,11 +807,12 @@ CREATE TABLE IF NOT EXISTS `detalles_apvi` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `liquidacion_id` int(11) NOT NULL,
   `afp_id` int(11) NOT NULL,
+  `regimen` tinytext NOT NULL,
   `numero_contrato` varchar(255) DEFAULT NULL,
-  `forma_pago_id` int(11) NOT NULL DEFAULT '102',
-  `monto` DECIMAL(12,3) NOT NULL,
+  `forma_pago_id` int(11) NOT NULL,
+  `monto` int(11) NOT NULL,
   `moneda` varchar(10) NOT NULL,
-  `cotizacion` int(11) NOT NULL,
+  `cotizacion` decimal(12,3) NOT NULL,
   `cotizacion_depositos_convenidos` int(11) DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
@@ -733,8 +853,58 @@ CREATE TABLE IF NOT EXISTS `detalles_caja` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `detalles_comprobante_centralizacion`
+--
+
+CREATE TABLE IF NOT EXISTS `detalles_comprobante_centralizacion` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `comprobante_id` int(11) NOT NULL,
+  `cuenta` varchar(255) NOT NULL,
+  `comentario` varchar(255) NOT NULL,
+  `referencia` varchar(255) NOT NULL,
+  `debe` int(11) NOT NULL,
+  `haber` int(11) NOT NULL,
+  `pais` varchar(255) NOT NULL,
+  `canal` varchar(255) NOT NULL,
+  `tienda` varchar(255) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `detalle_f1887`
+--
+
+CREATE TABLE IF NOT EXISTS `detalle_f1887` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sid` varchar(50) NOT NULL,
+  `folio` varchar(50) NOT NULL,
+  `f1887_id` int(11) NOT NULL,
+  `rut` varchar(50) NOT NULL,
+  `renta_total_neta_pagada` int(11) NOT NULL,
+  `impuesto_unico_retenido` int(11) NOT NULL,
+  `mayor_retencion_solicitada` int(11) NOT NULL,
+  `renta_total_no_gravada` int(11) NOT NULL,
+  `renta_total_exenta` int(11) NOT NULL,
+  `rebaja_zonas_extremas` int(11) NOT NULL,
+  `actividad` int(12) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `detalles_ips_isl_fonasa`
 --
+
 
 CREATE TABLE IF NOT EXISTS `detalles_ips_isl_fonasa` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -794,7 +964,7 @@ CREATE TABLE IF NOT EXISTS `detalles_pagador_subsidio` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=4 ;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -809,7 +979,7 @@ CREATE TABLE IF NOT EXISTS `detalles_salud` (
   `numero_fun` varchar(255) DEFAULT NULL,
   `renta_imponible` int(11) DEFAULT NULL,
   `moneda` varchar(10) DEFAULT NULL,
-  `cotizacion_pactada` DECIMAL(12,3) DEFAULT NULL,
+  `cotizacion_pactada` decimal(12,3) DEFAULT NULL,
   `cotizacion_obligatoria` int(11) DEFAULT NULL,
   `cotizacion_adicional` int(11) DEFAULT NULL,
   `ges` int(11) DEFAULT NULL,
@@ -830,11 +1000,12 @@ CREATE TABLE IF NOT EXISTS `detalles_salud` (
 CREATE TABLE IF NOT EXISTS `detalles_seguro_cesantia` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `liquidacion_id` int(11) NOT NULL,
+  `afp_id` int(11) NOT NULL,
   `renta_imponible` int(11) NOT NULL,
   `aporte_trabajador` int(11) NOT NULL,
   `aporte_empleador` int(11) NOT NULL,
-  `afc_trabajador` DECIMAL(6,3) NOT NULL,
-  `afc_empleador` DECIMAL(6,3) NOT NULL,
+  `afc_trabajador` decimal(6,3) NOT NULL,
+  `afc_empleador` decimal(6,3) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
@@ -861,11 +1032,12 @@ CREATE TABLE IF NOT EXISTS `detalle_liquidacion` (
   `valor_4` int(11) DEFAULT NULL,
   `valor_5` int(11) DEFAULT NULL,
   `valor_6` int(11) DEFAULT NULL,
+  `detalle_id` int(11) DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -912,6 +1084,23 @@ CREATE TABLE IF NOT EXISTS `documentos_empresa` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `emails`
+--
+
+
+CREATE TABLE `emails` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trabajador_id` int(11) NOT NULL,
+  `email` varchar(50) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `estructuras_descuento`
 --
 
@@ -938,6 +1127,47 @@ INSERT INTO `estructuras_descuento` (`id`, `nombre`, `created_at`, `updated_at`,
 (8, 'Legal', '0000-00-00 00:00:00', '0000-00-00 00:00:00', NULL),
 (6, 'CCAF', '0000-00-00 00:00:00', '0000-00-00 00:00:00', NULL),
 (7, 'Cuenta Ahorro AFP', '0000-00-00 00:00:00', '0000-00-00 00:00:00', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `f1887`
+--
+
+CREATE TABLE IF NOT EXISTS `f1887` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sid` varchar(50) NOT NULL,
+  `folio` varchar(50) NOT NULL,
+  `csv` varchar(255) NOT NULL,
+  `excel` varchar(255) NOT NULL,
+  `anio` int(11) NOT NULL,
+  `rut_empresa` varchar(50) NOT NULL,
+  `nombre_empresa` varchar(255) NOT NULL,
+  `domicilio_empresa` varchar(255) NOT NULL,
+  `comuna_empresa` varchar(255) NOT NULL,
+  `email_empresa` varchar(255) NOT NULL,
+  `fax_empresa` int(11) NOT NULL,
+  `telefono_empresa` int(11) NOT NULL,
+  `renta_total_neta` int(11) NOT NULL,
+  `por_renta_total_neta_pagada_anio` int(11) NOT NULL,
+  `rentas_accesorias` int(11) NOT NULL,
+  `renta_no_gravada` int(11) NOT NULL,
+  `renta_exenta` int(11) NOT NULL,
+  `rebaja` int(11) NOT NULL,
+  `total_remuneracion_imponible` int(11) NOT NULL,
+  `renta_total_neta_pagada` int(11) NOT NULL,
+  `impuesto_unico_retenido` int(11) NOT NULL,
+  `retencion_solicitada` int(11) NOT NULL,
+  `renta_total_no_gravada` int(11) NOT NULL,
+  `renta_total_exenta` int(11) NOT NULL,
+  `rebaja_zonas_extremas` int(11) NOT NULL,
+  `total_casos_informados` int(11) NOT NULL,
+  `rut_representante` int(11) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -992,6 +1222,7 @@ CREATE TABLE IF NOT EXISTS `fichas_trabajadores` (
   `numero_cuenta` varchar(255) DEFAULT NULL,
   `fecha_ingreso` date DEFAULT NULL,
   `fecha_reconocimiento` date DEFAULT NULL,
+  `fecha_reconocimiento_cesantia` date DEFAULT NULL,
   `tipo_contrato_id` int(11) DEFAULT NULL,
   `fecha_vencimiento` date DEFAULT NULL,
   `fecha_finiquito` date DEFAULT NULL,
@@ -1000,10 +1231,13 @@ CREATE TABLE IF NOT EXISTS `fichas_trabajadores` (
   `moneda_sueldo` varchar(50) DEFAULT NULL,
   `sueldo_base` decimal(13,3) DEFAULT '0.000',
   `gratificacion` TINYTEXT DEFAULT NULL,
+  `gratificacion_proporcional_inasistencias` TINYINT NULL DEFAULT '0',
+  `gratificacion_proporcional_licencias` TINYINT NULL DEFAULT '0',
+  `gratificacion_especial` tinyint(1) DEFAULT NULL,
+  `monto_gratificacion` decimal(13,3) DEFAULT '0.000',
+  `moneda_gratificacion` varchar(50) DEFAULT NULL,
   `tipo_trabajador` varchar(50) DEFAULT NULL,
-  `exceso_retiro` tinyint(1) DEFAULT NULL,
-  `gratificacion_mensual` tinyint(1) DEFAULT '0',
-  `gratificacion_anual` tinyint(1) DEFAULT '0',
+  `exceso_retiro` tinyint(1) DEFAULT NULL,  
   `moneda_colacion` varchar(50) DEFAULT NULL,
   `proporcional_colacion` tinyint(4) DEFAULT '1',
   `monto_colacion` decimal(13,3) DEFAULT '0.000',
@@ -1024,7 +1258,8 @@ CREATE TABLE IF NOT EXISTS `fichas_trabajadores` (
   `moneda_sindicato` varchar(50) DEFAULT NULL,
   `monto_sindicato` decimal(13,3) DEFAULT '0.000',
   `vacaciones` decimal(6,2) DEFAULT NULL,
-  `tramo_id`  TINYTEXT NULL DEFAULT NULL,
+  `tramo_id` TINYTEXT NULL DEFAULT NULL,
+  `zona_id` int(11) DEFAULT NULL,
   `estado` varchar(50) DEFAULT NULL,
   `updated_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -1088,7 +1323,7 @@ CREATE TABLE IF NOT EXISTS `haberes` (
   `tipo_haber_id` int(11) NOT NULL,
   `mes_id` int(11) DEFAULT NULL,
   `moneda` varchar(50) NOT NULL,
-  `monto` DECIMAL(12,3) NOT NULL,
+  `monto` decimal(12,3) NOT NULL,
   `por_mes` tinyint(1) NOT NULL DEFAULT '0',
   `rango_meses` tinyint(1) NOT NULL DEFAULT '0',
   `permanente` tinyint(1) NOT NULL DEFAULT '0',
@@ -1115,7 +1350,7 @@ CREATE TABLE IF NOT EXISTS `horas_extra` (
   `mes_id` int(11) NOT NULL,
   `fecha` date NOT NULL,
   `cantidad` int(11) NOT NULL,
-  `jornada` varchar(50) NOT NULL,
+  `factor` decimal(10,9) NOT NULL,
   `observacion` text,
   `created_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -1168,6 +1403,22 @@ INSERT INTO `jornadas` (`id`, `sid`, `tramo_hora_extra_id`, `nombre`, `numero_ho
 (1, 'T20170307145827XFT1183', 1, 'Jornada reducida', 30, '2017-03-07 17:58:28', '2017-03-07 17:58:28'),
 (2, 'R20170307145832ADJ2555', 2, 'Jornada continuada', 45, '2017-03-07 17:58:33', '2017-03-07 17:58:33'),
 (3, 'I20170307145836ABX3588', 1, 'Jornada partida', 20, '2017-03-07 17:58:37', '2017-03-07 17:58:37');
+
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `jornadas_tramos`
+--
+
+CREATE TABLE IF NOT EXISTS `jornadas_tramos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `jornada_id` int(11) NOT NULL,
+  `tramo_id` int(11) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -1256,6 +1507,7 @@ CREATE TABLE IF NOT EXISTS `liquidaciones` (
   `trabajador_apellidos` varchar(255) NOT NULL,
   `trabajador_cargo` varchar(255) NOT NULL,
   `trabajador_seccion` varchar(255) NOT NULL,
+  `trabajador_tienda` varchar(255) DEFAULT NULL,
   `trabajador_fecha_ingreso` date NOT NULL,
   `uf` decimal(8,2) NOT NULL,
   `utm` decimal(8,2) NOT NULL,
@@ -1282,9 +1534,11 @@ CREATE TABLE IF NOT EXISTS `liquidaciones` (
   `reintegro_cargas` int(11) NOT NULL,
   `seguro_cesantia` tinyint(1) NOT NULL,
   `base_impuesto_unico` int(11) NOT NULL,
+  `rebaja_zona` int(11) NOT NULL,
   `impuesto_determinado` int(11) NOT NULL,
   `tramo_impuesto` decimal(5,2) NOT NULL,
   `imponibles` int(11) NOT NULL,
+  `otros_imponibles` int(11) NOT NULL,
   `no_imponibles` int(11) NOT NULL,
   `total_anticipos` int(11) NOT NULL,
   `total_otros_descuentos` int(11) NOT NULL,
@@ -1298,11 +1552,57 @@ CREATE TABLE IF NOT EXISTS `liquidaciones` (
   `fecha_desde` date DEFAULT NULL,
   `fecha_hasta` date DEFAULT NULL,
   `prevision_id` int(11) NOT NULL,
+  `observacion` text  NOT NULL,
+  `cuerpo` LONGTEXT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `liquidaciones_observaciones`
+--
+
+CREATE TABLE IF NOT EXISTS `liquidaciones_observaciones` (
+  `id` int(10) NOT NULL AUTO_INCREMENT,
+  `periodo` date NOT NULL,
+  `trabajador_id` int(10) NOT NULL,
+  `observaciones` text NOT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `periodo` (`periodo`,`trabajador_id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `logs`
+--
+
+CREATE TABLE IF NOT EXISTS `logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `menu_id` int(11) NOT NULL,
+  `menu` varchar(255) NOT NULL,
+  `submenu` varchar(255) DEFAULT NULL,
+  `accion` varchar(255) NOT NULL,
+  `dato_id` int(11) NOT NULL,
+  `dato_nombre` varchar(255) NOT NULL,
+  `dato2_id` int(11) DEFAULT NULL,
+  `dato2_nombre` varchar(255) DEFAULT NULL,
+  `dato3_id` int(11) DEFAULT NULL,
+  `dato3_nombre` varchar(255) DEFAULT NULL,
+  `encargado_id` int(11) NOT NULL,
+  `encargado` varchar(255) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -1321,6 +1621,51 @@ CREATE TABLE IF NOT EXISTS `meses_de_trabajo` (
   `updated_at` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `mutuales`
+--
+
+CREATE TABLE IF NOT EXISTS `mutuales` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `mutual_id` int(11) NOT NULL,
+  `tasa_fija` decimal(6,3) NOT NULL,
+  `tasa_adicional` decimal(6,3) NOT NULL,
+  `extraordinaria` decimal(6,3) NOT NULL,
+  `sanna` decimal(6,3) NOT NULL,
+  `codigo` varchar(255) DEFAULT NULL,
+  `anio_id` int(11) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `permisos`
+--
+
+CREATE TABLE IF NOT EXISTS `permisos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `usuario_id` int(11) NOT NULL,
+  `documentos_empresa` tinyint(4) NOT NULL,
+  `cartas_notificacion` tinyint(4) NOT NULL,
+  `certificados` tinyint(4) NOT NULL,
+  `liquidaciones` tinyint(4) NOT NULL,
+  `solicitudes` tinyint(4) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id` (`id`),
+  KEY `usuario_id` (`usuario_id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 
@@ -1593,32 +1938,32 @@ CREATE TABLE IF NOT EXISTS `tipos_descuento` (
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=102 ;
 
 INSERT INTO `tipos_descuento` (`id`, `estructura_descuento_id`, `cuenta_id`, `sid`, `codigo`, `nombre`, `caja`, `descripcion`, `afp_id`, `forma_pago`, `updated_at`, `created_at`) VALUES
-(1, 8, 153, 'K20170309190412CWL7447', 4, 'Impuesto Determinado\n', 1, 'Impuesto Determinado', NULL, NULL, '2017-08-21 18:05:45', '2017-03-09 22:04:13'),
+(1, 8, NULL, 'K20170309190412CWL7447', '10104', 'Impuesto Determinado', 1, 'Impuesto Determinado', NULL, NULL, '2017-08-21 18:05:45', '2017-03-09 22:04:13'),
 (69, 7, NULL, 'N20171108113003RLG6326', 401, '40', 0, 'Cuenta de Ahorro AFP Capital', NULL, NULL, '2017-11-16 20:52:34', '2017-11-08 14:30:04'),
-(3, 1, 153, 'L20170309190616GCZ2827', 3, 'Sobregiro Mes Anterior', 1, 'Sobregiro Remuneración del Mes Anterior', NULL, NULL, '2017-08-17 12:22:13', '2017-03-09 22:06:17'),
-(5, 2, NULL, 'B20170407131109SUM7022', 2, 'Anticipo', 1, 'Anticipo de Sueldo', NULL, NULL, '2017-11-08 13:51:42', '2017-04-07 16:11:10'),
-(14, 1, 153, 'V20170412232326TER7208', 4564, 'Autopista', 0, 'Tag', NULL, NULL, '2017-08-17 12:08:06', '2017-04-13 02:23:27'),
+(3, 1, NULL, 'L20170309190616GCZ2827', '10103', 'Sobregiro Mes Anterior', 1, 'Sobregiro Remuneración del Mes Anterior', NULL, NULL, '2017-08-17 12:22:13', '2017-03-09 22:06:17'),
+(5, 2, NULL, 'B20170407131109SUM7022', '10201', 'Anticipo', 1, 'Anticipo de Sueldo', NULL, NULL, '2017-11-08 13:51:42', '2017-04-07 16:11:10'),
+(14, 1, NULL, 'V20170412232326TER7208', 4564, 'Autopista', 0, 'Tag', NULL, NULL, '2017-08-17 12:08:06', '2017-04-13 02:23:27'),
 (4, 1, NULL, 'K20170309190412CWL7499', 123, 'Cuota Sindical', 1, 'Cuota fijada por el Sindicato de Trabajadores', NULL, NULL, '2017-09-27 20:57:35', '2017-03-09 22:04:13'),
-(12, 1, 153, 'Y20170309190530OKA1010', 1112, 'Celular', 1, 'Celular de la Empresa', NULL, NULL, '2017-04-13 03:26:59', '2017-03-09 22:05:31'),
-(13, 1, 153, 'L20170309190616GCZ2877', 853, 'Seguro Médico', 0, 'Seguro médico contratado por el trabajador de forma adicional al seguro de la empresa', NULL, NULL, '2017-03-18 06:18:45', '2017-03-09 22:06:17'),
+(12, 1, NULL, 'Y20170309190530OKA1010', 1112, 'Celular', 1, 'Celular de la Empresa', NULL, NULL, '2017-04-13 03:26:59', '2017-03-09 22:05:31'),
+(13, 1, NULL, 'L20170309190616GCZ2877', 853, 'Seguro Médico', 0, 'Seguro médico contratado por el trabajador de forma adicional al seguro de la empresa', NULL, NULL, '2017-03-18 06:18:45', '2017-03-09 22:06:17'),
 (46, 3, NULL, 'K20170928112236BLB2952', 306, '41', 0, 'APVC AFP Modelo', 44, 103, '2017-09-28 14:59:27', '2017-09-28 14:22:37'),
-(47, 4, 1, 'U20171024101405QJI1967', 101, '40', 0, 'APV Régimen A AFP Capital', NULL, NULL, '2017-11-16 21:11:44', '2017-10-24 13:14:07'),
-(48, 4, NULL, 'C20171024101506EXI4727', 102, '36', 0, 'APV Régimen A AFP Cuprum', NULL, NULL, '2017-10-24 13:15:07', '2017-10-24 13:15:07'),
-(49, 4, NULL, 'I20171024101553WSN8747', 103, '37', 0, 'APV Régimen A AFP Habitat', NULL, NULL, '2017-10-24 13:15:54', '2017-10-24 13:15:54'),
-(50, 4, NULL, 'O20171024101633RQF3330', 105, '38', 0, 'APV Régimen A AFP Provida', NULL, NULL, '2017-10-24 13:16:34', '2017-10-24 13:16:34'),
-(51, 4, NULL, 'V20171024101732CDM2135', 104, '39', 0, 'APV Régimen A AFP Plan Vital', NULL, NULL, '2017-10-24 13:17:33', '2017-10-24 13:17:33'),
-(52, 4, NULL, 'T20171024101818CZI4164', 106, '41', 0, 'APV Régimen A AFP Modelo', NULL, NULL, '2017-10-24 13:18:20', '2017-10-24 13:18:20'),
-(6, 6, NULL, 'N20171024113430OXB4409', 402, 'Créditos Personales CCAF', 0, 'Créditos Personales Caja de Compensación', NULL, NULL, '2017-10-24 14:34:31', '2017-10-24 14:34:31'),
-(7, 6, NULL, 'N20171024113502SJE3859', 403, 'Descuento Dental CCAF', 0, 'Descuento Dental Caja de Compensación', NULL, NULL, '2017-10-24 14:35:03', '2017-10-24 14:35:03'),
-(8, 6, NULL, 'V20171024113542IMR6395', 404, 'Descuento por Leasing CCAF', 0, 'Descuento por Leasing (Programa Ahorro) Caja de Compensación', NULL, NULL, '2017-10-24 14:35:43', '2017-10-24 14:35:43'),
-(9, 6, NULL, 'N20171024113611SXY6641', 405, 'Descuento por seguro de vida CCAF', 0, 'Descuento por seguro de vida Caja de Compensación', NULL, NULL, '2017-10-24 14:36:12', '2017-10-24 14:36:12'),
-(10, 6, NULL, 'Q20171024113712ZKK6415', 406, 'Descuento Cargas Familiares CCAF', 0, 'Descuento Cargas Familiares Caja de Compensación', NULL, NULL, '2017-10-24 14:37:13', '2017-10-24 14:37:13'),
-(58, 5, NULL, 'D20171108102138COK9022', 201, '40', 0, 'APV Régimen B AFP Capital', NULL, NULL, '2017-11-08 13:21:39', '2017-11-08 13:21:39'),
-(59, 5, NULL, 'E20171108102224QXE1469', 202, '36', 0, 'APV Régimen B AFP Cuprum', NULL, NULL, '2017-11-08 13:22:25', '2017-11-08 13:22:25'),
-(60, 5, NULL, 'M20171108102301UVT7059', 203, '37', 0, 'APV Régimen B AFP Habitat', NULL, NULL, '2017-11-08 13:23:02', '2017-11-08 13:23:02'),
-(61, 5, NULL, 'M20171108102336BKA7564', 205, '38', 0, 'APV Régimen B AFP Provida', NULL, NULL, '2017-11-08 13:23:37', '2017-11-08 13:23:37'),
-(62, 5, NULL, 'I20171108102431GZX8709', 204, '39', 0, 'APV Régimen B AFP Plan Vital', NULL, NULL, '2017-11-08 13:24:32', '2017-11-08 13:24:32'),
-(63, 5, NULL, 'R20171108102507LFN7119', 206, '41', 0, 'APV Régimen B AFP Modelo', NULL, NULL, '2017-11-08 13:25:08', '2017-11-08 13:25:08'),
+(47, 4, NULL, 'U20171024101405QJI1967', 101, '47', 0, 'APV Régimen A AFP Capital', NULL, NULL, '2017-11-16 21:11:44', '2017-10-24 13:14:07'),
+(48, 4, NULL, 'C20171024101506EXI4727', 102, '43', 0, 'APV Régimen A AFP Cuprum', NULL, NULL, '2017-10-24 13:15:07', '2017-10-24 13:15:07'),
+(49, 4, NULL, 'I20171024101553WSN8747', 103, '44', 0, 'APV Régimen A AFP Habitat', NULL, NULL, '2017-10-24 13:15:54', '2017-10-24 13:15:54'),
+(50, 4, NULL, 'O20171024101633RQF3330', 105, '45', 0, 'APV Régimen A AFP Provida', NULL, NULL, '2017-10-24 13:16:34', '2017-10-24 13:16:34'),
+(51, 4, NULL, 'V20171024101732CDM2135', 104, '46', 0, 'APV Régimen A AFP Plan Vital', NULL, NULL, '2017-10-24 13:17:33', '2017-10-24 13:17:33'),
+(52, 4, NULL, 'T20171024101818CZI4164', 106, '48', 0, 'APV Régimen A AFP Modelo', NULL, NULL, '2017-10-24 13:18:20', '2017-10-24 13:18:20'),
+(6, 6, NULL, 'N20171024113430OXB4409', 502, 'Créditos Personales CCAF', 0, 'Créditos Personales Caja de Compensación', NULL, NULL, '2017-10-24 14:34:31', '2017-10-24 14:34:31'),
+(7, 6, NULL, 'N20171024113502SJE3859', 503, 'Descuento Dental CCAF', 0, 'Descuento Dental Caja de Compensación', NULL, NULL, '2017-10-24 14:35:03', '2017-10-24 14:35:03'),
+(8, 6, NULL, 'V20171024113542IMR6395', 504, 'Descuento por Leasing CCAF', 0, 'Descuento por Leasing (Programa Ahorro) Caja de Compensación', NULL, NULL, '2017-10-24 14:35:43', '2017-10-24 14:35:43'),
+(9, 6, NULL, 'N20171024113611SXY6641', 505, 'Descuento por seguro de vida CCAF', 0, 'Descuento por seguro de vida Caja de Compensación', NULL, NULL, '2017-10-24 14:36:12', '2017-10-24 14:36:12'),
+(10, 6, NULL, 'Q20171024113712ZKK6415', 506, 'Descuento Cargas Familiares CCAF', 0, 'Descuento Cargas Familiares Caja de Compensación', NULL, NULL, '2017-10-24 14:37:13', '2017-10-24 14:37:13'),
+(58, 5, NULL, 'D20171108102138COK9022', 201, '47', 0, 'APV Régimen B AFP Capital', NULL, NULL, '2017-11-08 13:21:39', '2017-11-08 13:21:39'),
+(59, 5, NULL, 'E20171108102224QXE1469', 202, '43', 0, 'APV Régimen B AFP Cuprum', NULL, NULL, '2017-11-08 13:22:25', '2017-11-08 13:22:25'),
+(60, 5, NULL, 'M20171108102301UVT7059', 203, '44', 0, 'APV Régimen B AFP Habitat', NULL, NULL, '2017-11-08 13:23:02', '2017-11-08 13:23:02'),
+(61, 5, NULL, 'M20171108102336BKA7564', 205, '45', 0, 'APV Régimen B AFP Provida', NULL, NULL, '2017-11-08 13:23:37', '2017-11-08 13:23:37'),
+(62, 5, NULL, 'I20171108102431GZX8709', 204, '46', 0, 'APV Régimen B AFP Plan Vital', NULL, NULL, '2017-11-08 13:24:32', '2017-11-08 13:24:32'),
+(63, 5, NULL, 'R20171108102507LFN7119', 206, '48', 0, 'APV Régimen B AFP Modelo', NULL, NULL, '2017-11-08 13:25:08', '2017-11-08 13:25:08'),
 (64, 3, NULL, 'F20171108103300ATL1755', 301, '40', 0, 'APVC AFP Capital', NULL, NULL, '2017-11-08 13:33:01', '2017-11-08 13:33:01'),
 (65, 3, NULL, 'Z20171108103509KPS7475', 302, '36', 0, 'APVC AFP Cuprum', NULL, NULL, '2017-11-08 13:35:10', '2017-11-08 13:35:10'),
 (66, 3, NULL, 'X20171108103533UAE7642', 303, '37', 0, 'APVC AFP Habitat', NULL, NULL, '2017-11-08 13:35:34', '2017-11-08 13:35:34'),
@@ -1643,7 +1988,7 @@ INSERT INTO `tipos_descuento` (`id`, `estructura_descuento_id`, `cuenta_id`, `si
 (99, 9, NULL, 'E20171117094501DOG3131', 612, '252', 0, 'Isapre Río Blanco', NULL, NULL, '2017-11-17 12:45:02', '2017-11-17 12:45:02'),
 (100, 9, NULL, 'S20171117094524WNQ4075', 613, '253', 0, 'San Lorenzo Isapre Ltda', NULL, NULL, '2017-11-17 12:45:25', '2017-11-17 12:45:25'),
 (101, 9, NULL, 'I20171117094547LZW5793', 614, '254', 0, 'Isapre Cruz del Norte', NULL, NULL, '2017-11-17 12:45:48', '2017-11-17 12:45:48'),
-(11, 6, NULL, 'M20171117104149NKX8693', 401, 'Caja de Compensación', 0, 'Caja de Compensación', NULL, NULL, '2017-11-17 13:41:50', '2017-11-17 13:41:50');
+(11, 6, NULL, 'M20171117104149NKX8693', 501, 'Caja de Compensación', 0, 'Caja de Compensación', NULL, NULL, '2017-11-17 13:41:50', '2017-11-17 13:41:50');
 
 
 
@@ -1699,15 +2044,16 @@ CREATE TABLE IF NOT EXISTS `tipos_haber` (
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=52 ;
 
 INSERT INTO `tipos_haber` (`id`, `cuenta_id`, `codigo`, `sid`, `nombre`, `tributable`, `calcula_horas_extras`, `proporcional_dias_trabajados`, `calcula_semana_corrida`, `imponible`, `gratificacion`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, NULL, 1, 'F20170822161948ZFK3154', 'Gratificación', 0, 0, 0, 0, 1, 0, '2017-08-22 19:19:49', '2017-11-07 12:23:57', NULL),
-(2, NULL, 2, 'V20170309184513UVS6237', 'Asignación Familiar', 0, 0, 0, 0, 0, 0, '2017-03-09 21:45:14', '2017-08-18 19:50:52', NULL),
-(3, NULL, 3, 'B20170309184539DPH7777', 'Colación', 0, 0, 0, 0, 0, 0, '2017-03-09 21:45:40', '2017-04-13 03:27:30', NULL),
-(4, NULL, 4, 'M20170313201430ZQX3718', 'Movilización', 0, 0, 0, 0, 0, 0, '2017-03-14 00:14:31', '2017-08-21 18:15:51', NULL),
-(5, NULL, 5, 'B20170412235220VDS7547', 'Viático', 0, 0, 0, 0, 0, 0, '2017-04-13 02:52:21', '2017-11-07 18:03:03', NULL),
-(6, NULL, 6, 'B20170147896589VDS0147', 'Semana Corrida', 1, 0, 0, 0, 1, 1, '2017-04-13 05:52:21', '2017-11-07 21:03:03', NULL),
-(7, NULL, 7, 'V20171107150548AEY9246', 'Horas Extra', 1, 0, 0, 0, 1, 1, '2017-11-07 18:05:48', '2017-11-07 18:05:48', NULL),
-(10, NULL, 10, 'B20170309184539DPH2907', 'Asignación Familiar Retroactiva', 0, 0, 1, 0, 0, 0, '2017-03-10 00:45:40', '2017-04-13 06:27:30', NULL),
-(11, NULL, 11, 'M20170313201430ZQX3715', 'Reintegro Cargas Familiares', 0, 0, 1, 0, 0, 0, '2017-03-14 03:14:31', '2017-08-21 21:15:51', NULL),
+(1, NULL, '1101', 'F20170822161948ZFK3154', 'Gratificación', 1, 1, 1, 1, 1, 0, '2017-08-22 19:19:49', '2017-11-07 12:23:57', NULL),
+(2, NULL, '1102', 'V20170309184513UVS6237', 'Asignación Familiar', 0, 0, 0, 0, 0, 0, '2017-03-09 21:45:14', '2017-08-18 19:50:52', NULL),
+(3, NULL, '1103', 'B20170309184539DPH7777', 'Colación', 0, 0, 0, 0, 0, 0, '2017-03-09 21:45:40', '2017-04-13 03:27:30', NULL),
+(4, NULL, '1104', 'M20170313201430ZQX3718', 'Movilización', 0, 0, 0, 0, 0, 0, '2017-03-14 00:14:31', '2017-08-21 18:15:51', NULL),
+(5, NULL, '1105', 'B20170412235220VDS7547', 'Viático', 0, 0, 0, 0, 0, 0, '2017-04-13 02:52:21', '2017-11-07 18:03:03', NULL),
+(6, NULL, '1106', 'B20170147896589VDS0147', 'Semana Corrida', 1, 0, 0, 0, 1, 1, '2017-04-13 05:52:21', '2017-11-07 21:03:03', NULL),
+(7, NULL, '1107', 'V20171107150548AEY9246', 'Horas Extra', 1, 0, 0, 0, 1, 1, '2017-11-07 18:05:48', '2017-11-07 18:05:48', NULL),
+(10, NULL, '11010', 'B20170309184539DPH2907', 'Asignación Familiar Retroactiva', 0, 0, 1, 0, 0, 0, '2017-03-10 00:45:40', '2017-04-13 06:27:30', NULL),
+(11, NULL, '11011', 'M20170313201430ZQX3715', 'Reintegro Cargas Familiares', 0, 0, 1, 0, 0, 0, '2017-03-14 03:14:31', '2017-08-21 21:15:51', NULL),
+(12, NULL, '1001001', 'N20171207142508CRW4029', 'Sueldo', 1, 1, 1, NULL, 1, 1, '2017-12-07 20:25:09', '2017-12-07 17:32:40', NULL),
 (16, NULL, 16, 'B20170511122150SDF2586', 'Bono por Comisiones', 0, 1, 0, 0, 1, 0, '2017-05-11 15:21:50', '2017-11-07 18:42:31', NULL),
 (17, NULL, 17, 'H20171102171939OTY9973', 'Asignación de teléfono', 1, 0, 0, 0, 1, 0, '2017-11-02 20:19:39', '2017-11-07 18:04:55', NULL),
 (18, NULL, 18, 'H20171107845939OTY0025', 'Aguinaldo', 1, 0, 0, 0, 1, 0, '2017-11-02 20:19:39', '2017-11-07 18:04:55', NULL),
@@ -1744,6 +2090,28 @@ INSERT INTO `titulos` (`id`, `sid`, `nombre`, `updated_at`, `created_at`) VALUES
 (7, 'K20170508161448QDG1176', 'Técnico Superior en Electricidad', '2017-05-08 19:14:48', '2017-05-08 19:14:48'),
 (8, 'X20170508162736DHV8656', 'Técnico en Contabilidad', '2017-05-08 19:27:36', '2017-05-08 19:27:36'),
 (9, 'J20170508165328BDQ2419', 'Técnico Electromecánico', '2017-05-08 19:53:28', '2017-05-08 19:53:28');
+
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `toma_vacaciones`
+--
+
+CREATE TABLE IF NOT EXISTS `toma_vacaciones` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sid` varchar(50) NOT NULL,
+  `trabajador_id` int(11) NOT NULL,
+  `mes` date NOT NULL,
+  `desde` date NOT NULL,
+  `hasta` date NOT NULL,
+  `dias` int(11) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
 
 -- --------------------------------------------------------
 
@@ -1793,12 +2161,35 @@ INSERT INTO `tramos_horas_extra` (`id`, `sid`, `jornada`, `factor`, `created_at`
 
 -- --------------------------------------------------------
 
+--
+-- Estructura de tabla para la tabla `usuarios`
+--
+
+CREATE TABLE IF NOT EXISTS `usuarios` (
+  `id` int(10) NOT NULL AUTO_INCREMENT,
+  `sid` varchar(50) NOT NULL,
+  `funcionario_id` int(10) unsigned NOT NULL,
+  `username` varchar(128) NOT NULL,
+  `password` varchar(64) NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '0',
+  `remember_token` varchar(100) DEFAULT NULL,
+  `updated_at` datetime NOT NULL,
+  `created_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `funcionario_id` (`funcionario_id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `vacaciones`
+--
 
 CREATE TABLE IF NOT EXISTS `vacaciones` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `sid` varchar(50) NOT NULL,
   `trabajador_id` int(11) NOT NULL,
-  `mes_id` int(11) NOT NULL,
+  `mes` DATE NOT NULL,
   `dias` decimal(5,2) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
@@ -1825,6 +2216,329 @@ CREATE TABLE IF NOT EXISTS `variables_sistema` (
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=1 ;
 
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `zonas_impuesto_unico`
+--
+
+
+CREATE TABLE IF NOT EXISTS `zonas_impuesto_unico` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sid` varchar(50) NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  `porcentaje` decimal(6,3) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+
+
+
+ALTER TABLE `anios_remuneraciones` ADD INDEX(`id`);
+ALTER TABLE `anios_remuneraciones` ADD INDEX(`sid`);
+
+ALTER TABLE `aportes_cuentas` ADD INDEX(`id`);
+ALTER TABLE `aportes_cuentas` ADD INDEX(`sid`);
+ALTER TABLE `aportes_cuentas` ADD INDEX(`cuenta_id`);
+ALTER TABLE `aportes_cuentas` ADD INDEX(`tipo_aporte`);
+
+ALTER TABLE `apvs` ADD INDEX(`id`);
+ALTER TABLE `apvs` ADD INDEX(`sid`);
+ALTER TABLE `apvs` ADD INDEX(`trabajador_id`);
+ALTER TABLE `apvs` ADD INDEX(`afp_id`);
+ALTER TABLE `apvs` ADD INDEX(`forma_pago`);
+
+ALTER TABLE `cargas_familiares` ADD INDEX(`id`);
+ALTER TABLE `cargas_familiares` ADD INDEX(`sid`);
+ALTER TABLE `cargas_familiares` ADD INDEX(`trabajador_id`);
+ALTER TABLE `cargas_familiares` ADD INDEX(`tipo_carga_id`);
+
+ALTER TABLE `cargos` ADD INDEX(`id`);
+ALTER TABLE `cargos` ADD INDEX(`sid`);
+
+ALTER TABLE `cartas_notificacion` ADD INDEX(`id`);
+ALTER TABLE `cartas_notificacion` ADD INDEX(`sid`);
+ALTER TABLE `cartas_notificacion` ADD INDEX(`plantilla_carta_id`);
+ALTER TABLE `cartas_notificacion` ADD INDEX(`documento_id`);
+ALTER TABLE `cartas_notificacion` ADD INDEX(`trabajador_id`);
+ALTER TABLE `cartas_notificacion` ADD INDEX(`empresa_id`);
+
+ALTER TABLE `causales_finiquito` ADD INDEX(`id`);
+ALTER TABLE `causales_finiquito` ADD INDEX(`sid`);
+
+ALTER TABLE `causales_notificacion` ADD INDEX(`id`);
+ALTER TABLE `causales_notificacion` ADD INDEX(`sid`);
+
+ALTER TABLE `centros_costo` ADD INDEX(`id`);
+ALTER TABLE `centros_costo` ADD INDEX(`sid`);
+
+ALTER TABLE `certificados` ADD INDEX(`id`);
+ALTER TABLE `certificados` ADD INDEX(`sid`);
+ALTER TABLE `certificados` ADD INDEX(`plantilla_certificado_id`);
+ALTER TABLE `certificados` ADD INDEX(`documento_id`);
+ALTER TABLE `certificados` ADD INDEX(`trabajador_id`);
+ALTER TABLE `certificados` ADD INDEX(`empresa_id`);
+
+ALTER TABLE `clausulas_contrato` ADD INDEX(`id`);
+ALTER TABLE `clausulas_contrato` ADD INDEX(`sid`);
+ALTER TABLE `clausulas_contrato` ADD INDEX(`plantilla_contrato_id`);
+
+ALTER TABLE `clausulas_finiquito` ADD INDEX(`id`);
+ALTER TABLE `clausulas_finiquito` ADD INDEX(`sid`);
+ALTER TABLE `clausulas_finiquito` ADD INDEX(`plantilla_finiquito_id`);
+
+ALTER TABLE `contratos` ADD INDEX(`id`);
+ALTER TABLE `contratos` ADD INDEX(`sid`);
+ALTER TABLE `contratos` ADD INDEX(`tipo_contrato_id`);
+ALTER TABLE `contratos` ADD INDEX(`documento_id`);
+ALTER TABLE `contratos` ADD INDEX(`fecha_vencimiento`);
+ALTER TABLE `contratos` ADD INDEX(`trabajador_id`);
+ALTER TABLE `contratos` ADD INDEX(`empresa_id`);
+
+ALTER TABLE `cuentas` ADD INDEX(`id`);
+ALTER TABLE `cuentas` ADD INDEX(`sid`);
+
+ALTER TABLE `cuotas` ADD INDEX(`id`);
+ALTER TABLE `cuotas` ADD INDEX(`sid`);
+ALTER TABLE `cuotas` ADD INDEX(`prestamo_id`);
+ALTER TABLE `cuotas` ADD INDEX(`mes`);
+ALTER TABLE `cuotas` ADD INDEX `prestamo_mes` (`prestamo_id`, `mes`)COMMENT '';
+
+ALTER TABLE `descuentos` ADD INDEX(`id`);
+ALTER TABLE `descuentos` ADD INDEX(`sid`);
+ALTER TABLE `descuentos` ADD INDEX(`trabajador_id`);
+ALTER TABLE `descuentos` ADD INDEX(`tipo_descuento_id`);
+ALTER TABLE `descuentos` ADD INDEX(`mes_id`);
+ALTER TABLE `descuentos` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes_id`)COMMENT '';
+ALTER TABLE `descuentos` ADD INDEX `trabajador_permanente` (`trabajador_id`, `permanente`)COMMENT '';
+
+ALTER TABLE `detalles_afiliado_voluntario` ADD INDEX( `id`);
+ALTER TABLE `detalles_afiliado_voluntario` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_afiliado_voluntario` ADD INDEX(`afp_id`);
+
+ALTER TABLE `detalles_afp` ADD INDEX( `id`);
+ALTER TABLE `detalles_afp` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_afp` ADD INDEX(`afp_id`);
+
+ALTER TABLE `detalles_apvc` ADD INDEX( `id`);
+ALTER TABLE `detalles_apvc` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_apvc` ADD INDEX(`afp_id`);
+ALTER TABLE `detalles_apvc` ADD INDEX(`forma_pago_id`);
+
+ALTER TABLE `detalles_apvi` ADD INDEX( `id`);
+ALTER TABLE `detalles_apvi` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_apvi` ADD INDEX(`afp_id`);
+ALTER TABLE `detalles_apvi` ADD INDEX(`forma_pago_id`);
+
+ALTER TABLE `detalles_caja` ADD INDEX( `id`);
+ALTER TABLE `detalles_caja` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_caja` ADD INDEX(`caja_id`);
+
+ALTER TABLE `detalles_ips_isl_fonasa` ADD INDEX( `id`);
+ALTER TABLE `detalles_ips_isl_fonasa` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_ips_isl_fonasa` ADD INDEX(`ex_caja_id`);
+ALTER TABLE `detalles_ips_isl_fonasa` ADD INDEX(`ex_caja_desahucio_id`);
+
+ALTER TABLE `detalles_mutual` ADD INDEX( `id`);
+ALTER TABLE `detalles_mutual` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_mutual` ADD INDEX(`mutual_id`);
+
+ALTER TABLE `detalles_pagador_subsidio` ADD INDEX( `id`);
+ALTER TABLE `detalles_pagador_subsidio` ADD INDEX(`liquidacion_id`);
+
+ALTER TABLE `detalles_salud` ADD INDEX( `id`);
+ALTER TABLE `detalles_salud` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_salud` ADD INDEX(`salud_id`);
+
+ALTER TABLE `detalles_seguro_cesantia` ADD INDEX( `id`);
+ALTER TABLE `detalles_seguro_cesantia` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalles_seguro_cesantia` ADD INDEX(`afp_id`);
+
+ALTER TABLE `detalle_liquidacion` ADD INDEX( `id`);
+ALTER TABLE `detalle_liquidacion` ADD INDEX(`sid`);
+ALTER TABLE `detalle_liquidacion` ADD INDEX(`liquidacion_id`);
+ALTER TABLE `detalle_liquidacion` ADD INDEX(`tipo_id`);
+ALTER TABLE `detalle_liquidacion` ADD INDEX(`detalle_id`);
+
+ALTER TABLE `documentos` ADD INDEX( `id`);
+ALTER TABLE `documentos` ADD INDEX(`sid`);
+ALTER TABLE `documentos` ADD INDEX(`trabajador_id`);
+ALTER TABLE `documentos` ADD INDEX(`tipo_documento_id`);
+
+ALTER TABLE `documentos_empresa` ADD INDEX( `id`);
+ALTER TABLE `documentos_empresa` ADD INDEX(`sid`);
+ALTER TABLE `documentos_empresa` ADD INDEX(`publico`);
+
+ALTER TABLE `estructuras_descuento` ADD INDEX(`id`);
+
+ALTER TABLE `feriados` ADD INDEX( `id`);
+ALTER TABLE `feriados` ADD INDEX(`sid`);
+ALTER TABLE `feriados` ADD INDEX(`anio_id`);
+
+ALTER TABLE `fichas_trabajadores` ADD INDEX( `id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`trabajador_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`mes_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`fecha`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`nacionalidad_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`estado_civil_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`comuna_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`tipo_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`cargo_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`titulo_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`centro_costo_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`tienda_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`seccion_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`tipo_cuenta_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`banco_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`tipo_contrato_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`tipo_jornada_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`tipo_trabajador`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`prevision_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`afp_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`afp_seguro_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`isapre_id`);
+ALTER TABLE `fichas_trabajadores` ADD INDEX(`estado`);
+
+ALTER TABLE `finiquitos` ADD INDEX( `id`);
+ALTER TABLE `finiquitos` ADD INDEX(`sid`);
+ALTER TABLE `finiquitos` ADD INDEX(`folio`);
+ALTER TABLE `finiquitos` ADD INDEX(`documento_id`);
+ALTER TABLE `finiquitos` ADD INDEX(`trabajador_id`);
+ALTER TABLE `finiquitos` ADD INDEX(`empresa_id`);
+ALTER TABLE `finiquitos` ADD INDEX(`causal_finiquito_id`);
+ALTER TABLE `finiquitos` ADD INDEX(`plantilla_finiquito_id`);
+
+ALTER TABLE `haberes` ADD INDEX( `id`);
+ALTER TABLE `haberes` ADD INDEX(`sid`);
+ALTER TABLE `haberes` ADD INDEX(`trabajador_id`);
+ALTER TABLE `haberes` ADD INDEX(`tipo_haber_id`);
+ALTER TABLE `haberes` ADD INDEX(`mes_id`);
+ALTER TABLE `haberes` ADD INDEX(`permanente`);
+ALTER TABLE `haberes` ADD INDEX(`mes`);
+ALTER TABLE `haberes` ADD INDEX(`desde`);
+ALTER TABLE `haberes` ADD INDEX(`hasta`);
+ALTER TABLE `haberes` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes`)COMMENT '';
+ALTER TABLE `haberes` ADD INDEX `trabajador_permanente` (`trabajador_id`, `permanente`)COMMENT '';
+
+ALTER TABLE `horas_extra` ADD INDEX(`id`);
+ALTER TABLE `horas_extra` ADD INDEX(`sid`);
+ALTER TABLE `horas_extra` ADD INDEX(`trabajador_id`);
+ALTER TABLE `horas_extra` ADD INDEX(`fecha`);
+ALTER TABLE `horas_extra` ADD INDEX `trabajador_fecha` (`trabajador_id`, `fecha`)COMMENT '';
+ALTER TABLE `horas_extra` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes_id`)COMMENT '';
+
+ALTER TABLE `inasistencias` ADD INDEX(`id`);
+ALTER TABLE `inasistencias` ADD INDEX(`sid`);
+ALTER TABLE `inasistencias` ADD INDEX(`trabajador_id`);
+ALTER TABLE `inasistencias` ADD INDEX(`mes_id`);
+ALTER TABLE `inasistencias` ADD INDEX(`desde`);
+ALTER TABLE `inasistencias` ADD INDEX(`hasta`);
+ALTER TABLE `inasistencias` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes_id`)COMMENT '';
+
+ALTER TABLE `jornadas` ADD INDEX(`id`);
+ALTER TABLE `jornadas` ADD INDEX(`sid`);
+ALTER TABLE `jornadas` ADD INDEX(`tramo_hora_extra_id`);
+
+ALTER TABLE `licencias` ADD INDEX(`id`);
+ALTER TABLE `licencias` ADD INDEX(`sid`);
+ALTER TABLE `licencias` ADD INDEX(`trabajador_id`);
+ALTER TABLE `licencias` ADD INDEX(`mes_id`);
+ALTER TABLE `licencias` ADD INDEX(`desde`);
+ALTER TABLE `licencias` ADD INDEX(`hasta`);
+ALTER TABLE `licencias` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes_id`)COMMENT '';
+
+ALTER TABLE `liquidaciones` ADD INDEX(`id`);
+ALTER TABLE `liquidaciones` ADD INDEX(`sid`);
+ALTER TABLE `liquidaciones` ADD INDEX(`documento_id`);
+ALTER TABLE `liquidaciones` ADD INDEX(`trabajador_id`);
+ALTER TABLE `liquidaciones` ADD INDEX(`empresa_id`);
+ALTER TABLE `liquidaciones` ADD INDEX(`mes`);
+ALTER TABLE `liquidaciones` ADD INDEX(`estado`);
+ALTER TABLE `liquidaciones` ADD INDEX(`tramo_impuesto`);
+ALTER TABLE `liquidaciones` ADD INDEX(`tipo_contrato`);
+ALTER TABLE `liquidaciones` ADD INDEX(`centro_costo_id`);
+ALTER TABLE `liquidaciones` ADD INDEX(`prevision_id`);
+ALTER TABLE `liquidaciones` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes`)COMMENT '';
+
+ALTER TABLE `meses_de_trabajo` ADD INDEX(`id`);
+ALTER TABLE `meses_de_trabajo` ADD INDEX(`sid`);
+ALTER TABLE `meses_de_trabajo` ADD INDEX(`mes`);
+ALTER TABLE `meses_de_trabajo` ADD INDEX(`fecha_remuneracion`);
+ALTER TABLE `meses_de_trabajo` ADD INDEX(`anio_id`);
+
+ALTER TABLE `plantillas_cartas_notificacion` ADD INDEX(`id`);
+ALTER TABLE `plantillas_cartas_notificacion` ADD INDEX(`sid`);
+
+ALTER TABLE `plantillas_certificados` ADD INDEX(`id`);
+ALTER TABLE `plantillas_certificados` ADD INDEX(`sid`);
+
+ALTER TABLE `plantillas_contratos` ADD INDEX(`id`);
+ALTER TABLE `plantillas_contratos` ADD INDEX(`sid`);
+
+ALTER TABLE `plantillas_finiquitos` ADD INDEX(`id`);
+ALTER TABLE `plantillas_finiquitos` ADD INDEX(`sid`);
+
+ALTER TABLE `prestamos` ADD INDEX(`id`);
+ALTER TABLE `prestamos` ADD INDEX(`sid`);
+ALTER TABLE `prestamos` ADD INDEX(`trabajador_id`);
+ALTER TABLE `prestamos` ADD INDEX `trabajador_desde` (`trabajador_id`, `primera_cuota`)COMMENT '';
+ALTER TABLE `prestamos` ADD INDEX `trabajador_hasta` (`trabajador_id`, `ultima_cuota`)COMMENT '';
+
+ALTER TABLE `secciones` ADD INDEX(`id`);
+ALTER TABLE `secciones` ADD INDEX(`sid`);
+ALTER TABLE `secciones` ADD INDEX(`dependencia_id`);
+ALTER TABLE `secciones` ADD INDEX(`encargado_id`);
+
+ALTER TABLE `semana_corrida` ADD INDEX(`id`);
+ALTER TABLE `semana_corrida` ADD INDEX(`sid`);
+ALTER TABLE `semana_corrida` ADD INDEX(`trabajador_id`);
+ALTER TABLE `semana_corrida` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes`)COMMENT '';
+
+ALTER TABLE `tiendas` ADD INDEX(`id`);
+ALTER TABLE `tiendas` ADD INDEX(`sid`);
+
+ALTER TABLE `tipos_carga` ADD INDEX(`id`);
+ALTER TABLE `tipos_carga` ADD INDEX(`sid`);
+
+ALTER TABLE `tipos_contrato` ADD INDEX(`id`);
+ALTER TABLE `tipos_contrato` ADD INDEX(`sid`);
+
+ALTER TABLE `tipos_descuento` ADD INDEX(`id`);
+ALTER TABLE `tipos_descuento` ADD INDEX(`sid`);
+ALTER TABLE `tipos_descuento` ADD INDEX(`estructura_descuento_id`);
+ALTER TABLE `tipos_descuento` ADD INDEX(`afp_id`);
+ALTER TABLE `tipos_descuento` ADD INDEX(`codigo`);
+
+ALTER TABLE `tipos_documento` ADD INDEX(`id`);
+ALTER TABLE `tipos_documento` ADD INDEX(`sid`);
+
+ALTER TABLE `tipos_haber` ADD INDEX(`id`);
+ALTER TABLE `tipos_haber` ADD INDEX(`cuenta_id`);
+ALTER TABLE `tipos_haber` ADD INDEX(`codigo`);
+ALTER TABLE `tipos_haber` ADD INDEX(`sid`);
+ALTER TABLE `tipos_haber` ADD INDEX(`imponible`);
+ALTER TABLE `tipos_haber` ADD INDEX(`gratificacion`);
+ALTER TABLE `tipos_haber` ADD INDEX(`tributable`);
+
+ALTER TABLE `titulos` ADD INDEX(`id`);
+ALTER TABLE `titulos` ADD INDEX(`sid`);
+
+ALTER TABLE `trabajadores` ADD INDEX(`id`);
+ALTER TABLE `trabajadores` ADD INDEX(`sid`);
+ALTER TABLE `trabajadores` ADD INDEX(`rut`);
+
+ALTER TABLE `tramos_horas_extra` ADD INDEX(`id`);
+ALTER TABLE `tramos_horas_extra` ADD INDEX(`sid`);
+
+ALTER TABLE `vacaciones` ADD INDEX(`id`);
+ALTER TABLE `vacaciones` ADD INDEX(`sid`);
+ALTER TABLE `vacaciones` ADD INDEX(`trabajador_id`);
+ALTER TABLE `vacaciones` ADD INDEX(`mes`);
+ALTER TABLE `vacaciones` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes`)COMMENT '';
 
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

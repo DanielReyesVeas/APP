@@ -23,6 +23,9 @@ angular.module('angularjsApp')
             datosCierre : function(){
               return $resource(constantes.URL + 'anio-remuneracion/datos-cierre/obtener');
             },
+            datosCentralizacion : function(){
+              return $resource(constantes.URL + 'anio-remuneracion/datos-centralizacion/obtener/:sid');
+            },
             cerrarMeses : function(){
               return $resource(constantes.URL + 'anio-remuneracion/cerrar-meses/generar',
                   {},
@@ -35,6 +38,12 @@ angular.module('angularjsApp')
                   { post : { 'method': 'POST' } }
               );
             },
+            feriadosVacaciones : function(){
+              return $resource(constantes.URL + 'anio-remuneracion/feriados-vacaciones/generar',
+                  {},
+                  { post : { 'method': 'POST' } }
+              );
+            },
             gratificacion : function(){
               return $resource(constantes.URL + 'anio-remuneracion/gratificacion/generar',
                   {},
@@ -43,6 +52,9 @@ angular.module('angularjsApp')
             },
             calendario : function(){
               return $resource(constantes.URL + 'anio-remuneracion/calendario/obtener');
+            },
+            calendarioVacaciones : function(){
+              return $resource(constantes.URL + 'anio-remuneracion/calendario-vacaciones/obtener');
             }
         };
   });

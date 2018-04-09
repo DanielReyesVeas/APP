@@ -7,7 +7,7 @@
 
         <link rel="shortcut icon" href="assets/global/images/favicon.png" type="image/png">
         <title>Easy Systems | RRHH</title>
-        <link href="assets/global/css/style.css?v=22222234" rel="stylesheet">
+        <link href="assets/global/css/style.css?v=22222235" rel="stylesheet">
         <link href="assets/global/css/theme.css?v=22222234" rel="stylesheet">
         <link href="assets/global/css/ui.css" rel="stylesheet">
         <link href="assets/global/plugins/metrojs/metrojs.min.css" rel="stylesheet">
@@ -70,7 +70,14 @@
             }
 
             .boton-accesos img{
-                margin: 10px 15px 10px 15px;
+                border: 2px solid #fff;
+                margin: 15px 15px 15px 15px;
+            }
+            
+            .boton-accesos img:hover{
+                border:2px solid #ddd;
+                -webkit-filter: grayscale(100%); /* Safari 6.0 - 9.0 */
+                filter: grayscale(100%);
             }
 
             .centrar{
@@ -197,8 +204,12 @@
                 }
             }
 
+            .main-content{
+                background: linear-gradient(#ffffff, #eeeeee);
+            }
+            
             .main-content, .page-content{
-                background-color: #fff !important;
+                background:none;
             }
 
             .dropdown-menu{
@@ -346,6 +357,13 @@
                 background: #d16302 !important;
             }
 
+            .form-control{
+                border-color:#ccc !important;
+            }
+            .form-control:focus, .login-form .form-control:focus{
+                border-color:#ff5500 !important;
+            }
+
         </style>
 
         <script type="text/javascript">
@@ -426,7 +444,12 @@
                                     <i class="fa fa-fw fa-caret-down"></i>
                                 </a>
 
-                                <a ng-if="!menu.subopciones.length" href="{{menu.link}}"><i class="fa fa-fw {{ menu.fontawesome }}"></i> {{ menu.opcion }}</a>
+                                <a ng-if="!menu.subopciones.length && !menu.onclick" href="{{menu.link}}">
+                                    <i class="fa fa-fw {{ menu.fontawesome }}"></i> {{ menu.opcion }}
+                                </a>
+                                <a ng-if="!menu.subopciones.length && menu.onclick" ng-click="this[ menu.onclick ]()">
+                                    <i class="fa fa-fw {{ menu.fontawesome }}"></i> {{ menu.opcion }}
+                                </a>
                                 <ul ng-if="menu.subopciones.length > 0" id="submenu_{{ $index }}" class="dropdown-menu childrenMod">
                                     <li ng-repeat="opcion in menu.subopciones">
                                         <a href="{{ opcion.link }}" ng-if="!opcion.onclick" style="color:#fff; padding-right: 40px !important;  white-space: nowrap;">                                      
@@ -474,11 +497,14 @@
                                 <a class="menutoggle" href="javascript:void(0);" data-toggle="sidebar-collapsed"><span class="menu__handle"><span>Menu</span></span></a>
                             </div>
                         </div>
+
+                        
                         
                         <div class="header-right">
                             <ul class="header-menu nav navbar-nav">
+
                                 <!-- BEGIN USER DROPDOWN -->
-                                <li class="dropdown" id="language-header" style="padding-top:5px;" ng-if="globals.currentUser.empresas.length>0">
+                                <li class="dropdown" id="language-header" style="padding-top:5px;" ng-if="globals.currentUser.empresas.length>0 && !globals.currentUser.isEmpleado">
 
                                     <a href="#" data-toggle="dropdown" data-hover="dropdown" data-close-others="true" style="margin-bottom: 0px; padding-top:0px; line-height:20px;">                                    
                                         <p class="label label-anioActivo" style="font-size:15px; margin-bottom: 0px;">
@@ -499,7 +525,7 @@
                                     </ul>
 
                                 </li>
-                                <li class="dropdown" id="language-header" ng-if="globals.currentUser.empresas.length>0">
+                                <li class="dropdown" id="language-header" ng-if="globals.currentUser.empresas.length>0 && !globals.currentUser.isEmpleado">
                                     <a href="#" data-toggle="dropdown" data-hover="dropdown" data-close-others="true">
                                     <i class="icon-cloud-upload"></i>
                                     <span class="nombreEmpresa" style="font-weight: normal; font-size:15px; color:#666; font-family: 'Open Sans' !important;">
@@ -565,10 +591,24 @@
                             </ul>
                         </div>
                         <!-- header-right -->
+
+
+                        <div class="header-left" ng-if="globals.currentUser.isEmpleado">
+                            <div class="topnav">
+                            
+                                    <h3>
+                                        <b>
+                                            <span class="username" style="color:#f50; text-transform:uppercase;">Portal de Trabajadores - </span>{{ globals.currentUser.empresa.razon_social }}
+                                        </b>
+                                    </h3>
+                            </div>
+                        </div>
+
+
                     </div>
                     <!-- END TOPBAR -->
                     <!-- BEGIN PAGE CONTENT -->
-                    <div class="ng-view at-view-slide-in-left page-content" autoscroll="true" style="min-height:500px; margin-bottom: 25px;">
+                    <div ng-if="globals.currentUser.nombre" class="ng-view at-view-slide-in-left page-content" autoscroll="true" style="min-height:500px; margin-bottom: 25px;">
                     </div>
                     <div class="versionSistema">
                         <small style="font-size:12px;color:#666;font-weight:bold;">
@@ -694,6 +734,9 @@
     <script src="bower_components/moment/moment.js"></script>
     <script src="bower_components/angular-multiple-date-picker/dist/multipleDatePicker.js"></script>
     <script src="bower_components/gm.datepickerMultiSelect/dist/gm.datepickerMultiSelect.min.js"></script>
+    <script src="bower_components/flow.js/dist/flow.js"></script>
+    <script src="bower_components/ng-flow/dist/ng-flow.js"></script>
+    <script src="bower_components/angular-recaptcha/release/angular-recaptcha.js"></script>
     <!-- endbower -->
     <!-- endbuild -->
 
@@ -824,6 +867,20 @@
         <script src="scripts/controllers/mis-certificados.js"></script>
         <script src="scripts/controllers/mis-cartas-notificacion.js"></script>
         <script src="scripts/controllers/mis-liquidaciones.js"></script>
+        <script src="scripts/controllers/apvs.js"></script>
+        <script src="scripts/services/mi-liquidacion.js"></script>
+        <script src="scripts/services/ficha.js"></script>
+        <script src="scripts/controllers/centralizacion.js"></script>
+        <script src="scripts/controllers/reportes.js"></script>
+        <script src="scripts/services/reporte.js"></script>
+        <script src="scripts/services/empleado.js"></script>
+        <script src="scripts/services/mi-carta-notificacion.js"></script>
+        <script src="scripts/services/mi-certificado.js"></script>
+        <script src="scripts/controllers/f1887.js"></script>
+        <script src="scripts/controllers/factores-actualizacion.js"></script>
+        <script src="scripts/services/factor-actualizacion.js"></script>
+        <script src="scripts/services/declaracion.js"></script>
+        <script src="scripts/services/declaracion-trabajador.js"></script>
         <!-- endbuild -->
 
 

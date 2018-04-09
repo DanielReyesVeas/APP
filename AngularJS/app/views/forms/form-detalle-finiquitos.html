@@ -32,8 +32,8 @@
               <td>{{ dato.causal.nombre }}</td>
               <td><i class="fa fa-check" ng-if="dato.recibido" style="color: #0a0;"></i><i class="fa fa-times" ng-if="!dato.recibido" style="color: #ff3300;"></i></td>
               <td>
-                <a href="javascript:void(0);" ng-click="editar(dato, trabajador.sid)" ng-if="!dato.recibido && accesos.abierto && accesos.editar"><i class="fa fa-pencil"></i></a>
-                <a href="javascript:void(0);" ng-if="accesos.ver" ng-click="frame(dato)"><i class="fa fa-search"></i></a>
+                <a href="javascript:void(0);" ng-click="editar(dato, trabajador.sid)" ng-if="false"><i class="fa fa-pencil"></i></a>
+                <a href="javascript:void(0);" ng-click="frame(dato)"><i class="fa fa-search"></i></a>
                 <a href="javascript:void(0);" ng-if="accesos.eliminar && accesos.abierto" confirmation-click="eliminar(dato, trabajador.sid)" confirmation-needed="El Finiquito seleccionado será eliminado del sistema. ¿Desea continuar?"><i class="fa fa-trash"></i></a>
               </td>
             </tr>

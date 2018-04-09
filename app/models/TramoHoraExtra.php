@@ -8,6 +8,10 @@ class TramoHoraExtra extends Eloquent {
         return $this->hasMany('Jornada', 'tramo_hora_extra_id')->orderBy('id', 'ASC');
     }
     
+    public function jornadaTramo(){
+        return $this->hasMany('Tramo', 'tramo_id');
+    }
+    
     static function listaTramosHorasExtra(){
     	$listaTramosHorasExtra = array();
     	$tramosHorasExtra = TramoHoraExtra::orderBy('jornada', 'ASC')->get();

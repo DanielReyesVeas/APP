@@ -28,8 +28,9 @@
               <td><i class="fa fa-check" ng-show="dato.publico" style="color: #0a0;"></i><i class="fa fa-times" ng-hide="dato.publico" style="color: #ff3300;"></i></td>
               <td>{{ dato.fecha.date | date : "dd-MM-y" }}</td>
               <td>
-                <a href="javascript:void(0);" ng-click="detalle(dato)"><i class="fa fa-window-restore"></i></a>
                 <a href="javascript:void(0);" ng-if="accesos.editar && accesos.abierto" ng-click="editar(dato)"><i class="fa fa-pencil"></i></a>
+                <a href="javascript:void(0);" ng-if="dato.extension=='pdf'" ng-click="detalle(dato)"><i class="fa fa-window-restore"></i></a>
+                <a href="{{ constantes.URL }}/stories/empresa/{{ dato.nombre }}" download="{{ dato.alias }}"><i class="fa fa-download"></i></a>
                 <a href="javascript:void(0);" ng-if="accesos.eliminar && accesos.abierto" confirmation-click="eliminar(dato)" confirmation-needed="El Documento seleccionado será eliminado del sistema. ¿Desea continuar?"><i class="fa fa-trash"></i></a>
               </td>
             </tr>

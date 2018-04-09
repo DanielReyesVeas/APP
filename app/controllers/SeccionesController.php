@@ -28,7 +28,7 @@ class SeccionesController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('secciones' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#organica');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#organica');
         $listaSecciones=array();
         Seccion::listaSecciones($listaSecciones, 0, 1);
         
@@ -64,8 +64,9 @@ class SeccionesController extends \BaseController {
             $seccion = new Seccion();
             $seccion->sid = Funciones::generarSID();
             $seccion->dependencia_id = $datos['dependencia_id'];
-            $seccion->encargado_id = $datos['encargado_id'];
+            //$seccion->encargado_id = $datos['encargado_id'];
             $seccion->nombre = $datos['nombre'];
+            $seccion->codigo = $datos['codigo'];
             $seccion->save();
             $respuesta=array(
             	'success' => true,
@@ -99,8 +100,9 @@ class SeccionesController extends \BaseController {
             'id' => $seccion->id,
             'sid' => $seccion->sid,            
             'nombre' => $seccion->nombre,         
+            'codigo' => $seccion->codigo,         
             'dependencia' => $seccion->dependencia(),
-            'encargado' => $seccion->encargado()
+            //'encargado' => $seccion->encargado()
         );
         
         $datos = array(
@@ -143,10 +145,12 @@ class SeccionesController extends \BaseController {
         }else{
             $idDependencia = $datos['dependencia_id'];
         }
+        
         if(!$errores and $seccion){
             $seccion->dependencia_id = $idDependencia;
-            $seccion->encargado_id = $datos['encargado_id'];
+            //$seccion->encargado_id = $datos['encargado_id'];
             $seccion->nombre = $datos['nombre'];
+            $seccion->codigo = $datos['codigo'];
             $seccion->save();
             $respuesta = array(
             	'success' => true,
@@ -171,16 +175,33 @@ class SeccionesController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        Seccion::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $seccion = Seccion::whereSid($sid)->first();
+        
+        $errores = $seccion->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#organica', $seccion->id, $seccion->nombre, 'Delete');       
+            $seccion->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){
         $datos = array(
             'dependencia_id' => Input::get('dependencia')['id'],
-            'encargado_id' => Input::get('encargado')['id'],
-            'nombre' => Input::get('nombre')
+            //'encargado_id' => Input::get('encargado')['id'],
+            'nombre' => Input::get('nombre'),
+            'codigo' => Input::get('codigo')
         );
         return $datos;
     }

@@ -58,7 +58,7 @@
 </div>
 
 <div class="modal-footer">
-  <button class="btn btn-primary" type="button" ng-if="tiposDocumento.length>0 && !isEdit" ng-click="subir(documento.file)" ng-disabled="documentosForm.$invalid">Subir</button>
+  <button class="btn btn-primary" type="button" ng-if="tiposDocumento.length>0 && !isEdit" ng-click="subir(documento.file)" ng-disabled="documentosForm.$invalid || !documento.file">Subir</button>
   <button class="btn btn-primary" type="button" ng-if="tiposDocumento.length>0 && isEdit" ng-click="modificar()" ng-disabled="documentosForm.$invalid">Modificar</button>
   <button class="btn btn-warning" type="button" ng-click="$dismiss()">Cancelar</button> 
 </div>

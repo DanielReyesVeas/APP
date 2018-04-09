@@ -10,7 +10,7 @@ class AniosRemuneracionesController extends \BaseController {
     
     public function index()
     {
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#gratificacion');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#gratificacion');
         $aniosRemuneraciones = AnioRemuneracion::all();
         $listaAniosRemuneraciones=array();
                 
@@ -41,8 +41,70 @@ class AniosRemuneracionesController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'anios' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cierre-mensual');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cierre-mensual');
         $aniosRemuneraciones = AnioRemuneracion::all();
+        $listaAniosRemuneraciones=array();
+        
+        $maxAnio=0;
+        if( $aniosRemuneraciones->count() ){
+            foreach( $aniosRemuneraciones as $anioRemuneracion ){
+                $listaAniosRemuneraciones[]=array(
+                    'id' => $anioRemuneracion->id,
+                    'sid' => $anioRemuneracion->sid,
+                    'nombre' => $anioRemuneracion->anio                    
+                );
+                $maxAnio = max($maxAnio, $anioRemuneracion->anio);
+            }
+        }
+        
+        
+
+
+
+        /*****************************************************************/
+        /*  Modificado para tomar el anio seleccionado en el formulario
+        /*****************************************************************/
+        $anioSeleccionado = Input::get('anio');
+        if($anioSeleccionado){
+            $anioRemuneracion = AnioRemuneracion::where('anio', $anioSeleccionado)->first();
+        }else{
+            $id = \Session::get('mesActivo')->idAnio;        
+            $anioRemuneracion = AnioRemuneracion::find($id);
+        }
+        /******************************************************************/
+
+        $datosAnioRemuneracion = array();
+        if($anioRemuneracion){
+            $datosAnioRemuneracion=array(
+                'id' => $anioRemuneracion->id,
+                'sid' => $anioRemuneracion->sid,
+                'nombre' => $anioRemuneracion->anio,
+                'estadoMeses' => $anioRemuneracion->estadoMeses(),
+                'meses' => $anioRemuneracion->meses()
+            );
+        }
+
+        // comprobar que el anio no existe para definir que es un nuevo anio
+        $listaAnios =  Funciones::array_column($listaAniosRemuneraciones, 'nombre');
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'anios' => $listaAniosRemuneraciones,
+            'datos' => $datosAnioRemuneracion,
+            'isNuevoAnio' => $anioRemuneracion->isNuevoAnio() && ($anioRemuneracion->anio==$maxAnio && $maxAnio == date("Y")-1 )
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function datosCentralizacion($sid)
+    {
+        if(!\Session::get('empresa')){
+            return Response::json(array('datos' => array(), 'anios' => array(), 'permisos' => array()));
+        }
+        
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#centralizacion');
+        $aniosRemuneraciones = AnioRemuneracion::orderBy('anio', 'DESC')->get();
         $listaAniosRemuneraciones=array();
         
         if( $aniosRemuneraciones->count() ){
@@ -56,8 +118,14 @@ class AniosRemuneracionesController extends \BaseController {
         }
         
         $datosAnioRemuneracion = array();
-        $id = \Session::get('mesActivo')->idAnio;        
-        $anioRemuneracion = AnioRemuneracion::find($id);
+        $mes = \Session::get('mesActivo');  
+        
+        if(!$sid){
+            $id = $mes->idAnio;        
+            $anioRemuneracion = AnioRemuneracion::find($id);
+        }else{
+            $anioRemuneracion = AnioRemuneracion::whereSid($sid)->first();
+        }
         
         if($anioRemuneracion){
             $datosAnioRemuneracion=array(
@@ -74,7 +142,9 @@ class AniosRemuneracionesController extends \BaseController {
             'anios' => $listaAniosRemuneraciones,
             'datos' => $datosAnioRemuneracion,
             'isLiquidaciones' => AnioRemuneracion::isLiquidaciones(),
-            'isCuentas' => AnioRemuneracion::isCuentas()
+            //'isCuentas' => AnioRemuneracion::isCuentas(),
+            'isCentralizado' => AnioRemuneracion::isCentralizado($mes->mes),
+            'anio' => $anioRemuneracion
         );
         
         return Response::json($datos);
@@ -126,7 +196,7 @@ class AniosRemuneracionesController extends \BaseController {
     
     public function calendario()
     {
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#semana-corrida');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#semana-corrida');
         
         $aniosRemuneraciones = AnioRemuneracion::all();
         $listaAniosRemuneraciones=array();
@@ -138,6 +208,53 @@ class AniosRemuneracionesController extends \BaseController {
                     'sid' => $anioRemuneracion->sid,
                     'nombre' => $anioRemuneracion->anio,
                     'meses' => $anioRemuneracion->mesesFestivos()
+                );
+            }
+        }
+
+        $datos=array(
+            'anios' => $listaAniosRemuneraciones,
+            'accesos' => $permisos
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function feriadosVacaciones()
+    {
+        $datos = Input::all();
+        
+        $feriados = $datos['feriados'];
+        $anio = $datos['anio'];
+        $mes = $datos['mes'];
+        
+        $feriados = FeriadoVacaciones::comprobar($feriados, $mes);
+        
+        FeriadoVacaciones::masivo($feriados, $anio);
+
+        $respuesta=array(
+            'anio' => $anio,
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente"
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function calendarioVacaciones()
+    {
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores-vacaciones');
+        
+        $aniosRemuneraciones = AnioRemuneracion::all();
+        $listaAniosRemuneraciones=array();
+        
+        if( $aniosRemuneraciones->count() ){
+            foreach( $aniosRemuneraciones as $anioRemuneracion ){
+                $listaAniosRemuneraciones[]=array(
+                    'id' => $anioRemuneracion->id,
+                    'sid' => $anioRemuneracion->sid,
+                    'nombre' => $anioRemuneracion->anio,
+                    'meses' => $anioRemuneracion->mesesFestivosVacaciones()
                 );
             }
         }

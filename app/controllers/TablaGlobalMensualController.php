@@ -13,7 +13,7 @@ class TablaGlobalMensualController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tabla-global-mensual');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tabla-global-mensual');
 		$listaTablas=array(
 			'rentasTopeImponibles' => RentaTopeImponible::listaRentasTopeImponibles(),
 			'rentasMinimasImponibles' => RentaMinimaImponible::listaRentasMinimasImponibles(),
@@ -27,6 +27,7 @@ class TablaGlobalMensualController extends \BaseController {
         
         $datos = array(
             'accesos' => $permisos,
+            'ufAnterior' => ValorIndicador::ufAnterior(),
             'datos' => $listaTablas
         );
 		return Response::json($datos);

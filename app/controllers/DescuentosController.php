@@ -19,8 +19,6 @@ class DescuentosController extends \BaseController {
                     'sid' => $descuento->sid,
                     'idTrabajador' => $descuento->trabajador_id,
                     'idTipoDescuento' => $descuento->tipo_descuento_id,
-                    'desde' => $descuento->desde,
-                    'hasta' => $descuento->hasta,
                     'tipo' => array(
                         'id' => $descuento->tipoDescuento ? $descuento->tipoDescuento->id : "",
                         'nombre' => $descuento->tipoDescuento ? $descuento->tipoDescuento->nombre : ""
@@ -30,10 +28,10 @@ class DescuentosController extends \BaseController {
                         'nombre' => $descuento->mesDeTrabajo ? $descuento->mesDeTrabajo->nombre : "",
                         'mes' => $descuento->mesDeTrabajo ? $descuento->mesDeTrabajo->mes : ""
                     ), 
-                    'porMes' => $descuento->por_mes,
-                    'rangoMeses' => $descuento->rango_meses,
-                    'permanente' => $descuento->permanente,
-                    'todosAnios' => $descuento->todos_anios,
+                    'porMes' => $descuento->por_mes ? true : false,
+                    'rangoMeses' => $descuento->rango_meses ? true : false,
+                    'permanente' => $descuento->permanente ? true : false,
+                    'todosAnios' => $descuento->todos_anios ? true : false,
                     'moneda' => $descuento->moneda,
                     'monto' => $descuento->monto
                 );
@@ -88,6 +86,17 @@ class DescuentosController extends \BaseController {
             $descuento->moneda = $datos['moneda'];
             $descuento->monto = $datos['monto'];
             $descuento->save();
+            
+            if($descuento->moneda=='$'){
+                $monto = $descuento->moneda . $descuento->monto;
+            }else{
+                $monto = $descuento->monto . ' ' . $descuento->moneda;
+            }
+            
+            $trabajador = $descuento->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-descuentos', $trabajador->id, $ficha->nombreCompleto(), 'Create', $descuento->id, $monto, 'Descuentos Trabajadores', $descuento->tipo_descuento_id, $descuento->tipoDescuento->nombre);
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -100,6 +109,34 @@ class DescuentosController extends \BaseController {
                 'errores' => $errores
             );
         } 
+        return Response::json($respuesta);
+    }
+    
+    public function eliminarPermanente()
+    {
+        $datos = Input::all();
+        $mes = \Session::get('mesActivo');
+        
+        $descuento = Descuento::whereSid($datos['sid'])->first();        
+        $descuento->hasta = $mes->mes;
+        $descuento->save();
+        
+        if($descuento->moneda=='$'){
+            $monto = $descuento->moneda . $descuento->monto;
+        }else{
+            $monto = $descuento->monto . ' '. $descuento->moneda;
+        }
+        
+        $trabajador = $descuento->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#ingreso-descuentos', $trabajador->id, $ficha->nombreCompleto(), 'Delete Parcial', $descuento->id, $monto, 'Descuentos Trabajadores', $descuento->tipo_descuento_id, $descuento->tipoDescuento->nombre);
+        
+        $respuesta=array(
+            'success' => true,
+            'datos' => $datos,
+            'mensaje' => "La Información fue eliminada correctamente"
+        );
+        
         return Response::json($respuesta);
     }
     
@@ -267,6 +304,170 @@ class DescuentosController extends \BaseController {
         return Response::json($respuesta);
     }
     
+    public function importarPlanillaMasivo()
+    {
+        $array = array();
+
+        if(Input::hasFile('file')){   
+            $file = Input::file('file')->getRealPath();
+            $data = Excel::load($file, function($reader){                
+            })->noHeading()->all()->toArray();
+            
+            $array = $this->formatearArray($data);
+            
+            if(!isset($errores)){
+                $errores = $this->comprobarErroresMasivo($array);
+            }
+            
+            if(!$errores){                                        
+                $respuesta=array(
+                    'success' => true,
+                    'mensaje' => "La Información fue almacenada correctamente",
+                    'datos' => $array,
+                    'descuento' => $data
+                );
+            }else{
+                $respuesta=array(
+                    'success' => false,
+                    'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada",
+                    'errores' => $errores
+                );
+            }
+        }else{
+            $errores = array();
+            $errores[] = 'El formato no corresponde con el archivo de la planilla. Por favor vuelva a descargar la planilla.';
+        }
+
+        return Response::json($respuesta);
+    }
+    
+    public function generarIngresoMasivoDescuentos()
+    {
+        $datos = Input::all();
+        $trabajadores = $datos['datos'];
+        $descuentos = $datos['descuentos'];
+        $mes = \Session::get('mesActivo');
+        
+        foreach($trabajadores as $trabajador){
+            $rut = Funciones::quitar_formato_rut($trabajador['rut']);
+            $trab = Trabajador::where('rut', $rut)->first();
+            
+            foreach($trabajador['descuentos'] as $key => $value){
+                if($value > 0){
+                    $codigo = $descuentos[$key];
+                    $descuento = TipoDescuento::where('codigo', $codigo['codigo'])->first();
+                    if($descuento){
+                        $nuevoDescuento = new Descuento();
+                        $nuevoDescuento->sid = Funciones::generarSID();
+                        $nuevoDescuento->trabajador_id = $trab['id'];
+                        $nuevoDescuento->tipo_descuento_id = $descuento['id'];
+                        $nuevoDescuento->mes_id = $mes->id;
+                        $nuevoDescuento->moneda = '$';
+                        $nuevoDescuento->monto = $value;
+                        $nuevoDescuento->por_mes = 1;
+                        $nuevoDescuento->rango_meses = 0;
+                        $nuevoDescuento->permanente = 0;
+                        $nuevoDescuento->todos_anios = 0;
+                        $nuevoDescuento->mes = $mes->mes;
+                        $nuevoDescuento->desde = NULL;
+                        $nuevoDescuento->hasta = NULL;
+                        $nuevoDescuento->save();
+                        
+                        if($nuevoDescuento->moneda=='$'){
+                            $monto = $nuevoDescuento->moneda . $nuevoDescuento->monto;
+                        }else{
+                            $monto = $nuevoDescuento->monto . ' ' . $nuevoDescuento->moneda;
+                        }
+
+                        $trabajador = $nuevoDescuento->trabajador;
+                        $ficha = $trabajador->ficha();
+                        Logs::crearLog('#ingreso-descuentos', $trabajador->id, $ficha->nombreCompleto(), 'Create', $nuevoDescuento->id, $monto, 'Ingreso Masivo', $nuevoDescuento->tipo_descuento_id, $nuevoDescuento->tipoDescuento->nombre);
+                    }
+                }
+            }
+        }
+        
+        
+        $respuesta=array(
+            'success' => true,
+            'mensaje' => "La Información fue almacenada correctamente"
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function formatearArray($array)
+    {
+        $arreglo = array();
+        $descuentos = array();
+        foreach($array[0] as $key => $value){
+            $descuentos[] = $value;
+            $encabezado[] = array(
+                'codigo' => $value,
+                'nombre' => $array[1][$key],
+                'active' => false
+            );
+        }
+        foreach($array as $arr){
+            if($arr[0]){
+                $active = false;
+                $misDescuentos = array();
+                foreach($descuentos as $key => $value){
+                    if($value){
+                        if($arr[$key]){                            
+                            if(!$encabezado[$key]['active']){
+                                $encabezado[$key]['active'] = true;
+                            }
+                            $active = true;
+                        }
+                        $misDescuentos[$key] =  $arr[$key] ? $arr[$key] : 0;
+                    }
+                }
+                $arreglo[] = array(
+                    'rut' => $arr[0],
+                    'nombreCompleto' => $arr[1],
+                    'descuentos' => $misDescuentos,
+                    'active' => $active
+                );
+            }
+        }
+        foreach($encabezado as $key => $value){
+            if(!$value['active']){
+                unset($encabezado[$key]);            
+                unset($descuentos[$key]);            
+            }
+        }
+        foreach($arreglo as $key => $value){
+            if(!$value['active']){
+                unset($arreglo[$key]);                
+            }else{
+                foreach($value['descuentos'] as $llave => $valor){
+                    if(!in_array($llave, array_keys($descuentos))){
+                        unset($arreglo[$key]['descuentos'][$llave]);
+                    }
+                }
+            }
+        }
+        
+        $datos = array(
+            'encabezado' => $encabezado,
+            'datos' => array_values($arreglo)
+        );
+        
+        return $datos;
+    }
+    
+    public function comprobarErroresMasivo($datos)
+    {
+        if(!count($datos['datos']) || !count($datos['encabezado'])){
+            $listaErrores = array();
+            $listaErrores[] = 'El archivo no contiene datos.';
+            return $listaErrores;
+        }
+       
+        return ;
+    }
+    
     public function comprobarErrores($datos)
     {
         $trabajadores = Trabajador::all();
@@ -318,6 +519,7 @@ class DescuentosController extends \BaseController {
             'rangoMeses' => $descuento->rango_meses ? true : false,
             'permanente' => $descuento->permanente ? true : false,
             'todosAnios' => $descuento->todos_anios ? true : false,
+            'fechaIngreso' => date('Y-m-d H:i:s', strtotime($descuento->created_at)),
             'monto' => $descuento->monto,
             'moneda' => $descuento->moneda,
             'tipo' => array(
@@ -367,6 +569,17 @@ class DescuentosController extends \BaseController {
             $descuento->moneda = $datos['moneda'];
             $descuento->monto = $datos['monto'];
             $descuento->save();
+            
+            if($descuento->moneda=='$'){
+                $monto = $descuento->moneda . $descuento->monto;
+            }else{
+                $monto = $descuento->monto . ' ' . $descuento->moneda;
+            }
+            
+            $trabajador = $descuento->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-descuentos', $trabajador->id, $ficha->nombreCompleto(), 'Update', $descuento->id, $monto, 'Descuentos Trabajadores', $descuento->tipo_descuento_id, $descuento->tipoDescuento->nombre);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -391,9 +604,22 @@ class DescuentosController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        Descuento::whereSid($sid)->delete();
+        $descuento = Descuento::whereSid($sid)->first();
+        
+        if($descuento['moneda']=='$'){
+            $monto = $descuento['moneda'] . $descuento['monto'];
+        }else{
+            $monto = $descuento['monto'] . $descuento['moneda'];
+        }
+        
+        $trabajador = $descuento->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#ingreso-descuentos', $trabajador->id, $ficha->nombreCompleto(), 'Delete', $descuento['id'], $monto, 'Descuentos Trabajadores', $descuento['tipo_haber_id'], $descuento->tipoDescuento->nombre);
+        
+        $descuento->delete();
+        
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
-    }
+    }    
     
     public function get_datos_formulario(){
         $datos = array(

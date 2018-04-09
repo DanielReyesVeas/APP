@@ -16,6 +16,40 @@ angular.module('angularjsApp')
     $scope.cargado = false;
     var tipos = [];
 
+    $scope.tabMisDescuentos = true;
+    $scope.tabLegales = false;
+    $scope.tabCaja = false;
+    $scope.tabAfp = false;
+
+    $scope.openTab = function(tab){
+      switch (tab) {
+        case 'misDescuentos':
+          $scope.tabMisDescuentos = true;
+          $scope.tabLegales = false;
+          $scope.tabCaja = false;
+          $scope.tabAfp = false;
+          break;
+        case 'legales':
+          $scope.tabMisDescuentos = false;
+          $scope.tabLegales = true;
+          $scope.tabCaja = false;
+          $scope.tabAfp = false;
+          break;
+        case 'caja':
+          $scope.tabMisDescuentos = false;
+          $scope.tabLegales = false;
+          $scope.tabCaja = true;
+          $scope.tabAfp = false;
+          break;
+        case 'afp':
+          $scope.tabMisDescuentos = false;
+          $scope.tabLegales = false;
+          $scope.tabCaja = false;
+          $scope.tabAfp = true;
+          break;
+      }
+    }
+
     $scope.open = function(){
       $rootScope.cargando = true;
       var datos = mesDeTrabajo.centralizar().get();
@@ -41,7 +75,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (mensaje) {
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -53,10 +87,11 @@ angular.module('angularjsApp')
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
-          $scope.cargarDatos();
+          cargarDatos();
         }else{
-          Notification.error({message: response.errores, title: 'Campo con Dependencias', delay: 10000});
-          $rootScope.cargando = false;
+          $scope.erroresDatos = response.errores;
+          Notification.error({message: response.errores.error[0], title: 'Mensaje del Sistema', delay: ''});
+          $rootScope.cargando=false;
         }
       });
     }
@@ -70,11 +105,14 @@ angular.module('angularjsApp')
       });
     };
     
-    $scope.cargarDatos = function(){
+    function cargarDatos(){
       $rootScope.cargando = true;
       var datos = tipoDescuento.datos().get();
       datos.$promise.then(function(response){
         $scope.datos = response.datos;
+        $scope.legales = response.legales;
+        $scope.caja = response.caja;
+        $scope.afp = response.afp;
         $scope.accesos = response.accesos;
         tipos = response.tipos;
         $rootScope.cargando = false;
@@ -82,18 +120,19 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.cargarDatos();
+    cargarDatos();
 
   })
   .controller('FormTipoDescuentoCtrl', function ($scope, tipos, $filter, $uibModal, $uibModalInstance, objeto, Notification, $rootScope, tipoDescuento, mesDeTrabajo) {
-
     $scope.tipos = angular.copy(tipos);
 
     if(objeto){
       $scope.tipoDescuento = angular.copy(objeto);
+      console.log($scope.tipoDescuento)
       $scope.tipoDescuento.tipo = $filter('filter')( $scope.tipos, {id :  $scope.tipoDescuento.tipo.id }, true )[0];
       $scope.titulo = 'Modificación Descuentos';
       $scope.encabezado = $scope.tipoDescuento.nombre;
+      console.log($scope.tipoDescuento)
     }else{
       $scope.tipoDescuento = { tipo : $scope.tipos[0] };
       $scope.titulo = 'Ingreso Descuentos';

@@ -23,6 +23,9 @@ angular.module('angularjsApp')
             input : function(){
               return $resource(constantes.URL + 'trabajadores/input/obtener');
             },
+            inputActivos : function(){
+              return $resource(constantes.URL + 'trabajadores/input-activos/obtener');
+            },
             totalInasistencias : function(){
               return $resource(constantes.URL + 'trabajadores/total-inasistencias/obtener');
             },
@@ -37,6 +40,9 @@ angular.module('angularjsApp')
             },
             totalCargas : function(){
               return $resource(constantes.URL + 'trabajadores/total-cargas-familiares/obtener');
+            },
+            totalApvs : function(){
+              return $resource(constantes.URL + 'trabajadores/total-apvs/obtener');
             },
             inasistencias : function(){
               return $resource(constantes.URL + 'trabajadores/inasistencias/obtener/:sid');
@@ -53,6 +59,9 @@ angular.module('angularjsApp')
             vacaciones : function(){
               return $resource(constantes.URL + 'trabajadores/vacaciones/obtener/:sid');
             },
+            apvs : function(){
+              return $resource(constantes.URL + 'trabajadores/apvs/obtener/:sid');
+            },
             cargas : function(){
               return $resource(constantes.URL + 'trabajadores/cargas-familiares/obtener/:sid');
             },
@@ -61,6 +70,12 @@ angular.module('angularjsApp')
             },
             autorizarCargas : function(){
               return $resource(constantes.URL + 'trabajadores/autorizar-cargas-familiares/generar',
+                  {},
+                  { post : { 'method': 'POST' } }
+              );
+            },
+            cambiarTramo : function(){
+              return $resource(constantes.URL + 'trabajadores/tramo/cambiar',
                   {},
                   { post : { 'method': 'POST' } }
               );
@@ -101,6 +116,9 @@ angular.module('angularjsApp')
             trabajadoresLiquidaciones : function(){
               return $resource(constantes.URL + 'trabajadores/trabajadores-liquidaciones/obtener');
             },
+            trabajadoresF1887 : function(){
+              return $resource(constantes.URL + 'trabajadores/trabajadores-f1887/obtener/:sid');
+            },
             trabajadoresDocumentos : function(){
               return $resource(constantes.URL + 'trabajadores/trabajadores-documentos/obtener');
             },
@@ -134,11 +152,26 @@ angular.module('angularjsApp')
             contratos : function(){
               return $resource(constantes.URL + 'trabajadores/contratos/obtener/:sid');
             },
+            fichas : function(){
+              return $resource(constantes.URL + 'trabajadores/fichas/obtener/:sid');
+            },
             liquidacion : function(){
               return $resource(constantes.URL + 'trabajadores/liquidacion/generar',
                   {},
                   { post : { 'method': 'POST' } }
               );
+            },
+            f1887Trabajadores : function(){
+              return $resource(constantes.URL + 'trabajadores/f1887-trabajadores/generar',
+                  {},
+                  { post : { 'method': 'POST' } }
+              );
+            },
+            f1887 : function(){
+              return $resource(constantes.URL + 'trabajadores/f1887/generar/:anio');
+            },
+            verF1887 : function(){
+              return $resource(constantes.URL + 'trabajadores/f1887/ver/:anio');
             },
             carta : function(){
               return $resource(constantes.URL + 'trabajadores/carta-notificacion/generar',
@@ -205,6 +238,12 @@ angular.module('angularjsApp')
                     {},
                     { post : { 'method': 'POST' } }
                 );
+            },
+            liquidacionObservaciones : function(){
+              return $resource(constantes.URL + 'trabajadores/liquidacion/registro-observaciones/:id',
+                  { id : "@id"},
+                  { post : { 'method': 'POST' } }
+              );
             }
         };
   });

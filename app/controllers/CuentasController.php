@@ -13,7 +13,7 @@ class CuentasController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#cuentas');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cuentas');
         $cuentas = Cuenta::all();
         $listaCuentas=array();
         if( $cuentas->count() ){
@@ -141,16 +141,34 @@ class CuentasController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        Cuenta::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $cuenta = Cuenta::whereSid($sid)->first();
+        
+        $errores = $cuenta->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#cuentas', $cuenta->id, $cuenta->nombre, 'Delete');       
+            $cuenta->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){
         $datos = array(
             'comportamiento' => Input::get('comportamiento')['id'],
             'codigo' => Input::get('codigo'),
-            'nombre' => Input::get('nombre')
+            'nombre' => Input::get('nombre'),
+            'id' => Input::get('id')
         );
         return $datos;
     }

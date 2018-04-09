@@ -23,14 +23,16 @@ angular
     'ngStorage',
     'ui.tinymce',
     'multipleDatePicker',
-    'gm.datepickerMultiSelect'
+    'gm.datepickerMultiSelect',
+    'vcRecaptcha',
+    'flow'
   ])
   .config(function ($routeProvider, $locationProvider) {
   $locationProvider.hashPrefix('');
     
     $routeProvider
-      .when('/login', {
-        templateUrl: 'views/comun/login.html?v=252555411981985',
+      .when('/login/:SId?', {
+        templateUrl: 'views/comun/login.html?v=1.2.3.4',
         controller: 'LoginCtrl',
         controllerAs: 'login'
       })
@@ -319,6 +321,31 @@ angular
         controller: 'MisLiquidacionesCtrl',
         controllerAs: 'misLiquidaciones'
       })
+      .when('/apvs', {
+        templateUrl: 'views/apvs.html',
+        controller: 'ApvsCtrl',
+        controllerAs: 'apvs'
+      })
+      .when('/centralizacion', {
+        templateUrl: 'views/centralizacion.html',
+        controller: 'CentralizacionCtrl',
+        controllerAs: 'centralizacion'
+      })
+      .when('/reportes', {
+        templateUrl: 'views/reportes.html',
+        controller: 'ReportesCtrl',
+        controllerAs: 'reportes'
+      })
+      .when('/f1887', {
+        templateUrl: 'views/f1887.html',
+        controller: 'F1887Ctrl',
+        controllerAs: 'f1887'
+      })
+      .when('/factores-actualizacion', {
+        templateUrl: 'views/factores-actualizacion.html',
+        controller: 'FactoresActualizacionCtrl',
+        controllerAs: 'factoresActualizacion'
+      })
       .otherwise({
         redirectTo: '/login'
       });
@@ -466,18 +493,46 @@ angular
             $uibModalStack.dismissAll();
         };
         
+        function openNoAutorizado(){
+          var miModal = $uibModal.open({
+            animation: true,
+            templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+            controller: 'FormNoAutorizadoCtrl',
+            size: 'sm'
+          });
+          miModal.result.then(function () {
+          }, function () {
+            javascript:void(0)
+          });
+        }
+
+        $scope.comprobarAcceso = function(url){
+          if( $rootScope.globals.currentUser ){
+            var permitir = $rootScope.globals.currentUser.accesos.indexOf(url) >= 0;
+            if( !permitir ){
+              openNoAutorizado();
+            }else{
+              $location.path(url);
+            }
+          }
+        }        
+
         $scope.logout = function(){
-            login.ClearCredentials();
-            $location.path('/login');
+          var portal="";
+          if( $rootScope.globals.currentUser.isEmpleado ){
+            portal = angular.copy($rootScope.globals.currentUser.empresa.portal);
+          }
+          login.ClearCredentials();
+          $location.path('/login' + (portal? '/' + portal : ''));
         };
 
         $scope.openSoporteOnline=function(){
             var ancho=800;
             var alto=600;
-            var newUrl = 'http://soporte.easysystems.cl/chat?locale=Es';
+            var newUrl = 'http://soporte.easysystems.cl/chat?locale=Es&usuario=' + $rootScope.globals.currentUser.cliente;
             var posicionX =(screen.width/2)-(ancho/2); 
             var posicionY =(screen.height/2)-(alto/2); 
-            $window.open(newUrl, 'SOPORTEONLINEEASYSYSTEMSCME', 'width='+ancho+',height='+alto+',left='+posicionX+',top='+posicionY+', scrollbars=yes');
+            $window.open(newUrl, 'SOPORTEONLINEEASYSYSTEMSRRHH', 'width='+ancho+',height='+alto+',left='+posicionX+',top='+posicionY+', scrollbars=yes');
         };
 
         $scope.openFormPassword = function(){
@@ -643,14 +698,30 @@ angular
         }, 500);
 
     })
-    
-    .controller('ModalFormPasswordCtrl', function ($scope, $rootScope, $uibModalInstance, Notification, funcionario) {
+    .controller('FormNoAutorizadoCtrl', function ($scope, $uibModalInstance) {
+
+      $scope.titulo = "Permisos Insuficientes";
+      $scope.mensaje = "<b>El Usuario no posee los permisos necesarios para ingresar.</b>";
+      $scope.isExclamation = true;
+      $scope.cancel = 'Cerrar';
+
+      $scope.cerrar = function(){
+        $uibModalInstance.close();
+      }
+
+    })    
+    .controller('ModalFormPasswordCtrl', function ($scope, $rootScope, $uibModalInstance, Notification, funcionario, empleado) {
+        var usuario = $rootScope.globals.currentUser;
         $scope.objeto = {};
         $rootScope.cargando=false;
         $scope.guardar = function () {
             $rootScope.cargando=true;
             var datos;
-            datos = funcionario.perfil().post( {}, $scope.objeto );
+            if(usuario.isEmpleado){
+              datos = empleado.perfil().post( {}, $scope.objeto );
+            }else{
+              datos = funcionario.perfil().post( {}, $scope.objeto );
+            }
             datos.$promise.then(
                 function( data ){
                     if (data.success) {
@@ -761,8 +832,9 @@ angular
             positionY: 'bottom'
         });
     })
-    .config(function (uibDatepickerConfig) {
+    .config(function (uibDatepickerConfig, uibDatepickerPopupConfig ) {
         uibDatepickerConfig.showWeeks = false;
+        uibDatepickerPopupConfig .showButtonBar = false;
     })
     .factory('redirectInterceptor', function($q, $location, $window, constantes, $rootScope, $interval, $localStorage, $injector){
 
@@ -779,7 +851,7 @@ angular
                     $rootScope.menu = {};
                     cerrarVentanas();
                     $localStorage.$reset();
-                    $location.path('/login');
+                    $location.path('/login' + ($rootScope.path ? '/' + $rootScope.path : ''));
                     $interval.cancel( $rootScope.revision);
                     $rootScope.revision = $interval(function(){
                         $rootScope.checkVersion();
@@ -796,15 +868,29 @@ angular
         };
         
     })
-    .factory('fecha', function($filter){
+    .factory('fecha', function($filter, $rootScope){
       var fun = {
         convertirFecha: function(date){
-          date = new Date( date + 'T09:30:00' );
+          if(date){
+            date = new Date( date + 'T09:30:00' );
+          }
           return date;
         },
         convertirFechaFormato: function(date){
-          date = $filter('date')(new Date(date),'yyyy-MM-dd');
+          if(date){
+            date = $filter('date')(new Date(date),'yyyy-MM-dd');
+          }
           return date;
+        },
+        obtenerMes: function(date){
+          if(!date){
+            date = new Date();
+          }    
+          date = this.convertirFecha(date);
+
+          var primerDia = new Date(date.getFullYear(), date.getMonth(), 1);
+
+          return primerDia;
         },
         obtenerFechaTexto: function(date){
           if(!date){
@@ -863,32 +949,50 @@ angular
               return 'Diciembre';
               break;
           }
+        },
+        fechaActiva: function(){
+          var mes = this.convertirFecha($rootScope.globals.currentUser.empresa.mesDeTrabajo.mes).setHours(0, 0, 0, 0);
+          var fechaRemuneracion = this.convertirFecha($rootScope.globals.currentUser.empresa.mesDeTrabajo.fechaRemuneracion).setHours(0, 0, 0, 0);
+          var fechaActual = this.convertirFecha(new Date()).setHours(0, 0, 0, 0);
+          if(fechaActual <= fechaRemuneracion && fechaActual >= mes){
+            return fechaActual;
+          }
+          return mes;
         }
       }    
       return fun;       
     })    
     .factory('moneda', function($rootScope){
       var fun = {
-        convertirUF: function(valor){
+        convertirUF: function(valor, noRound){
           var pesos = (valor * $rootScope.globals.indicadores.uf.valor);
+          if(noRound){
+            return pesos;
+          }
           return Math.round(pesos);
         },
-        convertirUTM: function(valor){
+        convertirUTM: function(valor, noRound){
           var pesos = (valor * $rootScope.globals.indicadores.utm.valor);
+          if(noRound){
+            return pesos;
+          }
           return Math.round(pesos);
         },
-        convertir: function(valor, moneda){
+        convertir: function(valor, moneda, noRound){
           if(moneda==='UF'){
             valor = this.convertirUF(valor);
           }else if(moneda==='UTM'){
             valor = this.convertirUTM(valor);
+          }
+          if(noRound){
+            return valor;
           }
           return Math.round(valor);
         }
       }    
       return fun;
     }) 
-    .factory('validations', function($rootScope){
+    .factory('validations', function($rootScope, fecha){
       var fun = {
         validaRUT: function(rut){
           if(rut){
@@ -923,18 +1027,18 @@ angular
             return false;
           }
         },
-        validaFecha: function(fecha){
+        validaFecha: function(date){
           var anioActual = $rootScope.globals.currentUser.empresa.mesDeTrabajo.anio;
-          fecha = fecha.split("-");
-          if(fecha.length===3){
-            var dia = fecha[0];
-            var mes = fecha[1];
-            var anio = fecha[2];
+          date = date.split("-");
+          if(date.length===3){
+            var dia = date[0];
+            var mes = date[1];
+            var anio = date[2];
             var ultimoDia = new Date(anio, (mes), 0).getDate();
 
             if(dia > 0 && dia <= ultimoDia){
               if(mes > 0 && mes <= 12){
-                if(anio > 1900 && anio <= anioActual){
+                if(anio > 1900){
                   return true;
                 }
               }
@@ -942,6 +1046,14 @@ angular
 
           }
           return false;
+        },
+        validaFechaMin: function(date, fechaMin){
+          date = fecha.convertirFechaFormato(date)
+          fechaMin = fecha.convertirFechaFormato(fechaMin)
+          if(date < fechaMin){
+            return false;
+          }
+          return true;
         }
       }    
       return fun;
@@ -1355,6 +1467,19 @@ angular
             return $filter('number')(input * 100, decimals) + '%';
         };
     }])
+    .filter('orderObjectBy', function() {
+      return function(items, field, reverse) {
+        var filtered = [];
+        angular.forEach(items, function(item) {
+          filtered.push(item);
+        });
+        filtered.sort(function (a, b) {
+          return (a[field] > b[field] ? 1 : -1);
+        });
+        if(reverse) filtered.reverse();
+        return filtered;
+      };
+    })
     .filter('capitalize', function() {
       return function(input, all) {
         var reg = (all) ? /([^\W_]+[^\s-]*) */g : /([^\W_]+[^\s-]*)/;
@@ -1389,8 +1514,7 @@ angular
         link: function(scope,elem,attrs,ngModelCtrl) {
           var dRegex = new RegExp(attrs.awDatepickerPattern);
 
-          ngModelCtrl.$parsers.unshift(parserFecha);
-         
+          ngModelCtrl.$parsers.unshift(parserFecha);         
 
           function parserFecha(value) {
             if (typeof value === 'string') {

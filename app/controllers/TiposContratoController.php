@@ -13,7 +13,7 @@ class TiposContratoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tipos-contrato');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tipos-contrato');
         $tiposContrato = TipoContrato::all();
         $listaTiposContrato=array();
         if( $tiposContrato->count() ){
@@ -135,9 +135,25 @@ class TiposContratoController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        TipoContrato::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $contrato = TipoContrato::whereSid($sid)->first();
+        
+        $errores = $contrato->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#tipos-contrato', $contrato->id, $contrato->nombre, 'Delete');       
+            $contrato->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){

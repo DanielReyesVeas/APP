@@ -12,6 +12,7 @@ angular.module('angularjsApp')
     $scope.datos = [];
     $scope.constantes = constantes;
     $scope.opciones = {};
+    
     $scope.open = function (func) {
       var modalInstance = $uibModal.open({
         animation: $scope.animationsEnabled,
@@ -220,6 +221,7 @@ angular.module('angularjsApp')
       };
   })
   .controller('ModalFormPermisosUsuarioCtrl', function ($scope, $filter, $timeout, $rootScope, $uibModalInstance, Notification, perfil, funcionario, objeto) {
+      
       $rootScope.cargando=false;
       $scope.opcionesGuardarPerfil=[
         {id:0, opcion:'No'},
@@ -407,11 +409,22 @@ angular.module('angularjsApp')
       /*  cargar menu del sistema */
       $scope.cargarOpcionesMenu();
 
-      $scope.marcarTodosEmpresa = function( rut, permiso ){
+      $scope.marcarTodosEmpresa = function( rut, permiso ){        
         for( var op in $scope.menu.datos ){
           if($scope.menu.datos[op].sid){
             $scope.checklistEmpresa[ rut ][ $scope.menu.datos[op].sid ][ permiso ] = $scope.checkmasterEmpresa[ rut ][ permiso];
             $scope.seleccionarOpcion( rut, $scope.menu.datos[op].sid, permiso);
+          }
+        }
+        if(permiso==='ver'){
+          if(!$scope.checkmasterEmpresa[ rut ][permiso]){
+            $scope.checkmasterEmpresa[ rut ]['crear'] = false;
+            $scope.checkmasterEmpresa[ rut ]['editar'] = false;
+            $scope.checkmasterEmpresa[ rut ]['eliminar'] = false;
+          }
+        }else{
+          if($scope.checkmasterEmpresa[ rut ][permiso]){
+            $scope.checkmasterEmpresa[ rut ]['ver'] = true;
           }
         }
       };
@@ -422,6 +435,17 @@ angular.module('angularjsApp')
           $scope.agregarOpcionSeleccion( rut, opc, permiso );
         }else{
           $scope.quitarOpcionSeleccion( rut, opc, permiso );
+        }
+        if(permiso==='ver'){
+          if(!$scope.checklistEmpresa[ rut ][ opc ][permiso]){
+            $scope.checklistEmpresa[ rut ][ opc ]['crear'] = false;
+            $scope.checklistEmpresa[ rut ][ opc ]['editar'] = false;
+            $scope.checklistEmpresa[ rut ][ opc ]['eliminar'] = false;
+          }
+        }else{
+          if($scope.checklistEmpresa[ rut ][ opc ]['crear'] || $scope.checklistEmpresa[ rut ][ opc ]['editar'] || $scope.checklistEmpresa[ rut ][ opc ]['eliminar']){
+            $scope.checklistEmpresa[ rut ][ opc ]['ver'] = true;
+          }
         }
       };
 

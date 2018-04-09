@@ -60,7 +60,10 @@ class PlantillasCertificadosController extends \BaseController {
             $plantillaCertificado->sid = Funciones::generarSID();
             $plantillaCertificado->nombre = $datos['nombre'];
             $plantillaCertificado->cuerpo = $datos['cuerpo'];
-            $plantillaCertificado->save();
+            $plantillaCertificado->save();            
+            
+            Logs::crearLog('#certificados', $plantillaCertificado->id, $plantillaCertificado->nombre, 'Create', NULL, NULL, 'Plantillas Certificados');
+            
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -131,6 +134,9 @@ class PlantillasCertificadosController extends \BaseController {
             $plantillaCertificado->cuerpo = $datos['cuerpo'];
             $plantillaCertificado->nombre = $datos['nombre'];
             $plantillaCertificado->save();
+            
+            Logs::crearLog('#certificados', $plantillaCertificado->id, $plantillaCertificado->nombre, 'Update', NULL, NULL, 'Plantillas Certificados');
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -155,7 +161,12 @@ class PlantillasCertificadosController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        PlantillaCertificado::whereSid($sid)->delete();
+        $plantillaCertificado = PlantillaCertificado::whereSid($sid)->first();
+        
+        Logs::crearLog('#certificados', $plantillaCertificado->id, $plantillaCertificado->nombre, 'Delete', NULL, NULL, 'Plantillas Certificados');
+        
+        $plantillaCertificado->delete();
+        
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     

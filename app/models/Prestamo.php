@@ -29,7 +29,7 @@ class Prestamo extends Eloquent {
     public function cuotasPrestamo()
     {   
         $idPrestamo = $this->id;
-        $cuotas = Cuota::where('prestamo_id', $idPrestamo)->get();
+        $cuotas = Cuota::where('prestamo_id', $idPrestamo)->orderBy('mes')->get();
         $datosCuotas = array();
         if($cuotas){            
             foreach($cuotas as $cuota){

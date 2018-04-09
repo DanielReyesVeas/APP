@@ -1,42 +1,424 @@
-<!doctype html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<title>Laravel PHP Framework</title>
-	<style>
-		@import url(//fonts.googleapis.com/css?family=Lato:700);
+<!doctype html> <html> <head> <meta charset="utf-8"> <meta name="description" content=""> <meta name="viewport" content="width=device-width"> <link rel="shortcut icon" href="assets/global/images/favicon.png" type="image/png"> <title>Easy Systems | RRHH</title> <link href="assets/global/css/style.css?v=22222234" rel="stylesheet"> <link href="assets/global/css/theme.css?v=22222234" rel="stylesheet"> <link href="assets/global/css/ui.css" rel="stylesheet"> <link href="assets/global/plugins/metrojs/metrojs.min.css" rel="stylesheet"> <link href="assets/global/plugins/maps-amcharts/ammap/ammap.min.css" rel="stylesheet"> <link href="assets/global/plugins/slick/slick.css" rel="stylesheet"> <link href="assets/global/plugins/icheck/skins/all.css" rel="stylesheet"> <link href="assets/global/plugins/bootstrap-tags-input/bootstrap-tagsinput.css" rel="stylesheet"> <link href="assets/global/plugins/rateit/rateit.css" rel="stylesheet"> <link href="assets/global/plugins/colorpicker/spectrum.css" rel="stylesheet"> <link href="assets/global/plugins/step-form-wizard/css/step-form-wizard.css" rel="stylesheet"> <link href="assets/global/plugins/step-form-wizard/plugins/parsley/parsley.css" rel="stylesheet"> <link href="assets/global/plugins/ion-slider/ion.rangeSlider.css" rel="stylesheet"> <link href="assets/global/plugins/ion-slider/style.css" rel="stylesheet"> <link href="assets/global/plugins/bootstrap-loading/lada.min.css" rel="stylesheet"> <link href="assets/global/plugins/cke-editor/skins/bootstrapck/editor.css" rel="stylesheet"> <link href="assets/global/plugins/summernote/summernote.css" rel="stylesheet"> <link href="assets/global/plugins/cropper/cropper.css" rel="stylesheet"> <link href="assets/global/plugins/magnific/magnific-popup.css" rel="stylesheet"> <link href="assets/global/plugins/hover-effects/hover-effects.min.css" rel="stylesheet"> <link href="assets/global/plugins/fullcalendar/fullcalendar.min.css" rel="stylesheet"> <link href="assets/global/plugins/prettify/prettify.css" rel="stylesheet"> <link href="assets/global/plugins/jstree/dist/themes/default/style.css" rel="stylesheet"> <link href="assets/global/plugins/datatables/dataTables.min.css" rel="stylesheet"> <link href="assets/global/plugins/dropzone/dropzone.min.css" rel="stylesheet"> <link href="assets/global/plugins/input-text/style.min.css" rel="stylesheet"> <link href="assets/global/plugins/font-awesome-animation/font-awesome-animation.min.css" rel="stylesheet"> <link rel="stylesheet" href="assets/global/css/icons/line-icons/simple-line-icons.css"> <!-- Place favicon.ico and apple-touch-icon.png in the root directory --> <link rel="stylesheet" href="styles/vendor.dc43af10.css"> <link href="css/angular-theme.css" rel="stylesheet"> <link href="styles/estilos.css?v=25648282" rel="stylesheet"> <link rel="stylesheet" href="styles/main.16c86e60.css"> <link href="smartmenus/addons/bootstrap/jquery.smartmenus.bootstrap.css" rel="stylesheet"> <style type="text/css">@media screen and (max-width: 600px) {
+                .sidebar-scroll {
+                    overflow-y: : scroll !important;
+                    overflow: scroll !important;
+                }
+            }
+            .btn-inicio{
+                font-size:12px;
+                height: 130px !important;
+                width: 130px !important;
+                text-transform: none !important;
+                padding-top: 40px;
+                white-space:normal !important;
+                margin: 3px !important;
 
-		body {
-			margin:0;
-			font-family:'Lato', sans-serif;
-			text-align:center;
-			color: #999;
-		}
+            }
 
-		.welcome {
-			width: 300px;
-			height: 200px;
-			position: absolute;
-			left: 50%;
-			top: 50%;
-			margin-left: -150px;
-			margin-top: -100px;
-		}
+            .boton-accesos img{
+                margin: 10px 15px 10px 15px;
+            }
 
-		a, a:visited {
-			text-decoration:none;
-		}
+            .centrar{
+                    text-align: center;
+                }
 
-		h1 {
-			font-size: 32px;
-			margin: 16px 0 0 0;
-		}
-	</style>
-</head>
-<body>
-	<div class="welcome">
-		<a href="http://laravel.com" title="Laravel PHP Framework"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIcAAACHCAYAAAA850oKAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDoyNUVCMTdGOUJBNkExMUUyOTY3MkMyQjZGOTYyREVGMiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDoyNUVCMTdGQUJBNkExMUUyOTY3MkMyQjZGOTYyREVGMiI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOjI1RUIxN0Y3QkE2QTExRTI5NjcyQzJCNkY5NjJERUYyIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOjI1RUIxN0Y4QkE2QTExRTI5NjcyQzJCNkY5NjJERUYyIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+g6J7EAAAEL1JREFUeNrsXQmU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" alt="Laravel PHP Framework"></a>
-		<h1>You have arrived.</h1>
-	</div>
-</body>
-</html>
+            .btn-inicio > span{
+                font-size: 35px;
+            }
+
+            .textoVistaPrevia td{
+                text-transform: uppercase !important;
+                font-size: 11px !important;
+            }
+
+           
+            .nav .open>a, .nav .open>a:focus, .nav .open>a:hover {
+                background-color: #000 !important;
+                border-color: #000;
+            }
+
+            @media screen and (max-width: 1502px) {
+                .btn-inicio{
+                    font-size:7px;
+                    height: 100px !important;
+                    width: 100px !important;
+                    padding-top: 25px;
+                    white-space:normal !important;
+                }
+                .centrar{
+                    text-align: center;
+                }
+            }
+
+            @media screen and (max-width: 1240px) {
+                .btn-inicio{
+                    font-size:7px;
+                    height: 80px !important;
+                    width: 80px !important;
+                    padding-top: 25px;
+                    white-space:normal !important;
+                }
+                .centrar{
+                    text-align: center;
+                }
+            }
+
+
+            @media screen and (max-width: 1052px) {
+                .btn-inicio{
+                    font-size:6px;
+                    height: 70px !important;
+                    width: 70px !important;
+                    padding-top: 20px;
+                    white-space:normal !important;
+                }
+                .centrar{
+                    text-align: center;
+                }
+            }
+
+            @media screen and (max-width: 990px) {
+                .btn-inicio{
+                    font-size:12px;
+                    height: 130px !important;
+                    width: 130px !important;
+                    text-transform: none !important;
+                    padding-top: 40px;
+                    white-space:normal !important;
+                    margin: 3px !important;
+                }
+            }
+
+            @media screen and (max-width: 493px) {
+                .btn-inicio{
+                    font-size:7px;
+                    height: 100px !important;
+                    width: 100px !important;
+                    padding-top: 25px;
+                    white-space:normal !important;
+                }
+                .centrar{
+                    text-align: center;
+                }
+            }
+
+            @media screen and (max-width: 392px) {
+                .btn-inicio{
+                    font-size:7px;
+                    height: 70px !important;
+                    width: 70px !important;
+                    padding: 0px;
+                    white-space:normal !important;
+                    margin: 1px !important;
+                    padding-top: 5px;
+                }
+                .centrar{
+                    text-align: center;
+                }
+            }
+
+            .header{
+                margin:0px;
+                padding: 0px !important;
+                margin-bottom: 10px;
+            }
+
+            .page-content{
+                margin: 0px;
+                padding-top: 1px;
+            }
+
+            @media screen and (max-width: 2583px) {
+                .nombreEmpresa2{
+                    display: none;
+                    visibility: hidden;
+                }
+            }
+
+            @media screen and (max-width: 493px) {
+                .nombreEmpresa2{
+                    display: block;
+                    visibility: visible;
+                }
+            }
+
+            .main-content, .page-content{
+                background-color: #fff !important;
+            }
+
+            .dropdown-menu{
+                z-index: 2000 !important;
+            }
+
+            .inputLoading{
+               background:
+                 url('images/cargando.37ead0fc.gif')
+                 no-repeat
+                 right center;
+            }
+            .versionSistema{
+                position: fixed;
+                top: 100%;
+                margin-top: -25px;
+                text-align: right;
+                width: 100%;
+                background: #fff;
+                height: 25px;
+                padding-right: 10px;
+            }
+
+            .ir-arriba{
+                display:inline-block;
+                padding: 10px;
+                background: #000;
+                color:#fff;
+                position: fixed;
+                cursor: pointer;
+                bottom:20px;
+                right: 20px;
+                z-index: 10000;
+                font-size: 30px;
+            }
+
+            .ir-abajo{
+                display:inline-block;
+                padding: 10px;
+                background: #000;
+                color:#fff;
+                position: fixed;
+                cursor: pointer;
+                top:150px;
+                right: 20px;
+                z-index: 10000;
+                font-size: 30px;
+            }
+            .marcarRojo{
+                border:1px solid #f00 !important;
+            }
+
+            tr.strikeout td {
+                position: relative;
+                padding: 5px 10px;
+            }
+
+            tr.strikeout td:before {
+                content: " ";
+                position: absolute;
+                top: 50%;
+                left: 0;
+                border-bottom: 1px solid #f00;
+                width: 100%;
+            }
+
+            .childrenMod{
+                background-color: #202226 !important;          
+                padding-left: 0px !important;
+                width:auto !important;
+                white-space: nowrap !important;
+            }
+
+            .icon-fixed-width {
+              width: 1.28571429em;
+              display: inline-block;
+              text-align: center;
+            }
+
+            .page-spinner-loader{
+                z-index: 1000000;
+            }
+            .page-spinner-loader .bounce1, .page-spinner-loader .bounce2, .page-spinner-loader .bounce3{
+                border: 3px solid #bbb !important;
+                font-size: 20px;
+
+            }
+            .page-spinner-loader .textCargando{
+                font-family: Arial;
+                text-transform: uppercase;
+                color:#fff !important;
+                font-size: 11px;
+                font-weight: bold;
+                letter-spacing: 3px !important;
+            }
+
+            .enlaceVistaPrevia{
+                font-weight: bold;
+                font-size: 13px;
+                cursor: pointer;
+
+            }
+            .theme-sdtl.color-default .sidebar .sidebar-inner {
+                background: #d16302;
+            }
+    
+            .sidebar-top .sidebar .nav > li > a:hover {
+                background: #b05403;
+            }
+    
+            @media screen and (min-width: 1024px){
+                .sidebar-top .nav-sidebar > li.nav-hover > a {
+                    background: #b05403 !important;
+                }
+            }
+    
+            @media screen and (min-width: 1024px){
+                .sidebar-top .sidebar .nav > li > a:hover {
+                    background: #b05403;
+                }
+            }
+            .nav .open>a, .nav .open>a:focus, .nav .open>a:hover {
+                background-color: #b05403 !important;
+                border-color: #b05403;
+            }
+            .sidebar {
+                background-color: #d16302;
+            }
+            .childrenMod{
+                background-color: #b05403 !important;          
+            }
+            .sidebar .sidebar-inner .nav-sidebar > li > a i {
+              opacity: 0.95;
+            }
+            .sidebar .sidebar-inner .nav-sidebar > li > a {
+                font-weight: normal;
+            }
+            .dropdown-menu {
+                font-size: 13px;
+            }
+            .dropdown-menu > li > a {
+                color:#aaa;        
+            }
+            .label-anioActivo{
+                background: #d16302 !important;
+            }</style> <script type="text/javascript">function editarComprobante(comprobanteId){
+                window.scopeSystem.cerrarModals();
+                setTimeout( function(){
+                    window.location.href="#registro-asientos-contables";
+                }, 500);
+                
+                setTimeout( function(){
+                    window.scopeRegistroAsientos.nuevo();
+                }, 1000);
+                
+                setTimeout( function(){
+                    window.scopeRegistroAsientos.cargarComprobante(comprobanteId);
+                }, 1500);
+                
+            }</script> </head> <body ng-app="angularjsApp" class="sidebar-top fixed-topbar fixed-sidebar theme-sdtl color-default" ng-controller="systemCtrl"> <!--[if lt IE 7]>
+        <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+        <![endif]--> <!-- BEGIN PAGE SPINNER --> <div ng-spinner-loader class="page-spinner-loader" style="background-color: #fff !important" ng-if="!globals.currentUser.nombre"> <div class="bounce1"></div> <div class="bounce2"></div> <div class="bounce3"></div> </div> <!-- END PAGE SPINNER --> <div class="cargando page-spinner-loader" ng-if="cargando && globals.currentUser.nombre"> <div class="bounce1"></div> <div class="bounce2"></div> <div class="bounce3"></div> </div> <section ng-show="globals.currentUser.nombre && habilitarVista" style="background-color: #fff !important"> <!-- BEGIN SIDEBAR --> <div class="sidebar"> <div class="logopanel" style="padding: 0px"> <h1> <a href="#/inicio"></a> </h1> </div> <div class="sidebar-inner sidebar-scroll"> <!--
+                        <ul class="nav nav-sidebar">
+                            <li ng-class="{ 'nav-parent' : menu.subopciones.length > 0 }" ng-repeat="menu in globals.currentUser.menu">
+                                <a ng-if="menu.subopciones.length > 0" href="javascript:void(0);">
+                                    <i class="fa fa-fw {{ menu.fontawesome }}"></i> 
+                                    {{ menu.opcion }}
+                                    <i class="fa fa-fw fa-caret-down"></i>
+                                </a>
+
+                                <a ng-if="!menu.subopciones.length" href="{{menu.link}}"><i class="fa fa-fw {{ menu.fontawesome }}"></i> {{ menu.opcion }}</a>
+
+                                <ul ng-if="menu.subopciones.length > 0" id="submenu_{{ $index }}" class="children collapse">
+                                    <li ng-repeat="opcion in menu.subopciones">
+                                        <a href="{{ opcion.link }}" ng-if="!opcion.onclick">
+                                            <i class="fa fa-fw {{ opcion.fontawesome }}"></i> 
+                                        {{ opcion.opcion }}</a>
+
+                                        <a href="javascript:void(0)" ng-if="opcion.onclick" ng-click="this[ opcion.onclick ]()">
+                                            <i class="fa fa-fw {{ opcion.fontawesome }}"></i> 
+                                        {{ opcion.opcion }}</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                        --> <ul class="nav navbar-nav nav-sidebar" id="main-menu"> <li ng-repeat="menu in globals.currentUser.menu"> <a ng-if="menu.subopciones.length > 0" href="javascript:void(0);"> <i class="fa fa-fw {{ menu.fontawesome }}"></i> {{ menu.opcion }} <i class="fa fa-fw fa-caret-down"></i> </a> <a ng-if="!menu.subopciones.length" href="{{menu.link}}"><i class="fa fa-fw {{ menu.fontawesome }}"></i> {{ menu.opcion }}</a> <ul ng-if="menu.subopciones.length > 0" id="submenu_{{ $index }}" class="dropdown-menu childrenMod"> <li ng-repeat="opcion in menu.subopciones"> <a href="{{ opcion.link }}" ng-if="!opcion.onclick" style="color:#fff; padding-right: 40px !important;  white-space: nowrap"> <i class="fa fa-fw {{ opcion.fontawesome? opcion.fontawesome : 'fa-ban' }} icon-fixed-width"></i> <i ng-show="opcion.subopciones.length > 0" class="fa fw fa-caret-right"></i> {{ opcion.opcion }} </a> <a href="javascript:void(0)" ng-if="opcion.onclick" ng-click="this[ opcion.onclick ]()" style="padding-right: 50px !important; white-space: nowrap"> <i class="fa fa-fw {{ opcion.fontawesome? opcion.fontawesome : 'fa-ban' }} icon-fixed-width"></i> <i ng-show="opcion.subopciones.length > 0" class="fa fa-caret-right"></i> {{ opcion.opcion }} </a> <ul ng-if="opcion.subopciones.length > 0" id="submenu_{{ $index }}" class="dropdown-menu childrenMod"> <li ng-repeat="opcion2 in opcion.subopciones"> <a href="{{ opcion2.link }}" ng-if="!opcion2.onclick" style="color:#fff; padding-right: 50px !important"> <i class="fa fa-fw {{ opcion2.fontawesome? opcion2.fontawesome : 'fa-ban' }} icon-fixed-width">&nbsp;</i> {{ opcion2.opcion }} </a> <a href="javascript:void(0)" ng-if="opcion2.onclick" ng-click="this[ opcion2.onclick ]()" style="padding-right: 50px !important"> <i class="fa fa-fw {{ opcion2.fontawesome? opcion2.fontawesome : 'fa-ban' }} icon-fixed-width"></i> {{ opcion2.opcion }} </a> </li> </ul> </li> </ul> </li> </ul> </div> </div> <!-- END SIDEBAR --> <div class="main-content"> <!-- BEGIN TOPBAR --> <div class="topbar"> <div class="header-left"> <div class="topnav"> <a class="menutoggle" href="javascript:void(0);" data-toggle="sidebar-collapsed"><span class="menu__handle"><span>Menu</span></span></a> </div> </div> <div class="header-right"> <ul class="header-menu nav navbar-nav"> <!-- BEGIN USER DROPDOWN --> <li class="dropdown" id="language-header" style="padding-top:5px" ng-if="globals.currentUser.empresas.length>0 && !globals.currentUser.isEmpleado"> <a href="#" data-toggle="dropdown" data-hover="dropdown" data-close-others="true" style="margin-bottom: 0px; padding-top:0px; line-height:20px"> <p class="label label-anioActivo" style="font-size:15px; margin-bottom: 0px"> {{ globals.currentUser.empresa.mesDeTrabajo.mesActivo }} </p> <p class="nombreEmpresa" style="font-weight: bold; font-size:10px; text-align: center; margin: 0px; color: #b05403"> Mes de Trabajo </p> </a> <ul class="dropdown-menu withScroll" style="width:120px !important; max-width:120px !important; left:10px; padding:2px !important; max-height: 100px !important"> <li ng-repeat="mesDeTrabajo in globals.currentUser.listaMesesDeTrabajo" style="padding:2px !important"> <a href="javascript:void(0);" ng-click="cambiarMesDeTrabajo(mesDeTrabajo)" style="padding:2px !important"> <span style="font-size:10px; text-transform: uppercase">{{ mesDeTrabajo.mesActivo }}</span> </a> </li> </ul> </li> <li class="dropdown" id="language-header" ng-if="globals.currentUser.empresas.length>0 && !globals.currentUser.isEmpleado"> <a href="#" data-toggle="dropdown" data-hover="dropdown" data-close-others="true"> <i class="icon-cloud-upload"></i> <span class="nombreEmpresa" style="font-weight: normal; font-size:15px; color:#666; font-family: 'Open Sans' !important"> {{ globals.currentUser.empresa.empresa }} </span> <span class="nombreEmpresa2" style="font-weight: normal; font-size:15px; color:#666; font-family: 'Open Sans' !important"> {{ globals.currentUser.empresa.empresa | limitTo : 6 : 0 }} </span> </a> <ul ng-if="globals.currentUser.empresas.length>0" class="dropdown-menu withScroll" style="width:300px !important; max-width:400px !important; left:0px; padding:2px !important; max-height: 450px !important"> <li ng-repeat="empresa in globals.currentUser.empresas | filter: filtroEmpresa" style="width:400px; padding:2px !important"> <a href="javascript:void(0);" ng-click="cambiarEmpresa(empresa)" style="padding:2px !important"> <i class="icon-cloud-upload"></i>&nbsp;&nbsp;&nbsp; <span style="font-size:10px; text-transform: uppercase">{{ empresa.empresa | limitTo : 40 : 0 }}</span> </a> </li> </ul> </li> <!-- END USER DROPDOWN --> <!-- BEGIN NOTIFICATION DROPDOWN --> <!--
+                                <li class="dropdown" id="notifications-header">
+                                    <a href="#" data-toggle="dropdown" data-hover="dropdown" data-close-others="true">
+                                    <i class="icon-bell"></i>
+                                        <span class="badge badge-danger badge-header">6</span>
+                                    </a>                                    
+                                </li>
+                                --> <!-- END NOTIFICATION DROPDOWN --> <!-- BEGIN MESSAGES DROPDOWN --> <!--
+                                <li class="dropdown" id="messages-header">
+                                    <a href="#" data-toggle="dropdown" data-hover="dropdown" data-close-others="true">
+                                    <i class="icon-paper-plane"></i>
+                                    <span class="badge badge-primary badge-header">
+                                    8
+                                    </span>
+                                    </a>
+                                    
+                                </li>
+                                --> <!-- END MESSAGES DROPDOWN --> <!-- BEGIN USER DROPDOWN --> <li class="dropdown" id="user-header" style="max-width: 250px !important"> <a href="#" data-toggle="dropdown" data-hover="dropdown" data-close-others="true"> <img ng-src="{{ globals.currentUser.imagen }}" style="max-height: 60px; max-width:60px" alt="user image"> <span class="username" style="max-width: 200px !important;  text-transform: capitalize">{{ globals.currentUser.nombre | limitTo : 25 : 0 }}</span> </a> <ul class="dropdown-menu"> <li> <a href="javascript:void(0);" ng-click="openFormPassword();"><i class="icon-key"></i><span>Modificar Contraseña</span></a> </li> <li> <a href="javascript:void(0)" ng-click="logout()"><i class="icon-logout"></i><span>Cerrar sesión</span></a> </li> </ul> </li> <!-- END USER DROPDOWN --> </ul> </div> <!-- header-right --> </div> <!-- END TOPBAR --> <!-- BEGIN PAGE CONTENT --> <div class="ng-view at-view-slide-in-left page-content" autoscroll="true" style="min-height:500px; margin-bottom: 25px"> </div> <div class="versionSistema"> <small style="font-size:12px;color:#666;font-weight:bold"> Versión: {{ constantes.version }} &nbsp;&nbsp;@&nbsp;&nbsp; {{ constantes.versionFecha }} </small> </div> <!-- END PAGE CONTENT --> <script type="text/ng-template" id="myModalPassword.html"><div class="modal-header">
+                            <h3 class="modal-title">Cambiar Contraseña</h3>
+                        </div>
+                        <div class="modal-body">
+                            <form class="form-horizontal" name="form" novalidate autocomplete="off" >
+                                <div class="panel panel-default">
+                                    <div class="panel-heading">Datos del Usuario</div>
+                                    <div class="panel-body">
+                                        <div class="form-group form-group-md">
+                                            <label class="col-sm-4 control-label" for="formGroupInputLarge">Nombre:</label>
+                                            <div class="col-sm-8">
+                                                {{ globals.currentUser.nombre }}
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-group-md">
+                                            <label class="col-sm-4 control-label" for="formGroupInputLarge">Contraseña Actual:</label>
+                                            <div class="col-sm-4">
+                                                <input type="password" ng-model="objeto.actual" class="form-control form-white" ng-minLength="4" required />
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-group-md">
+                                            <label class="col-sm-4 control-label" for="formGroupInputLarge">Contraseña Nueva:</label>
+                                            <div class="col-sm-4">
+                                                <input type="password" ng-model="objeto.nueva" class="form-control form-white" ng-minLength="4" required />
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-group-md">
+                                            <label class="col-sm-4 control-label" for="formGroupInputLarge">Rep Contraseña Nueva:</label>
+                                            <div class="col-sm-4">
+                                                <input type="password" ng-model="objeto.repNueva" class="form-control form-white" ng-minLength="4" compare-to="objeto.nueva" required />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-primary" ng-disabled="form.$invalid" ng-click="guardar()">Actualizar</button>
+                            <button class="btn btn-default" ng-click="cancel()">Cancelar</button>
+                        </div></script> <script type="text/ng-template" id="myModalContactoComercial.html"><div class="modal-header">
+                            <h3 class="modal-title">Contacto Comercial</h3>
+                        </div>
+                        <div class="modal-body" style="background: #fff !important;">
+                            <form class="form-horizontal" name="form" novalidate autocomplete="off" >
+                                <div class="col-sm-12">
+                                    <div class="col-sm-8">
+                                        <div class="form-group form-group-md">
+                                            <label class="col-sm-5 control-label" for="formGroupInputLarge">Contacto Comercial :</label>
+                                            <div class="col-sm-7">
+                                                Cintya Lucero Uribe
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-group-md">
+                                            <label class="col-sm-5 control-label" for="formGroupInputLarge">Email:</label>
+                                            <div class="col-sm-4">
+                                                clucero@easysystems.cl
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-group-md">
+                                            <label class="col-sm-5 control-label" for="formGroupInputLarge">Teléfono:</label>
+                                            <div class="col-sm-4">
+                                                232013800
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-4">
+                                        <img src="images/easy_systems.png" style="width: 200px;" />
+                                    </div>
+                                </div>  
+                                
+                            </form>
+                        </div>
+                        <div class="modal-footer">                                                 
+                            <button class="btn btn-default" ng-click="cancel()">Salir</button>
+                        </div></script> </div> </section> <div ng-if="!globals.currentUser.nombre"> <div ng-show="cargando" id="cargando" class="cargando oculto"> <img src="images/cargando.37ead0fc.gif" style="height: 20px" class="ajax-loader"> </div> <div ng-view=""></div> </div> <!-- END SEARCH --> <!-- BEGIN PRELOADER --> <script src="scripts/vendor.02032375.js"></script> <script src="scripts/scripts.445c0d21.js?v=1.2.3"></script> <script src="assets/global/plugins/gsap/main-gsap.min.js"></script> <script src="assets/global/plugins/bootstrap/js/bootstrap.min.js"></script> <script src="assets/global/plugins/jquery-cookies/jquery.cookies.min.js"></script> <script src="assets/global/plugins/jquery-block-ui/jquery.blockUI.min.js"></script> <script src="assets/global/plugins/bootbox/bootbox.min.js"></script> <script src="assets/global/plugins/mcustom-scrollbar/jquery.mCustomScrollbar.concat.min.js"></script> <script src="assets/global/plugins/bootstrap-dropdown/bootstrap-hover-dropdown.min.js"></script> <script src="assets/global/plugins/charts-sparkline/sparkline.min.js"></script> <script src="assets/global/plugins/select2/select2.min.js"></script> <script src="assets/global/plugins/icheck/icheck.min.js"></script> <script src="assets/global/plugins/backstretch/backstretch.min.js"></script> <script src="assets/global/plugins/bootstrap-progressbar/bootstrap-progressbar.min.js"></script> <script src="assets/global/js/sidebar_hover.js"></script> <script src="assets/global/js/widgets/notes.js"></script> <script src="assets/global/js/pages/search.js"></script> <script src="assets/global/plugins/quicksearch/quicksearch.js"></script> <script src="assets/global/plugins/slick/slick.js"></script> <script src="assets/global/plugins/icheck/icheck.js"></script> <script src="assets/global/plugins/switchery/switchery.js"></script> <script src="assets/global/plugins/colorpicker/spectrum.js"></script> <script src="assets/global/plugins/touchspin/jquery.bootstrap-touchspin.js"></script> <script src="assets/global/plugins/step-form-wizard/js/step-form-wizard.js"></script> <script src="assets/global/plugins/step-form-wizard/plugins/parsley/parsley.min.js"></script> <script src="assets/global/plugins/jquery-validation/jquery.validate.js"></script> <script src="assets/global/plugins/bootstrap-slider/bootstrap-slider.js"></script> <script src="assets/global/plugins/ion-slider/ion.rangeSlider.js"></script> <script src="assets/global/plugins/bootstrap/js/jasny-bootstrap.js"></script> <script src="assets/global/plugins/isotope/isotope.pkgd.min.js"></script> <script src="assets/global/plugins/magnific/jquery.magnific-popup.js"></script> <script src="assets/global/plugins/moment/moment.min.js"></script> <script src="assets/global/plugins/fullcalendar/fullcalendar.min.js"></script> <script src="assets/global/plugins/countup/countUp.js"></script> <script src="assets/global/plugins/bootstrap-loading/lada.min.js"></script> <script src="assets/global/plugins/jstree/jstree.js"></script> <script src="assets/global/plugins/datatables/jquery.dataTables.min.js"></script> <script src="assets/global/plugins/typed/typed.js"></script> <script src="assets/global/plugins/cke-editor/ckeditor.js"></script> <script src="assets/global/plugins/cke-editor/config.js"></script> <script src="assets/global/plugins/cke-editor/styles.js"></script> <script src="assets/global/plugins/cke-editor/adapters/adapters.min.js"></script> <script src="assets/global/plugins/cke-editor/lang/en.js"></script> <script src="assets/global/plugins/cke-editor/skins/bootstrapck/skin.js"></script> <script src="assets/global/plugins/summernote/summernote.js"></script> <script src="assets/global/plugins/prettify/prettify.js"></script> <script src="assets/global/plugins/dropzone/dropzone.min.js"></script> <script src="assets/global/plugins/idle-timeout/jquery.idletimeout.min.js"></script> <script src="assets/global/plugins/idle-timeout/jquery.idletimer.min.js"></script> <script src="assets/global/plugins/cropper/cropper.js"></script> <script src="assets/global/plugins/noty/jquery.noty.packaged.min.js"></script> <script src="assets/global/plugins/bootstrap-editable/js/bootstrap-editable.min.js"></script> <script src="assets/global/plugins/bootstrap-context-menu/bootstrap-contextmenu.min.js"></script> <script src="assets/global/js/widgets/todo_list.js"></script> <script src="assets/global/plugins/metrojs/metrojs.min.js"></script> <script src="assets/global/plugins/charts-chartjs/Chart.min.js"></script> <script src="assets/global/plugins/charts-highstock/js/highstock.min.js"></script> <script src="assets/global/plugins/charts-highstock/js/modules/exporting.min.js"></script> <script src="assets/global/plugins/skycons/skycons.min.js"></script> <script src="assets/global/plugins/simple-weather/jquery.simpleWeather.js"></script> <script src="assets/global/plugins/bootstrap-tags-input/bootstrap-tagsinput.js"></script> <script src="assets/global/plugins/rateit/jquery.rateit.min.js"></script> <script src="assets/global/plugins/charts-highstock/js/highcharts-more.min.js"></script> <script src="assets/global/plugins/charts-highstock/js/modules/exporting.min.js"></script> <script src="assets/global/plugins/autosize/autosize.min.js"></script> <script src="assets/global/js/widgets/widget_weather.js"></script> <script src="assets/global/js/pages/ecommerce.js"></script> <script src="assets/global/js/pages/form_icheck.js"></script> <!-- BEGIN CUSTOM ANGULARJS SCRIPTS --> <script src="template/js/builder.js"></script> <script src="template/js/application.js"></script> <script src="template/js/plugins.js"></script> <script src="template/js/quickview.js"></script> <!-- END CUSTOM ANGULARJS SCRIPTS --> <!-- SmartMenus jQuery plugin --> <script type="text/javascript" src="smartmenus/jquery.smartmenus.js?v=145255"></script> <!-- SmartMenus jQuery Bootstrap Addon --> <script type="text/javascript" src="smartmenus/addons/bootstrap/jquery.smartmenus.bootstrap.js"></script> </body> </html>

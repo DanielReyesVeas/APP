@@ -128,6 +128,7 @@ angular.module('angularjsApp')
         $scope.error = {};
         $scope.listaErrores=[];
         var file = file;
+        console.log($scope.documento)
         Upload.upload({
           url: constantes.URL + 'documentos-empresa/archivo/subir',
           data: { file : file, publico : $scope.documento.publico, descripcion : $scope.documento.descripcion }

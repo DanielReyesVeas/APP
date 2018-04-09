@@ -12,7 +12,7 @@ angular.module('angularjsApp')
 
     $anchorScroll();
     $scope.advertencia = "Recuerde que cualquier modificación en los indicadores previsionales afecta directamente el pago de las cotizaciones previsionales del sistema. ¿Ud. se encuentra seguro y responsable de efectuar modificaciones?";
-    $scope.confirmacion = "Los valores han sido modifcados. ¿Ud. se encuentra seguro y responsable cambiar los valores de los indicadores?";    
+    $scope.confirmacion = "Los valores han sido modificados. ¿Ud. se encuentra seguro y responsable cambiar los valores de los indicadores?";    
     $scope.nuevo = false;
     if($rootScope.globals.currentUser.empresa){
       $scope.mesDeTrabajo = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
@@ -75,6 +75,7 @@ angular.module('angularjsApp')
       datos.$promise.then(function(response){        
         $scope.tablas = response.datos;
         $scope.accesos = response.accesos;
+        $scope.ufAnterior = response.ufAnterior;
         $rootScope.cargando=false;
         $scope.cargado = true;
         if($rootScope.globals.currentUser.empresa){
@@ -125,6 +126,11 @@ angular.module('angularjsApp')
 
     $scope.convertirUF = function(valor){
       return moneda.convertirUF(valor);
+    }
+
+    $scope.convertirUFAnterior = function(valor){
+      console.log($scope.ufAnterior)
+      return ($scope.ufAnterior.valor * valor);
     }
 
     function obtenerDatosMes(){
@@ -388,7 +394,7 @@ angular.module('angularjsApp')
     };
 
     $scope.dateOptions = {
-      dateDisabled: disabled,
+      //dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: new Date(2020, 5, 22),
       minDate: new Date(),

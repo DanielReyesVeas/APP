@@ -9,7 +9,7 @@ class TablasController extends \BaseController {
 
     public function index()
     {
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tablas');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tablas');
         $tablas = Tabla::all();
         
         $listaTablas=array();

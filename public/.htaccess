@@ -4,8 +4,6 @@
     </IfModule>
 
     RewriteEngine On
-    RewriteCond %{HTTP_HOST} ^www.jc.rrhh-es.com$ [NC]  
-    RewriteRule ^(.*)$ http://jc.rrhh-es.com/$1 [R=301,QSA,L] 
 
     # Redirect Trailing Slashes...
     RewriteRule ^(.*)/$ /$1 [L,R=301]

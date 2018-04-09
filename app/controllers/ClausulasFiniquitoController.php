@@ -13,7 +13,7 @@ class ClausulasFiniquitoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#clausulas-finiquito');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#clausulas-finiquito');
         $clausulasFiniquito = ClausulaFiniquito::all();
         $listaClausulasFiniquito=array();
         if( $clausulasFiniquito->count() ){

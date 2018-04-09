@@ -8,6 +8,36 @@ class DetalleApvi extends Eloquent {
         return $this->belongsTo('Liquidacion','liquidacion_id');
     }
     
+    public function afp(){
+        return $this->belongsTo('Glosa', 'afp_id');
+    }
+    
+    public function cuenta($cuentasCodigo, $centroCostoId)
+    {
+        if(strtolower($this->regimen)=='a'){
+            $descuento = TipoDescuento::where('estructura_descuento_id', 4)->where('nombre', $this->afp_id)->first();
+        }else{
+            $descuento = TipoDescuento::where('estructura_descuento_id', 5)->where('nombre', $this->afp_id)->first();
+        }
+        
+        if($descuento){
+            $codigo = $descuento->cuenta($cuentasCodigo, $centroCostoId);
+            if($codigo){
+                return $codigo;
+            }
+        }
+        
+        return null;
+    }
+    
+    public function codigoAfp()
+    {
+        $afp = $this->afp_id;
+        $codigo = Codigo::find($afp)->codigo;
+        
+        return $codigo;
+    }
+    
     static function errores($datos){
          
         $rules = array(

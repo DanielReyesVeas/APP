@@ -92,12 +92,14 @@ class ContratosController extends \BaseController {
             $contrato->empresa_representante_rut = $datos['empresa_representante_rut'];
             $contrato->empresa_representante_domicilio = $datos['empresa_representante_domicilio'];
             $contrato->cuerpo = $datos['cuerpo'];
-            $contrato->save();            
+            $contrato->save();    
+            
+            Logs::crearLog('#trabajadores', $documento->id, $documento->alias, 'Create', $contrato->id, $contrato->trabajador_nombre_completo, 'Contratos Trabajador'); 
             
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
-            	'sid' => $contrato->sid
+            	'sid' => $contrato
             );
         }else{
             $respuesta=array(

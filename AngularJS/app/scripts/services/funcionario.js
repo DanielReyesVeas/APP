@@ -23,22 +23,11 @@ angular.module('angularjsApp')
             opciones : function(){
                 return $resource(constantes.URL + 'usuarios/opciones/formulario');
             },
-            usuario : function(){
-              return $resource(constantes.URL + 'usuario/empleado/obtener/:sid');
-            },
-            empleados : function(){
-                return $resource(constantes.URL + 'usuarios/empleados/obtener');
-            },
             perfil: function(){
                 return $resource(constantes.URL + 'misdatos', {},{
                     post : { method : 'POST'}
                 });
-            },
-            cambiarPermisos: function(){
-                return $resource(constantes.URL + 'usuarios/permisos/cambiar', {},{
-                    post : { method : 'POST'}
-                });
-            },
+            },            
             buscarRut : function(rut){
                 return $resource(constantes.URL + 'usuarios/buscar-rut/' + rut);
             },

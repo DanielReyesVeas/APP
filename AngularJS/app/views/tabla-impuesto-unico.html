@@ -43,10 +43,10 @@
               </td>
               <td> 
                 <span ng-if="dato.imponibleMensualHasta<999.99 && !isEdit && isPesos">${{ convertirUTM(dato.imponibleMensualHasta) | number:2 }}</span>
-                <span ng-if="dato.imponibleMensualHasta==999.99 && !isEdit && isPesos">Y más</span>
+                <span ng-if="dato.imponibleMensualHasta==99999.99 && !isEdit && isPesos">Y más</span>
 
                 <span ng-if="dato.imponibleMensualHasta<999.99 && !isEdit && !isPesos">{{ dato.imponibleMensualHasta | number }} UTM</span>
-                <span ng-if="dato.imponibleMensualHasta==999.99 && !isEdit && !isPesos">Y más</span>
+                <span ng-if="dato.imponibleMensualHasta==99999.99 && !isEdit && !isPesos">Y más</span>
                 
                 <span ng-if="isEdit && dato.imponibleMensualHasta==999.99">Y más UTM</span>
                 <span ng-if="isEdit && dato.imponibleMensualHasta<999.99"><input type="text" ng-model="inputHasta[$index]" style="width: 50px;"> UTM</span> 

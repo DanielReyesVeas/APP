@@ -144,6 +144,7 @@ angular.module('angularjsApp')
   })
   .controller('FormMesFestivosCtrl', function ($rootScope, anio, anioActual, fecha, $uibModal, $filter, Notification, $scope, $uibModalInstance, objeto, trabajador) { 
 
+    $scope.titulo = "Semana Corrida";
     $scope.mes = angular.copy(objeto);
     $scope.selectedDates = angular.copy($scope.mes.feriados);
     $scope.anioActual = angular.copy(anioActual);

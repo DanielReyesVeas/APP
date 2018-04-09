@@ -8,6 +8,18 @@ class Documento extends Eloquent {
         return $this->belongsTo('TipoDocumento','tipo_documento_id');
     }
     
+    public function trabajador(){
+        return $this->belongsTo('Trabajador','trabajador_id');
+    }
+    
+    public function extension()
+    {
+        $extension = $this->nombre;
+        $info = new SplFileInfo($extension);
+        
+        return $info->getExtension();
+    }
+    
     public function eliminarDocumento()
     {
         $idTipo = $this->tipo_documento_id;
@@ -112,8 +124,10 @@ class Documento extends Eloquent {
         $nombre = $this->nombre;
         $this->delete();
         
-        if(unlink(public_path() . '/stories/' . $nombre)){
-            return true;
+        if(file_exists(public_path() . '/stories/' . $nombre)){
+            if(unlink(public_path() . '/stories/' . $nombre)){
+                return true;
+            }
         }else{
             return false;
         }

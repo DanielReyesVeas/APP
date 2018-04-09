@@ -58,24 +58,31 @@ class LicenciasController extends \BaseController {
      */
     public function store()
     {
-        $datos = $this->get_datos_formulario();
-        $errores = Licencia::errores($datos);      
+        $datos = Input::all();
+        $errores = null;  
         
         if(!$errores){
-            $licencia = new Licencia();
-            $licencia->sid = Funciones::generarSID();
-            $licencia->trabajador_id = $datos['trabajador_id'];
-            $licencia->mes_id = $datos['mes_id'];
-            $licencia->desde = $datos['desde'];
-            $licencia->hasta = $datos['hasta'];
-            $licencia->dias = $datos['dias'];
-            $licencia->codigo = $datos['codigo'];
-            $licencia->observacion = $datos['observacion'];
-            $licencia->save();
+            foreach($datos as $dato){
+                $mes = MesDeTrabajo::where('mes', $dato['mes'])->first();
+                $licencia = new Licencia();
+                $licencia->sid = Funciones::generarSID();
+                $licencia->trabajador_id = $dato['idTrabajador'];
+                $licencia->mes_id = $mes->id;
+                $licencia->desde = $dato['desde'];
+                $licencia->hasta = $dato['hasta'];
+                $licencia->dias = $dato['dias'];
+                $licencia->codigo = $dato['codigo'];
+                $licencia->observacion = $dato['observacion'];
+                $licencia->save();
+
+                $trabajador = $licencia->trabajador;
+                $ficha = $trabajador->ficha();
+                Logs::crearLog('#ingreso-licencias', $trabajador->id, $ficha->nombreCompleto(), 'Create', $licencia->id, $licencia->dias, NULL);
+            }
+            
             $respuesta=array(
             	'success' => true,
-            	'mensaje' => "La Información fue almacenada correctamente",
-            	'id' => $licencia->id
+            	'mensaje' => "La Información fue almacenada correctamente"
             );
         }else{
             $respuesta=array(
@@ -93,7 +100,7 @@ class LicenciasController extends \BaseController {
      * @param  int  $id
      * @return Response
      */
-    public function show($sid)
+    public function showa($sid)
     {
         $licencia = Licencia::whereSid($sid)->first();
 
@@ -106,6 +113,40 @@ class LicenciasController extends \BaseController {
             'observacion' => $licencia->observacion,
             'dias' => $licencia->dias,        
             'trabajador' => $licencia->trabajadorLicencia()
+        );
+        
+        return Response::json($datos);
+    }
+    
+    public function show($sid)
+    {
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#apvs');
+        $datosLicencia = null;
+        $afps = Glosa::listaAfpsApvs();
+        $formasPago = Glosa::listaFormasPago();
+        $trabajadores = array();
+        
+        if($sid){
+            $licencia = Licencia::whereSid($sid)->first();
+
+            $datosLicencia=array(
+                'id' => $licencia->id,
+                'sid' => $licencia->sid,            
+                'desde' => $licencia->desde,
+                'hasta' => $licencia->hasta,
+                'codigo' => $licencia->codigo,
+                'observacion' => $licencia->observacion,
+                'dias' => $licencia->dias,        
+                'trabajador' => $licencia->trabajadorLicencia()
+            );
+        }else{
+            $trabajadores = Trabajador::activosFiniquitados();
+        }
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $datosLicencia,
+            'trabajadores' => $trabajadores
         );
         
         return Response::json($datos);
@@ -143,6 +184,11 @@ class LicenciasController extends \BaseController {
             $licencia->codigo = $datos['codigo'];
             $licencia->observacion = $datos['observacion'];
             $licencia->save();
+            
+            $trabajador = $licencia->trabajador;
+            $ficha = $trabajador->ficha();
+            Logs::crearLog('#ingreso-licencias', $trabajador->id, $ficha->nombreCompleto(), 'Update', $licencia->id, $licencia->dias, NULL);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -167,7 +213,15 @@ class LicenciasController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        Licencia::whereSid($sid)->delete();
+        
+        $licencia = Licencia::whereSid($sid)->first();
+        
+        $trabajador = $licencia->trabajador;
+        $ficha = $trabajador->ficha();
+        Logs::crearLog('#ingreso-licencias', $trabajador->id, $ficha->nombreCompleto(), 'Delete', $licencia['id'], $licencia['dias'], NULL);
+        
+        $licencia->delete();
+        
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     

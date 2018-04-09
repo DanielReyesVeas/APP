@@ -35,15 +35,8 @@ CREATE TABLE IF NOT EXISTS `ahorro_previsional_voluntario` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
---
--- Volcado de datos para la tabla `ahorro_previsional_voluntario`
---
-
-INSERT INTO `ahorro_previsional_voluntario` (`id`, `mes`, `nombre`, `valor`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 'Tope Mensual', '50.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(2, '2017-01-01', 'Tope Anual', '600.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
 
 -- --------------------------------------------------------
 
@@ -63,17 +56,8 @@ CREATE TABLE IF NOT EXISTS `asignacion_familiar` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=5 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
---
--- Volcado de datos para la tabla `asignacion_familiar`
---
-
-INSERT INTO `asignacion_familiar` (`id`, `mes`, `tramo`, `monto`, `renta_menor`, `renta_mayor`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 'a', 10844, 0, 277016, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(2, '2017-01-01', 'b', 6655, 277016, 404613, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(3, '2017-01-01', 'c', 2104, 404613, 631058, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(4, '2017-01-01', 'd', 0, 631058, 2147483647, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
 
 -- --------------------------------------------------------
 
@@ -570,15 +554,8 @@ CREATE TABLE IF NOT EXISTS `cotizacion_trabajos_pesados` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
---
--- Volcado de datos para la tabla `cotizacion_trabajos_pesados`
---
-
-INSERT INTO `cotizacion_trabajos_pesados` (`id`, `mes`, `trabajo`, `valor`, `financiamiento_empleador`, `financiamiento_trabajador`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 'Trabajo pesado', 4, '2.0', '2.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(2, '2017-01-01', 'Trabajo menos pesado', 2, '1.0', '1.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
 
 -- --------------------------------------------------------
 
@@ -622,14 +599,7 @@ CREATE TABLE IF NOT EXISTS `deposito_convenido` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=2 ;
-
---
--- Volcado de datos para la tabla `deposito_convenido`
---
-
-INSERT INTO `deposito_convenido` (`id`, `mes`, `nombre`, `valor`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 'Tope Anual', '900.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 
 -- --------------------------------------------------------
@@ -660,6 +630,8 @@ CREATE TABLE IF NOT EXISTS `documentos_sistema` (
 
 CREATE TABLE IF NOT EXISTS `empresas` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `portal` VARCHAR(20) NULL,
+  `url` VARCHAR(255) NULL,
   `razon_social` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `nombre_fantasia` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `rut` varchar(15) COLLATE utf8_unicode_ci NOT NULL,
@@ -689,6 +661,16 @@ CREATE TABLE IF NOT EXISTS `empresas` (
   `gratificacion` TINYTEXT NOT NULL,
   `tipo_gratificacion` TINYTEXT NOT NULL,
   `tope_gratificacion` DECIMAL(6,3) NOT NULL DEFAULT '4.750',
+  `gratificacion_proporcional_inasistencias` TINYINT NULL DEFAULT '0',
+  `gratificacion_proporcional_licencias` TINYINT NULL DEFAULT '0',
+  `salud_completa` TINYINT NOT NULL,
+  `ingresos_30` TINYINT NOT NULL,
+  `finiquitos_30` TINYINT NOT NULL,
+  `licencias_30` TINYINT NOT NULL,
+  `cme` TINYINT NOT NULL DEFAULT '0',
+  `centro_costo` TINYINT NOT NULL DEFAULT '0',
+  `niveles_centro_costo` int(10) NOT NULL,
+  `impuesto_unico` char(1) NOT NULL DEFAULT 'e',
   `zona` DECIMAL(5,2) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -721,6 +703,25 @@ INSERT INTO `estados_civiles` (`id`, `sid`, `nombre`, `updated_at`, `created_at`
 (2, 'Y20455445124750RKU1238', 'Casado/a', '2017-07-03 16:12:03', '2015-07-03 21:57:09'),
 (3, 'H20170206125415425VD27', 'Divorciado/a', '2017-07-03 16:12:03', '2015-07-03 21:57:09'),
 (4, 'R201702DF878909UWM6081', 'Viudo/a', '2017-07-03 16:12:03', '2015-07-03 21:57:09');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `factores_actualizacion`
+--
+
+
+CREATE TABLE IF NOT EXISTS `factores_actualizacion` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `anio` int(11) NOT NULL,
+  `mes` date NOT NULL,
+  `porcentaje` decimal(5,2) NOT NULL,
+  `factor` decimal(6,3) NOT NULL,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -808,7 +809,7 @@ CREATE TABLE IF NOT EXISTS `menu` (
   UNIQUE KEY `sid` (`sid`),
   KEY `categoria_id` (`administrador`),
   KEY `padre_id` (`padre_id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=156 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=157 ;
 
 --
 -- Volcado de datos para la tabla `menu`
@@ -822,8 +823,8 @@ INSERT INTO `menu` (`id`, `sid`, `menu`, `tipo`, `padre_id`, `href`, `onclick`, 
 (104, 'Y20170206131557LMK4418', 'Planilla de Cotizaciones', 2, 100, '#', '#', 'Planilla de Cotizaciones', 1, 2, 6, NULL, '2017-07-13 15:05:35', '2017-02-06 16:15:57'),
 (105, 'F20170206131638BHD7777', 'Archivo Previred', 2, 100, '#archivo-previred', '', 'Archivo Previred', 1, 2, 7, 'fa-arrow-circle-right', '2017-07-13 15:04:30', '2017-02-06 16:16:38'),
 (106, 'J20170206131840AHN3738', 'Nomina Bancaria', 2, 100, '#nomina-bancaria', '', 'Nomina Bancaria', 1, 2, 1, 'fa-leanpub', '2017-07-13 15:05:17', '2017-02-06 16:18:40'),
-(107, 'R20170206131931ILE9569', 'Tabla Global Mensual', 2, 99, '#tabla-global-mensual', '', 'Tabla Global Mensual', 1, 2, 1, 'fa-line-chart', '2017-10-02 13:08:23', '2017-02-06 16:19:31'),
-(108, 'N20170206132358GLP8680', 'Tabla Impuesto Único', 2, 99, '#tabla-impuesto-unico', '', 'Tabla Impuesto Único', 1, 2, 2, 'fa-calculator', '2017-10-02 13:08:46', '2017-02-06 16:23:58'),
+(107, 'R20170206131931ILE9569', 'Tabla Global Mensual', 2, 99, '#tabla-global-mensual', '', 'Tabla Global Mensual', 1, 1, 1, 'fa-line-chart', '2017-10-02 13:08:23', '2017-02-06 16:19:31'),
+(108, 'N20170206132358GLP8680', 'Tabla Impuesto Único', 2, 99, '#tabla-impuesto-unico', '', 'Tabla Impuesto Único', 1, 1, 2, 'fa-calculator', '2017-10-02 13:08:46', '2017-02-06 16:23:58'),
 (109, 'S20170206132453THF2224', 'Tabla de Haberes', 2, 99, '#tabla-haberes', '', 'Tabla de Haberes', 1, 2, 3, 'fa-calendar-plus-o', '2017-07-13 15:00:44', '2017-02-06 16:24:53'),
 (110, 'T20170206132519KJP5451', 'Tabla de Descuentos', 2, 99, '#tabla-descuentos', '', 'Tabla de Descuentos', 1, 2, 4, 'fa-calendar-minus-o', '2017-07-13 15:00:34', '2017-02-06 16:25:19'),
 (111, 'T20170206133100EYI5787', 'Trabajadores', 1, 0, '#', '#', 'Trabajadores', 1, 2, 3, 'fa-user', '2017-07-13 14:58:11', '2017-02-06 16:31:00'),
@@ -836,7 +837,7 @@ INSERT INTO `menu` (`id`, `sid`, `menu`, `tipo`, `padre_id`, `href`, `onclick`, 
 (129, 'Y20170207102117JNF7414', 'Cláusulas de Contrato', 2, 1, '#clausulas-contrato', '', 'Cláusulas de Contrato', 1, 2, 20, 'fa-list-ol', '2017-07-13 15:07:12', '2017-02-07 13:21:17'),
 (128, 'T20170207101523GTH5131', 'Asociar Documentos a Trabajador', 2, 111, '#asociar-documentos', '', 'Asociar Documentos a Trabajador', 1, 2, 3, 'fa fa-clipboard', '2017-08-25 16:20:42', '2017-02-07 13:15:23'),
 (127, 'F20170207101402BFX8881', 'Cartas de Notificación', 2, 98, '#cartas-de-notificacion', '', 'Cartas de Notificación', 1, 2, 13, 'fa-envelope-o', '2017-07-13 15:02:23', '2017-02-07 13:14:02'),
-(125, 'M20170206191548UCW3398', 'F 1887', 2, 100, '#', '#', 'F 1887', 1, 2, 8, NULL, '2017-07-13 15:04:48', '2017-02-06 22:15:48'),
+(125, 'M20170206191548UCW3398', 'F 1887', 2, 100, '#f1887', '', 'F 1887', 1, 2, 8, 'fa-table', '2017-07-13 15:04:48', '2017-02-06 22:15:48'),
 (126, 'I20170206191637EFW5213', 'Cargas Familiares', 2, 98, '#cargas-familiares', '', 'Administración de Cargas Familiares', 1, 2, 9, 'fa fa-users', '2017-07-13 15:01:38', '2017-02-06 22:16:37'),
 (124, 'F20170206191505RSL7858', 'Préstamos', 2, 98, '#ingreso-prestamos', '', 'Préstamos', 1, 2, 7, 'fa fa-money', '2017-07-13 15:03:29', '2017-02-06 22:15:05'),
 (123, 'T20170206191431XUN6513', 'Horas Extra', 2, 98, '#ingreso-horas-extra', '', 'Horas Extra', 1, 2, 5, 'fa fa-clock-o', '2017-07-13 15:02:33', '2017-02-06 22:14:31'),
@@ -877,7 +878,8 @@ INSERT INTO `menu` (`id`, `sid`, `menu`, `tipo`, `padre_id`, `href`, `onclick`, 
 (152, 'B20171114170145CJV9340', 'Mis Liquidaciones de Sueldo', 2, 145, '#mis-liquidaciones', NULL, 'Mis Liquidaciones de Sueldo', 1, 4, 2, 'fa-files-o', '2017-11-14 20:01:46', '2017-11-14 20:01:46'),
 (153, 'B20171114170257QBE2209', 'Mis Cartas de Notificación', 2, 145, '#mis-cartas-notificacion', NULL, 'Mis Cartas de Notificación', 1, 4, 3, 'fa-envelope-o', '2017-11-14 20:02:58', '2017-11-14 20:02:58'),
 (154, 'I20171114170341BMC2728', 'Mis Certificados', 2, 145, '#mis-certificados', NULL, 'Mis Certificados', 1, 4, 5, 'fa-print', '2017-11-14 20:03:42', '2017-11-14 20:03:42'),
-(155, 'S20171114170557VKI3439', 'Solicitudes', 2, 145, '#solicitudes', NULL, 'Solicitudes', 1, 4, 7, 'fa fa-inbox', '2017-11-14 20:05:58', '2017-11-14 20:05:58');
+(155, 'S20171114170557VKI3439', 'Solicitudes', 2, 145, '#solicitudes', NULL, 'Solicitudes', 1, 4, 7, 'fa fa-inbox', '2017-11-14 20:05:58', '2017-11-14 20:05:58'),
+(156, 'G20171204130334AAX7548', 'APVs', 2, 98, '#apvs', NULL, 'APVs', 1, 2, 7, 'fa-usd', '2017-12-04 16:03:35', '2017-12-04 16:03:35');
 
 -- --------------------------------------------------------
 
@@ -893,7 +895,7 @@ CREATE TABLE IF NOT EXISTS `menu_permisos` (
   `updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `menu_id` (`menu_id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=421 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=425 ;
 
 --
 -- Volcado de datos para la tabla `menu_permisos`
@@ -1319,7 +1321,10 @@ INSERT INTO `menu_permisos` (`id`, `menu_id`, `opcion`, `created_at`, `updated_a
 (417, 155, 'ver', '2017-11-14 17:05:58', '2017-11-14 17:05:58'),
 (418, 155, 'crear', '2017-11-14 17:05:58', '2017-11-14 17:05:58'),
 (419, 155, 'eliminar', '2017-11-14 17:05:58', '2017-11-14 17:05:58'),
-(420, 155, 'modificar', '2017-11-14 17:05:58', '2017-11-14 17:05:58');
+(420, 155, 'modificar', '2017-11-14 17:05:58', '2017-11-14 17:05:58'),
+(422, 156, 'crear', '2017-12-04 13:03:35', '2017-12-04 13:03:35'),
+(423, 156, 'eliminar', '2017-12-04 13:03:35', '2017-12-04 13:03:35'),
+(424, 156, 'modificar', '2017-12-04 13:03:35', '2017-12-04 13:03:35');
 
 
 -- --------------------------------------------------------
@@ -1379,69 +1384,70 @@ CREATE TABLE IF NOT EXISTS `perfiles_detalles` (
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=817 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=873 ;
 
 --
 -- Volcado de datos para la tabla `perfiles_detalles`
 --
 
 INSERT INTO `perfiles_detalles` (`id`, `tipo_acceso`, `perfil_id`, `menu_id`, `empresa_id`, `crear`, `editar`, `ver`, `eliminar`, `created_at`, `updated_at`) VALUES
-(815, 1, 1, 138, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(814, 1, 1, 116, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(816, 1, 1, 150, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
+(871, 1, 1, 138, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(870, 1, 1, 116, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(869, 1, 1, 115, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
 (761, 1, 2, 145, 100000, NULL, NULL, 1, NULL, '2017-11-13 20:27:07', '2017-11-13 20:27:07'),
-(813, 1, 1, 115, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(812, 1, 1, 140, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(811, 1, 1, 147, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(810, 1, 1, 97, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(809, 1, 1, 133, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(808, 1, 1, 132, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(807, 1, 1, 142, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(806, 1, 1, 141, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(805, 1, 1, 149, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(804, 1, 1, 148, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(803, 1, 1, 130, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(802, 1, 1, 129, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(801, 1, 1, 139, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(800, 1, 1, 146, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(799, 1, 1, 114, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(798, 1, 1, 117, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(797, 1, 1, 137, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(796, 1, 1, 134, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(795, 1, 1, 1, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(794, 1, 1, 104, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(793, 1, 1, 103, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(792, 1, 1, 106, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(791, 1, 1, 101, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(790, 1, 1, 102, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(789, 1, 1, 125, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(788, 1, 1, 136, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(787, 1, 1, 105, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(786, 1, 1, 100, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(785, 1, 1, 135, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(784, 1, 1, 143, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(783, 1, 1, 124, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(782, 1, 1, 122, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(781, 1, 1, 119, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(780, 1, 1, 120, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(779, 1, 1, 121, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(778, 1, 1, 123, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(777, 1, 1, 127, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(776, 1, 1, 126, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(775, 1, 1, 98, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(774, 1, 1, 108, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(773, 1, 1, 107, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(772, 1, 1, 109, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(771, 1, 1, 110, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(770, 1, 1, 144, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(769, 1, 1, 99, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(768, 1, 1, 113, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(767, 1, 1, 131, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(766, 1, 1, 118, 100000, 1, 1, 1, 1, '2017-11-15 18:56:19', '2017-11-15 18:56:19'),
-(765, 1, 1, 128, 100000, 1, 1, 1, 1, '2017-11-15 18:56:18', '2017-11-15 18:56:18'),
-(764, 1, 1, 112, 100000, 1, 1, 1, 1, '2017-11-15 18:56:18', '2017-11-15 18:56:18'),
-(763, 1, 1, 111, 100000, 1, 1, 1, 1, '2017-11-15 18:56:18', '2017-11-15 18:56:18'),
-(762, 1, 1, 31, 100000, 1, 1, 1, 1, '2017-11-15 18:56:18', '2017-11-15 18:56:18');
+(868, 1, 1, 140, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(867, 1, 1, 147, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(866, 1, 1, 97, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(865, 1, 1, 133, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(864, 1, 1, 132, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(863, 1, 1, 142, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(862, 1, 1, 141, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(861, 1, 1, 149, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(860, 1, 1, 148, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(859, 1, 1, 130, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(858, 1, 1, 129, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(857, 1, 1, 139, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(856, 1, 1, 146, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(855, 1, 1, 114, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(854, 1, 1, 117, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(853, 1, 1, 137, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(852, 1, 1, 134, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(851, 1, 1, 150, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(850, 1, 1, 1, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(849, 1, 1, 104, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(848, 1, 1, 103, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(847, 1, 1, 106, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(846, 1, 1, 101, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(845, 1, 1, 102, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(844, 1, 1, 125, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(843, 1, 1, 136, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(842, 1, 1, 105, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(841, 1, 1, 100, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(840, 1, 1, 135, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(839, 1, 1, 143, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(838, 1, 1, 124, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(837, 1, 1, 122, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(836, 1, 1, 119, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(835, 1, 1, 120, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(834, 1, 1, 121, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(833, 1, 1, 123, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(832, 1, 1, 127, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(831, 1, 1, 126, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(830, 1, 1, 98, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(829, 1, 1, 108, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(828, 1, 1, 107, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(827, 1, 1, 109, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(826, 1, 1, 110, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(825, 1, 1, 144, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(824, 1, 1, 99, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(823, 1, 1, 113, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(822, 1, 1, 131, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(821, 1, 1, 118, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(820, 1, 1, 128, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(819, 1, 1, 112, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(818, 1, 1, 111, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21'),
+(817, 1, 1, 31, 100000, 1, 1, 1, 1, '2017-12-05 19:56:20', '2017-12-05 19:56:20'),
+(872, 1, 1, 156, 100000, 1, 1, 1, 1, '2017-12-05 19:56:21', '2017-12-05 19:56:21');
 
 -- --------------------------------------------------------
 
@@ -1690,17 +1696,8 @@ CREATE TABLE IF NOT EXISTS `rentas_minimas_imponibles` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=5 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
---
--- Volcado de datos para la tabla `rentas_minimas_imponibles`
---
-
-INSERT INTO `rentas_minimas_imponibles` (`id`, `mes`, `nombre`, `valor`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 'Trab. Dependientes e Independientes', 264000, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(2, '2017-01-01', 'Menores de 18 y Mayores de 65', 197082, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(3, '2017-01-01', 'Trabajadores de Casa Particular', 264000, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(4, '2017-01-01', 'Para fines no remuneracionales', 170296, '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
 
 -- --------------------------------------------------------
 
@@ -1717,16 +1714,7 @@ CREATE TABLE IF NOT EXISTS `rentas_topes_imponibles` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=4 ;
-
---
--- Volcado de datos para la tabla `rentas_topes_imponibles`
---
-
-INSERT INTO `rentas_topes_imponibles` (`id`, `mes`, `nombre`, `valor`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 'Para afiliados a una AFP', '75.7', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(2, '2017-01-01', 'Para afiliados al IPS (ex INP)', '60.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(3, '2017-01-01', 'Para Seguro de Cesantía', '113.5', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -1744,16 +1732,8 @@ CREATE TABLE IF NOT EXISTS `seguro_de_cesantia` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=4 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
---
--- Volcado de datos para la tabla `seguro_de_cesantia`
---
-
-INSERT INTO `seguro_de_cesantia` (`id`, `mes`, `tipo_contrato`, `financiamiento_empleador`, `financiamiento_trabajador`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 'Contrato Plazo Indefinido', '2.4', '0.6', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(2, '2017-01-01', 'Contrato Plazo Fijo', '3.0', '0.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(3, '2017-01-01', 'Contrato Plazo Indefinido 11 años o más ', '0.8', '0.0', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
 
 -- --------------------------------------------------------
 
@@ -1766,27 +1746,15 @@ CREATE TABLE IF NOT EXISTS `tabla_impuesto_unico` (
   `mes` date NOT NULL,
   `tramo` int(11) NOT NULL,
   `imponible_mensual_desde` decimal(6,3) NOT NULL,
-  `imponible_mensual_hasta` decimal(6,3) NOT NULL,
+  `imponible_mensual_hasta` decimal(8,3) NOT NULL,
   `factor` decimal(6,3) NOT NULL,
   `cantidad_a_rebajar` decimal(6,3) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=8 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
---
--- Volcado de datos para la tabla `tabla_impuesto_unico`
---
-
-INSERT INTO `tabla_impuesto_unico` (`id`, `mes`, `tramo`, `imponible_mensual_desde`, `imponible_mensual_hasta`, `factor`, `cantidad_a_rebajar`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '2017-01-01', 1, '0.00', '13.50', '0.00', '0.00', '2017-03-31 23:30:28', '2017-03-23 23:30:28', NULL),
-(2, '2017-01-01', 2, '13.50', '30.00', '4.00', '0.54', '2017-03-23 23:30:28', '2017-03-23 23:30:28', NULL),
-(3, '2017-01-01', 3, '30.00', '50.00', '8.00', '1.74', '2017-03-23 23:30:28', '2017-03-23 23:30:28', NULL),
-(4, '2017-01-01', 4, '50.00', '70.00', '13.50', '4.49', '2017-03-23 23:30:28', '2017-03-23 23:30:28', NULL),
-(5, '2017-01-01', 5, '70.00', '90.00', '23.00', '11.14', '2017-03-23 23:30:28', '2017-03-23 23:30:28', NULL),
-(6, '2017-01-01', 6, '90.00', '120.00', '30.40', '17.80', '2017-03-23 23:30:28', '2017-03-23 23:30:28', NULL),
-(7, '2017-01-01', 7, '120.00', '999.99', '35.00', '23.32', '2017-03-23 23:30:28', '2017-03-23 23:30:28', NULL);
 
 -- --------------------------------------------------------
 
@@ -1805,20 +1773,7 @@ CREATE TABLE IF NOT EXISTS `tasa_cotizacion_obligatorio_afp` (
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=42 ;
-
---
--- Volcado de datos para la tabla `tasa_cotizacion_obligatorio_afp`
---
-
-INSERT INTO `tasa_cotizacion_obligatorio_afp` (`id`, `afp_id`, `mes`, `tasa_afp`, `sis`, `tasa_afp_independientes`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 36, '2017-01-01', '11.48', '1.41', '12.89', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(2, 37, '2017-01-01', '11.27', '1.41', '12.68', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(3, 38, '2017-01-01', '11.54', '1.41', '12.95', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(4, 39, '2017-01-01', '10.41', '1.41', '11.82', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(5, 40, '2017-01-01', '11.44', '1.41', '12.85', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL),
-(6, 41, '2017-01-01', '10.77', '1.41', '12.18', '2017-04-01 00:00:00', '2017-04-01 00:00:00', NULL);
-
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 
 -- --------------------------------------------------------
@@ -1849,7 +1804,7 @@ INSERT INTO `tasas_cajas_ex_regimen` (`id`, `caja_id`, `mes`, `tasa`, `created_a
 (4, 6, '2017-01-01', '23.76', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
 (5, 7, '2017-01-01', '20.41', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
 (6, 8, '2017-01-01', '19.35', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
-(7, 9, '2017-01-01', '19.84', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
+(7, 9, '2017-01-01', '18.84', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
 (8, 10, '2017-01-01', '20.87', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
 (9, 11, '2017-01-01', '19.04', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
 (10, 12, '2017-01-01', '22.34', '2017-10-02 00:00:00', '2017-10-02 00:00:00', NULL),
@@ -2550,27 +2505,6 @@ CREATE TABLE IF NOT EXISTS `usuarios` (
 INSERT INTO `usuarios` (`id`, `sid`, `tipo`, `funcionario_id`, `username`, `password`, `estado`, `perfil_id`, `remember_token`, `updated_at`, `created_at`) VALUES
 (1, '211eefess2544es55', 1, 1, 'root', '$2y$10$3FRqbgAhKTQKiTabKNoHbO9khfOzECCZD3Rezwebtmr3sKY./lQL2', 1, 0, 'ER8P44K9fdrHhhekuXeE5KrDJk0fyPfP8nuyRqiNkGBRfnKJphbDGBYglLs3', '2016-06-16 16:57:23', '2014-11-17 00:00:00');
 
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `usuarios_empresa`
---
-
-CREATE TABLE IF NOT EXISTS `usuarios_empresa` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `usuario_id` int(11) NOT NULL,
-  `empresa_id` int(11) NOT NULL,
-  `activo` tinyint(4) NOT NULL,
-  `documentos_empresa` tinyint(4) NOT NULL,
-  `cartas_notificacion` tinyint(4) NOT NULL,
-  `certificados` tinyint(4) NOT NULL,
-  `liquidaciones` tinyint(4) NOT NULL,
-  `solicitudes` tinyint(4) NOT NULL,
-  `created_at` datetime NOT NULL,
-  `updated_at` datetime NOT NULL,
-  `deleted_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
 -- --------------------------------------------------------
 
@@ -2636,6 +2570,128 @@ INSERT INTO `variables_globales` (`id`, `variable`, `valor`, `created_at`, `upda
 (1, 'EMPRESAS', '50', '0000-00-00 00:00:00', '0000-00-00 00:00:00');
 
 -- --------------------------------------------------------
+
+
+ALTER TABLE `ahorro_previsional_voluntario` ADD INDEX(`id`);
+ALTER TABLE `ahorro_previsional_voluntario` ADD INDEX(`mes`);
+
+ALTER TABLE `asignacion_familiar` ADD INDEX(`id`);
+ALTER TABLE `asignacion_familiar` ADD INDEX(`mes`);
+ALTER TABLE `asignacion_familiar` ADD INDEX `mes_tramo` (`mes`, `tramo`)COMMENT '';
+
+ALTER TABLE `bancos` ADD INDEX(`id`);
+ALTER TABLE `bancos` ADD INDEX(`codigo`);
+
+ALTER TABLE `cajas_ex_regimen` ADD INDEX(`id`);
+
+ALTER TABLE `cotizacion_trabajos_pesados` ADD INDEX(`id`);
+ALTER TABLE `cotizacion_trabajos_pesados` ADD INDEX(`mes`);
+
+ALTER TABLE `cuentas` ADD INDEX(`id`);
+
+ALTER TABLE `deposito_convenido` ADD INDEX(`id`);
+ALTER TABLE `deposito_convenido` ADD INDEX(`mes`);
+
+ALTER TABLE `documentos_sistema` ADD INDEX(`id`);
+ALTER TABLE `documentos_sistema` ADD INDEX(`sid`);
+ALTER TABLE `documentos_sistema` ADD INDEX(`nombre`);
+ALTER TABLE `documentos_sistema` ADD INDEX(`publico`);
+
+ALTER TABLE `empresas` ADD INDEX(`id`);
+ALTER TABLE `empresas` ADD INDEX(`rut`);
+ALTER TABLE `empresas` ADD INDEX(`comuna_id`);
+ALTER TABLE `empresas` ADD INDEX(`representante_comuna_id`);
+ALTER TABLE `empresas` ADD INDEX(`caja_id`);
+ALTER TABLE `empresas` ADD INDEX(`mutual_id`);
+
+ALTER TABLE `estados_civiles` ADD INDEX(`id`);
+ALTER TABLE `estados_civiles` ADD INDEX(`sid`);
+
+ALTER TABLE `funcionarios` ADD INDEX(`id`);
+ALTER TABLE `funcionarios` ADD INDEX(`sid`);
+ALTER TABLE `funcionarios` ADD INDEX(`rut`);
+
+ALTER TABLE `indicadores` ADD INDEX(`id`);
+
+ALTER TABLE `menu` ADD INDEX(`id`);
+ALTER TABLE `menu` ADD INDEX(`sid`);
+
+ALTER TABLE `menu_permisos` ADD INDEX(`id`);
+ALTER TABLE `menu_permisos` ADD INDEX(`menu_id`);
+
+ALTER TABLE `perfiles` ADD INDEX(`id`);
+ALTER TABLE `perfiles` ADD INDEX(`sid`);
+
+ALTER TABLE `perfiles_detalles` ADD INDEX(`id`);
+ALTER TABLE `perfiles_detalles` ADD INDEX(`perfil_id`);
+ALTER TABLE `perfiles_detalles` ADD INDEX(`menu_id`);
+ALTER TABLE `perfiles_detalles` ADD INDEX(`empresa_id`);
+
+ALTER TABLE `plantillas_cartas_notificacion` ADD INDEX(`id`);
+ALTER TABLE `plantillas_cartas_notificacion` ADD INDEX(`sid`);
+
+ALTER TABLE `plantillas_certificados` ADD INDEX(`id`);
+ALTER TABLE `plantillas_certificados` ADD INDEX(`sid`);
+
+ALTER TABLE `plantillas_contratos` ADD INDEX(`id`);
+ALTER TABLE `plantillas_contratos` ADD INDEX(`sid`);
+
+ALTER TABLE `plantillas_finiquitos` ADD INDEX(`id`);
+ALTER TABLE `plantillas_finiquitos` ADD INDEX(`sid`);
+
+ALTER TABLE `recaudadores` ADD INDEX(`id`);
+
+ALTER TABLE `rentas_minimas_imponibles` ADD INDEX(`id`);
+ALTER TABLE `rentas_minimas_imponibles` ADD INDEX(`mes`);
+ALTER TABLE `rentas_minimas_imponibles` ADD INDEX `mes_nombre` (`mes`, `nombre`)COMMENT '';
+
+ALTER TABLE `rentas_topes_imponibles` ADD INDEX(`id`);
+ALTER TABLE `rentas_topes_imponibles` ADD INDEX(`mes`);
+ALTER TABLE `rentas_topes_imponibles` ADD INDEX `mes_nombre` (`mes`, `nombre`)COMMENT '';
+
+ALTER TABLE `seguro_de_cesantia` ADD INDEX(`id`);
+ALTER TABLE `seguro_de_cesantia` ADD INDEX(`mes`);
+ALTER TABLE `seguro_de_cesantia` ADD INDEX `mes_tipo_contrato` (`mes`, `tipo_contrato`)COMMENT '';
+
+ALTER TABLE `tabla_impuesto_unico` ADD INDEX(`id`);
+ALTER TABLE `tabla_impuesto_unico` ADD INDEX(`mes`);
+
+ALTER TABLE `tasas_cajas_ex_regimen` ADD INDEX(`id`);
+ALTER TABLE `tasas_cajas_ex_regimen` ADD INDEX(`caja_id`);
+ALTER TABLE `tasas_cajas_ex_regimen` ADD INDEX(`mes`);
+
+ALTER TABLE `tasa_cotizacion_obligatorio_afp` ADD INDEX(`id`);
+ALTER TABLE `tasa_cotizacion_obligatorio_afp` ADD INDEX(`afp_id`);
+ALTER TABLE `tasa_cotizacion_obligatorio_afp` ADD INDEX(`mes`);
+ALTER TABLE `tasa_cotizacion_obligatorio_afp` ADD INDEX `mes_afp_id` (`mes`, `afp_id`)COMMENT '';
+
+ALTER TABLE `tipos_estructura` ADD INDEX(`id`);
+ALTER TABLE `tipos_estructura` ADD INDEX(`numero`);
+
+ALTER TABLE `tipos_estructura_glosa` ADD INDEX(`id`);
+ALTER TABLE `tipos_estructura_glosa` ADD INDEX(`tipo_estructura_id`);
+
+ALTER TABLE `tipos_estructura_glosa_recaudador` ADD INDEX(`id`);
+ALTER TABLE `tipos_estructura_glosa_recaudador` ADD INDEX(`glosa_id`);
+ALTER TABLE `tipos_estructura_glosa_recaudador` ADD INDEX(`recaudador_id`);
+ALTER TABLE `tipos_estructura_glosa_recaudador` ADD INDEX `glosa_recaudador` (`glosa_id`, `recaudador_id`)COMMENT '';
+
+ALTER TABLE `usuarios` ADD INDEX(`id`);
+ALTER TABLE `usuarios` ADD INDEX(`sid`);
+ALTER TABLE `usuarios` ADD INDEX(`tipo`);
+ALTER TABLE `usuarios` ADD INDEX(`username`);
+ALTER TABLE `usuarios` ADD INDEX(`perfil_id`);
+
+ALTER TABLE `usuarios_perfil_detalles` ADD INDEX(`id`);
+ALTER TABLE `usuarios_perfil_detalles` ADD INDEX(`usuario_id`);
+ALTER TABLE `usuarios_perfil_detalles` ADD INDEX(`menu_id`);
+ALTER TABLE `usuarios_perfil_detalles` ADD INDEX(`empresa_id`);
+ALTER TABLE `usuarios_perfil_detalles` ADD INDEX `usuario_empresa` (`usuario_id`, `empresa_id`)COMMENT '';
+
+ALTER TABLE `valores_indicadores` ADD INDEX(`id`);
+ALTER TABLE `valores_indicadores` ADD INDEX(`indicador_id`);
+ALTER TABLE `valores_indicadores` ADD INDEX(`mes`);
+ALTER TABLE `valores_indicadores` ADD INDEX `indicador_mes` (`indicador_id`, `mes`)COMMENT '';
 
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

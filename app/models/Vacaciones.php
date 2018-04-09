@@ -8,8 +8,74 @@ class Vacaciones extends Eloquent {
         return $this->belongsTo('Trabajador','trabajador_id');
     }
     
-    public function mes(){
-        return $this->belongsTo('MesDeTrabajo','mes_id');
+    public function miMes(){
+        return $this->belongsTo('MesDeTrabajo','mes', 'mes');
+    }
+    
+    public function tomaVacaciones(){
+        $tomasVacaciones = TomaVacaciones::where('trabajador_id', $this->trabajador_id)->where('mes', $this->mes)->get();
+        return $tomasVacaciones;
+    }
+    
+    public function isTomaVacaciones()
+    {
+        $tomasVacaciones = $this->tomaVacaciones();        
+        
+        if($tomasVacaciones->count()){
+            return true;    
+        }
+        
+        return false;
+    }
+    
+    public function totalTomaVacaciones()
+    {
+        $tomasVacaciones = $this->tomaVacaciones();
+        $total = 0;
+        
+        if($tomasVacaciones->count()){
+            foreach($tomasVacaciones as $tomaVacaciones){
+                $total = ($total + $tomaVacaciones->dias);
+            }            
+        }
+        
+        return $total;
+    }
+    
+    public function tomaVacacionesMes()
+    {
+        $tomasVacaciones = $this->tomaVacaciones();
+        $detalle = array();
+        
+        if($tomasVacaciones->count()){
+            foreach($tomasVacaciones as $tomaVacaciones){
+                $detalle[] = array(
+                    'id' => $tomaVacaciones->id,
+                    'sid' => $tomaVacaciones->sid,
+                    'mes' => $tomaVacaciones->mes,
+                    'desde' => $tomaVacaciones->desde,
+                    'hasta' => $tomaVacaciones->hasta,
+                    'dias' => $tomaVacaciones->dias,
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($tomaVacaciones->created_at))
+                );
+            }    
+        }
+        
+        return $detalle;
+    }    
+    
+    public function totalDevengadas()
+    {
+        $tomasVacaciones = $this->tomaVacaciones();
+        $total = 0;
+        
+        if($tomasVacaciones->count()){
+            foreach($tomasVacaciones as $tomaVacaciones){
+                $total = ($total + $tomaVacaciones->dias);
+            }    
+        }
+        
+        return $total;
     }
     
     static function calcularVacaciones($trabajador, $empleado, $mesActual)
@@ -26,7 +92,7 @@ class Vacaciones extends Eloquent {
             $fecha = date('Y-m-d', strtotime('-' . $i . ' month', strtotime($mes)));
             $idMesAnterior = MesDeTrabajo::where('mes', $fecha)->first()->id;
 
-            $misVacaciones = Vacaciones::where('trabajador_id', $idTrabajador)->where('mes_id', $idMesAnterior)->first();
+            $misVacaciones = Vacaciones::where('trabajador_id', $idTrabajador)->where('mes', $fecha)->first();
             
         }while(!$misVacaciones && $idMesAnterior!=1);
         
@@ -39,7 +105,7 @@ class Vacaciones extends Eloquent {
         $vacaciones = new Vacaciones();
         $vacaciones->sid = Funciones::generarSID();;
         $vacaciones->trabajador_id = $idTrabajador;
-        $vacaciones->mes_id = $idMesActual;
+        $vacaciones->mes = $mesActual->mes;
         $vacaciones->dias = $vacas;
         $vacaciones->save(); 
         

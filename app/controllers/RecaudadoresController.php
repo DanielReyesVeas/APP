@@ -10,7 +10,7 @@ class RecaudadoresController extends \BaseController {
     
     public function index()
     {
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#recaudadores');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#recaudadores');
         $recaudadores = Recaudador::all();
         $listaRecaudadores=array();
         if( $recaudadores->count() ){

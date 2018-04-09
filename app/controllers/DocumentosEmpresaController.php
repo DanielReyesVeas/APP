@@ -10,7 +10,7 @@ class DocumentosEmpresaController extends \BaseController {
     
     public function index()
     {
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#documentos-empresa');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#documentos-empresa');
         
         $documentos = DocumentoEmpresa::all();
         $listaDocumentos=array();
@@ -22,6 +22,7 @@ class DocumentosEmpresaController extends \BaseController {
                     'nombre' => $documento->nombre,
                     'alias' => $documento->alias,
                     'descripcion' => $documento->descripcion,
+                    'extension' => $documento->extension(),
                     'fecha' => $documento->created_at,
                     'publico' => $documento->publico ? true : false
                 );
@@ -78,7 +79,38 @@ class DocumentosEmpresaController extends \BaseController {
         } 
         return Response::json($respuesta);
     }    
-
+    
+    public function publicos()
+    {
+        $documentos = DocumentoEmpresa::all();
+        $listaDocumentos=array();
+        if( $documentos->count() ){
+            foreach( $documentos as $documento ){
+                if($documento->publico){
+                    $listaDocumentos[]=array(
+                        'id' => $documento->id,
+                        'sid' => $documento->sid,
+                        'nombre' => $documento->nombre,
+                        'alias' => $documento->alias,
+                        'descripcion' => $documento->descripcion,
+                        'extension' => $documento->extension(),
+                        'fecha' => $documento->created_at
+                    );
+                }
+            }
+        }        
+        
+        $datos = array(
+            'accesos' => array(
+                'ver' => true,
+                'editar' => true
+            ),
+            'datos' => $listaDocumentos
+        );
+        
+        return Response::json($datos);    
+    }
+    
     /**
      * Display the specified resource.
      *
@@ -87,7 +119,7 @@ class DocumentosEmpresaController extends \BaseController {
      */
     public function show($sid)
     {
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#documentos-empresa');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#documentos-empresa');
         
         $documento = DocumentoEmpresa::whereSid($sid)->first();
         
@@ -160,11 +192,22 @@ class DocumentosEmpresaController extends \BaseController {
         return Response::json($respuesta);
     }
     
+    public function documentoPDF($sid)
+    {
+        $name = DocumentoEmpresa::whereSid($sid)->first()['nombre'];
+        
+        $destination = public_path() . '/stories/empresa/' . $name;
+      
+        return Response::make(file_get_contents($destination), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$name.'"'
+        ]);      
+		
+    }
+    
     public function subirDocumento()
     {
-        $datos = $this->get_datos_formulario();
-        $descripcion = $datos['descripcion'];
-        $publico = $datos['publico'];
+        $datos = Input::all();
         
         if(Input::hasFile('file')){            
             $name = $_FILES['file']['name'];
@@ -175,14 +218,16 @@ class DocumentosEmpresaController extends \BaseController {
                 $documento->sid = Funciones::generarSID();
                 $documento->nombre = $filename;
                 $documento->alias = $name;
-                $documento->publico = $publico;
-                $documento->descripcion = $descripcion;
+                $documento->publico = (boolean) $datos['publico'];
+                $documento->descripcion = $datos['descripcion'];
                 $documento->save();
                 
                 $respuesta=array(
                     'success' => true,
                     'mensaje' => "La Información fue almacenada correctamente",
-                    'nombre' => $name
+                    'nombre' => $name,
+                    'a' => $datos,
+                    'as' => gettype($datos['publico'])
                 );
             }else{
                 $respuesta=array(

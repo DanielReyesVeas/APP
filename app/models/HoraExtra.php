@@ -11,11 +11,12 @@ class HoraExtra extends Eloquent {
     public function trabajadorHoraExtra(){        
         if( $this->trabajador ){
             $trabajador = $this->trabajador;
+            $empleado = $trabajador->ficha();
             $datosTrabajador = array(
                 'id' => $trabajador->id,
                 'sid' => $trabajador->sid,
-                'nombreCompleto' => $trabajador->nombreCompleto(),
-                'rutFormato' => Funciones::formatear_rut($trabajador->rut)
+                'nombreCompleto' => $empleado->nombreCompleto(),
+                'rutFormato' => $trabajador->rut_formato()
             );        
         }
         return $datosTrabajador;

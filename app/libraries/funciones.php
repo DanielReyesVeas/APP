@@ -748,6 +748,7 @@ class Funciones{
     
     static function convertir($valor, $moneda, $fecha=null)
     {
+        $pesos = 0;
         if($moneda==='$'){
             $pesos = $valor;
         }else if($moneda==='UF'){
@@ -777,6 +778,48 @@ class Funciones{
         }
         
         return $valor;
+    }
+    
+    static function obtenerMesTextoAbr($mes)
+    {
+        switch($mes){
+            case '01':
+              return 'Ene';
+              break;
+            case '02':
+              return 'Feb';
+              break;
+            case '03':
+              return 'Mar';
+              break;
+            case '04':
+              return 'Abr';
+              break;
+            case '05':
+              return 'May';
+              break;
+            case '06':
+              return 'Jun';
+              break;
+            case '07':
+              return 'Jul';
+              break;
+            case '08':
+              return 'Ago';
+              break;
+            case '09':
+              return 'Sept';
+              break;
+            case '10':
+              return 'Oct';
+              break;
+            case '11':
+              return 'Nov';
+              break;
+            case '12':
+              return 'Dic';
+              break;
+        }
     }
     
     static function obtenerMesTexto($mes)
@@ -861,6 +904,40 @@ class Funciones{
         $texto = $diaSemana . ' ' . $dia . ' de ' . $mes . ' de ' . $anio;
 
         return $texto;
+    }
+    
+    static function obtenerMesAnioTexto($fecha=null)
+    {
+        if(!$fecha){
+            $fecha = date('Y-m-d');
+        }         
+        
+        $mes = Funciones::obtenerMesTexto(date('m', strtotime($fecha)));
+        $anio = date('Y', strtotime($fecha));
+        $texto = $mes . ' ' . $anio;
+
+        return $texto;
+    }
+    
+    static function obtenerMesAnioTextoAbr($fecha=null)
+    {
+        if(!$fecha){
+            $fecha = date('Y-m-d');
+        }         
+        
+        $mes = Funciones::obtenerMesTextoAbr(date('m', strtotime($fecha)));
+        $anio = date('Y', strtotime($fecha));
+        $texto = $mes . ' ' . $anio;
+
+        return $texto;
+    }
+    
+    static function primerDia($fecha)
+    {
+        $mes = date('m', strtotime($fecha));
+        $anio = date('Y', strtotime($fecha));
+        
+        return $anio . '-' . $mes . '-01';
     }
     
     static function obtenerFechaActual($fecha=null)
@@ -1282,9 +1359,11 @@ class Funciones{
         return $numero;
     }
     
-    static function formatoPesos($valor)
+    static function formatoPesos($valor, $currency=true, $round=true)
     {
-        $valor = round($valor);
+        if($round){
+            $valor = round($valor);
+        }
         $valor = strval($valor);
         $len=strlen($valor);
         
@@ -1302,7 +1381,11 @@ class Funciones{
             $valor = $post . $text;
         }
         
-        $valor = '$' . $valor;
+        if($currency){
+            $valor = '$' . $valor;
+        }
+        
+        $valor = str_replace("..", ",", $valor);
                 
         return $valor;
     }
@@ -1503,35 +1586,53 @@ class Funciones{
         return $anio . "-" . $mes . "-01";
     }
     
-    static function comprobarFecha($fecha, $formato)
-    {                
-        switch ($formato) {
-            case 'd-m-Y': 
-                $dia = substr($fecha, 0, 2);
-                $mes = substr($fecha, 3, 2);
-                $anio = substr($fecha, 6, 4);
-                break;
-            case 'm-d-Y': 
-                $mes = substr($fecha, 0, 2);
-                $dia = substr($fecha, 3, 2);
-                $anio = substr($fecha, 6, 4);
-                break;
-            case 'Y-m-d': 
-                $anio = substr($fecha, 0, 4);
-                $mes = substr($fecha, 5, 2);
-                $dia = substr($fecha, 8, 2);
-                break;
-            case 'Y-d-m': 
-                $anio = substr($fecha, 0, 4);
-                $dia = substr($fecha, 5, 2);
-                $mes = substr($fecha, 8, 2);
-                break;
-            default:
-                return false;
-                break;
+    static function regularizarFecha($fecha){
+        if($fecha){
+            if(is_array($fecha)){
+                $fecha = $fecha['date'];
+            }
+            if(strlen($fecha)>10){
+                return substr($fecha, 0, 10);
+            }
+            return $fecha;
         }
         
-        return checkdate($mes, $dia, $anio);
+        return NULL;
+    }
+    
+    static function comprobarFecha($fecha, $formato)
+    {            
+        /*if($fecha){
+            $fecha = Funciones::regularizarFecha($fecha);
+            switch ($formato) {
+                case 'd-m-Y': 
+                    $dia = substr($fecha, 0, 2);
+                    $mes = substr($fecha, 3, 2);
+                    $anio = substr($fecha, 6, 4);
+                    break;
+                case 'm-d-Y': 
+                    $mes = substr($fecha, 0, 2);
+                    $dia = substr($fecha, 3, 2);
+                    $anio = substr($fecha, 6, 4);
+                    break;
+                case 'Y-m-d': 
+                    $anio = substr($fecha, 0, 4);
+                    $mes = substr($fecha, 5, 2);
+                    $dia = substr($fecha, 8, 2);
+                    break;
+                case 'Y-d-m': 
+                    $anio = substr($fecha, 0, 4);
+                    $dia = substr($fecha, 5, 2);
+                    $mes = substr($fecha, 8, 2);
+                    break;
+                default:
+                    return false;
+                    break;
+            }
+            return checkdate($mes, $dia, $anio);
+        }*/
+        
+        return true;
     }
     
     static function rangoMeses($rango)
@@ -1565,5 +1666,47 @@ class Funciones{
         }
         
         return $meses;
+    }
+    
+    static function crearMesesAnio($anio)
+    {
+        $meses = array();
+        for($i=1; $i<=12; $i++){
+            $mes = $i;
+            if($i<10){
+                $mes = '0' . $i;
+            }
+            $mes = Funciones::obtenerFechaMes($mes, $anio);
+            $meses[] = $mes;
+        }
+        
+        return $meses;
+    }
+    
+    static function obtenerRangoFechas($anio)
+    {
+        $datos = array(
+            'desde' => $anio . '-01-01',
+            'hasta' => $anio . '-12-31'
+        );
+        
+        return $datos;
+    }
+    
+    static function ordenar($arr, $llave, $orden=null)
+    {
+        $aux = array();
+        
+        foreach ($arr as $key => $row) {
+            $aux[$key] = strtolower($row[$llave]);
+        }
+        
+        if(strtolower($orden)=='desc'){
+            array_multisort($aux, SORT_DESC, $arr);
+        }else{
+            array_multisort($aux, SORT_ASC, $arr);
+        }
+        
+        return $arr;
     }
 }

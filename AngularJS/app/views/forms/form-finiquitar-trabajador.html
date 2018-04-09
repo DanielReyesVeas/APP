@@ -16,7 +16,7 @@
 
               <label class="col-sm-3 control-label required" style="padding: 0px;">Causal:</label>
               <div class="col-sm-9">
-                <select class="form-control form-white" ng-model="finiquito.causal" ng-options="cau as cau.nombre for cau in causales" > 
+                <select class="form-control form-white" ng-model="finiquito.causal" ng-options="cau as cau.nombre for cau in causales" required> 
                 </select>
               </div>              
               
@@ -34,13 +34,16 @@
                     <button type="button" class="btn btn-default" ng-click="openFecha()">
                       <i class="fa fa-calendar"></i>
                     </button>
-                  </span>
+                  </span>                  
+                </div>
+                <div>
+                  <i>*El día del Finiquito será considerado como día trabajado.</i>
                 </div>
               </div>   
             </div>
           </div>
           
-          <div class="col-sm-12" style="margin-top: 30px;">
+          <div class="col-sm-12" style="margin-top: 30px;" ng-if="trabajador.mesesAntiguedad>0">
             <div class="form-group form-group-md"> 
               <label class="col-sm-3 control-label required" style="padding: 0px;">Mes de Aviso:</label>
               <div class="col-sm-3">
@@ -50,15 +53,20 @@
                   <span class="switch-handle"></span>
                 </label>
               </div>  
-              <div class="col-sm-4" ng-if="finiquito.mesAviso">
+              <div class="col-sm-3" ng-if="finiquito.mesAviso">
                 <label>
                   <input type="checkbox" ng-model="finiquito.noImponibles" value="true" icheck> No Imponibles
+                </label>
+              </div>  
+              <div class="col-sm-3" ng-if="finiquito.mesAviso">
+                <label>
+                  <input type="checkbox" ng-model="finiquito.gratificacionMesAviso" value="true" icheck> Gratificación
                 </label>
               </div>  
             </div>
           </div>      
 
-          <div class="col-sm-12" style="margin-top: 30px;">
+          <div class="col-sm-12" style="margin-top: 30px;" ng-if="trabajador.mesesAntiguedad>0">
             <div class="form-group form-group-md"> 
               <label class="col-sm-3 control-label required" style="padding: 0px;">Indemnización Años de Servicio:</label>
               <div class="col-sm-3">
@@ -75,10 +83,15 @@
                   </select>
                 </div>
               </div>
+              <div class="col-sm-6" ng-if="finiquito.indemnizacion" style="margin-top: 20px;">
+                <label>
+                  <input type="checkbox" ng-model="finiquito.gratificacionIndemnizacion" value="true" icheck> Gratificación
+                </label>
+              </div>  
             </div>
           </div>
 
-          <div class="col-sm-12" style="margin-top: 20px;">
+          <div class="col-sm-12" style="margin-top: 20px;" ng-if="trabajador.mesesAntiguedad>0">
             <div class="form-group form-group-md"> 
               <label class="col-sm-5 control-label required" style="padding: 0px;">Vacaciones Disponibles:</label>
               <div class="col-sm-4">
@@ -107,13 +120,13 @@
             </div>
           </div>
           
-          <div ng-if="finiquito.mesAviso || finiquito.indemnizacion || finiquito.vacaciones">
+          <div ng-if="finiquito.mesAviso || finiquito.indemnizacion || finiquito.vacaciones && trabajador.mesesAntiguedad > 2">
             <div class="col-sm-12" style="margin-top: 30px;">
               <div class="form-group form-group-md"> 
                 <label class="col-sm-4">
-                  <input type="checkbox" ng-model="finiquito.sueldoNormal" ng-disabled="trabajador.mesesAntiguedad<2" ng-change="cambiarSueldo('normal')" value="true" icheck> Sueldo Normal
+                  <input type="checkbox" ng-model="finiquito.sueldoNormal" ng-change="cambiarSueldo('normal')" value="true" icheck> Sueldo Normal
                 </label>
-                <label class="col-sm-5" ng-if="trabajador.mesesAntiguedad > 1">
+                <label class="col-sm-5">
                   <input type="checkbox" ng-model="finiquito.sueldoVariable" ng-change="cambiarSueldo('variable')" value="true" icheck> Sueldo Variable
                 </label>              
               </div>

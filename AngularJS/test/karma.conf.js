@@ -41,6 +41,9 @@ module.exports = function(config) {
       'bower_components/moment/moment.js',
       'bower_components/angular-multiple-date-picker/dist/multipleDatePicker.js',
       'bower_components/gm.datepickerMultiSelect/dist/gm.datepickerMultiSelect.min.js',
+      'bower_components/flow.js/dist/flow.js',
+      'bower_components/ng-flow/dist/ng-flow.js',
+      'bower_components/angular-recaptcha/release/angular-recaptcha.js',
       'bower_components/angular-mocks/angular-mocks.js',
       // endbower
       'app/scripts/**/*.js',

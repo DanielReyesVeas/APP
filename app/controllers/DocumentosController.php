@@ -13,7 +13,7 @@ class DocumentosController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#documentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#documentos');
         
         $documentos = Documento::all();
         $listaDocumentos=array();
@@ -96,7 +96,7 @@ class DocumentosController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#documentos');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#documentos');
         
         $documento = Documento::whereSid($sid)->first();
         $tiposDocumentos = TipoDocumento::listaTiposDocumento();
@@ -180,6 +180,8 @@ class DocumentosController extends \BaseController {
         $idTrabajador = $datos['trabajador_id'];
         $idTipoDocumento = $datos['tipo_documento_id'];
         $descripcion = $datos['descripcion'];
+        $menu = $datos['menu'];
+        $submenu = $datos['submenu'];
         
         if(Input::hasFile('file')){            
             $name = $_FILES['file']['name'];
@@ -194,6 +196,8 @@ class DocumentosController extends \BaseController {
                 $documento->alias = $name;
                 $documento->descripcion = $descripcion;
                 $documento->save();
+                
+                Logs::crearLog($menu, $documento->id, $documento->alias, 'Import', $documento->trabajador_id, $documento->tipo_documento_id, $submenu);
                 
                 $respuesta=array(
                     'success' => true,
@@ -253,6 +257,8 @@ class DocumentosController extends \BaseController {
     {
         $documento = Documento::whereSid($sid)->first();
         $datos = $this->get_datos_formulario();
+        $menu = $datos['menu'];
+        $submenu = $datos['submenu'];
         $errores = Documento::errores($datos);       
         
         if(!$errores and $documento){
@@ -260,6 +266,9 @@ class DocumentosController extends \BaseController {
             $documento->nombre = $datos['nombre'];
             $documento->descripcion = $datos['descripcion'];
             $documento->save();
+            
+            Logs::crearLog($menu, $documento->id, $documento->alias, 'Update', $documento->trabajador_id, $documento->tipo_documento_id, $submenu);
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -272,6 +281,37 @@ class DocumentosController extends \BaseController {
                 'errores' => $errores
             );
         } 
+        return Response::json($respuesta);
+    }
+    
+    public function eliminarDocumento()
+    {
+        $datos = Input::all();
+        $sid = $datos['sid'];
+        $documento = Documento::whereSid($sid)->first();
+        $id = $documento['id'];
+        $idTrabajador = $documento['trabajador_id'];
+        $idTipoDocumento= $documento['tipo_documento_id'];
+        $alias = $documento['alias'];
+        $menu = $datos['menu'];
+        $submenu = $datos['submenu'];
+
+        if($documento->eliminarDocumento()){
+            
+            Logs::crearLog($menu, $id, $alias, 'Delete', $idTrabajador, $idTipoDocumento, $submenu);
+            
+            $respuesta = array(
+            	'success' => true,
+            	'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $respuesta = array(
+                'success' => false,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada",
+                'errores' => 'El archivo no existe'
+            );
+        }
+        
         return Response::json($respuesta);
     }
 
@@ -305,6 +345,8 @@ class DocumentosController extends \BaseController {
         $datos = array(
             'trabajador_id' => Input::get('idTrabajador'),
             'tipo_documento_id' => Input::get('idTipoDocumento'),
+            'menu' => Input::get('menu'),
+            'submenu' => Input::get('submenu'),
             'nombre' => Input::get('nombre'),
             'descripcion' => Input::get('descripcion')
         );

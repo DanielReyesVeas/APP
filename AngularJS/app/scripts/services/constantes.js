@@ -9,7 +9,7 @@
  */
 angular.module('angularjsApp')
   	.constant('constantes', {
-  		URL : 1 ?  'http://rrhh.easysystems.dev/' : '',
+  		URL : 1 ?  'http://rrhh.easysystems.test/' : '',
 	 	MESES : [
 	 		{ id:1 , mes:'Enero', abrev:'Ene', fecha : '01-01' },
 	 		{ id:2 , mes:'Febrero', abrev:'Feb', fecha : '02-01' },
@@ -24,8 +24,6 @@ angular.module('angularjsApp')
 	 		{ id:11 , mes:'Noviembre', abrev:'Nov', fecha : '11-01' },
 	 		{ id:12 , mes:'Diciembre', abrev:'Dic', fecha : '12-01' }
 	 	],
-	 	version : '1.0.9',
-	 	versionFecha : '16-11-2017'
+	 	version : '1.4.9',
+	 	versionFecha : '04-04-2018'
   	});
-
-  	

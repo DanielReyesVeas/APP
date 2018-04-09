@@ -12,44 +12,51 @@ angular.module('angularjsApp')
     
     $anchorScroll();
     $scope.objeto = [];
-    $scope.isSelect = [ false, false ];
+    $scope.isSelect = [ false, false, false, false ];
     $scope.cargado = false;
     $scope.constantes = constantes;
-    $scope.mensaje = [ "", "", ""];
+    $scope.mensaje = [ "", "", "", ""];
 
     if($rootScope.globals.currentUser.empresa){
       $scope.uf = $rootScope.globals.indicadores.uf.valor;
       $scope.utm = $rootScope.globals.indicadores.utm.valor;
       $scope.empresa = $rootScope.globals.currentUser.empresa;
     }
+    
     function cargarDatos(){
       $rootScope.cargando = true;
       var datos = trabajador.trabajadoresLiquidaciones().get();
       datos.$promise.then(function(response){
         $scope.accesos = response.accesos;
-        $scope.trabajadores = [ response.sinLiquidacion, response.conLiquidacion ];
+        $scope.trabajadores = [ response.sinLiquidacion, response.conLiquidacion, response.sinLiquidacionFiniquitados, response.conLiquidacionFiniquitados ];
         $rootScope.cargando = false;
         crearModels();
         limpiarChecks();
       });
     }
+    $scope.imp = function(a)
+    {
+      console.log(a)
+
+    }
 
     cargarDatos();
 
+
     function generarLiquidacion(trabajadores){
-      $rootScope.cargando = true;
-      var datos = trabajador.liquidacion().post({}, trabajadores);
-      datos.$promise.then(function(response){
-        if(response.success){
-          Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
-          cargarDatos();
-          recibirLiquidaciones(response.datos);
-        $rootScope.cargando = false;
-        }else{
-          Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
-          $rootScope.cargando = false;
-        }
-      });
+        $rootScope.cargando = true;
+        var datos = trabajador.liquidacion().post({}, trabajadores);
+        datos.$promise.then(function(response){
+            if(response.success){
+                Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
+                cargarDatos();
+                recibirLiquidaciones(response.datos);
+                $rootScope.cargando = false;
+            }else{
+                Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
+                $rootScope.cargando = false;
+            }
+        });
     }
 
     /*$scope.generar = function(trabajador){
@@ -82,7 +89,7 @@ angular.module('angularjsApp')
       if(datos.length>1){
         openLiquidaciones(datos);
       }else{
-        open(datos[0]);
+        open(datos[0], false);
       }
       //window.open(url);
       /*if(bool){
@@ -127,6 +134,12 @@ angular.module('angularjsApp')
       }         
       for(var i=0, len=$scope.trabajadores[1].length; i<len; i++){
         $scope.trabajadores[1][i].check = false;
+      }
+      for(var i=0, len=$scope.trabajadores[2].length; i<len; i++){
+        $scope.trabajadores[2][i].check = false;
+      }  
+      for(var i=0, len=$scope.trabajadores[3].length; i<len; i++){
+        $scope.trabajadores[3][i].check = false;
       }         
       $scope.cargado = true;
     }
@@ -158,6 +171,7 @@ angular.module('angularjsApp')
     function countSelected(index){
       var count = 0;
       var nom;
+      $scope.imprimir = true;
       for(var i=0, len=$scope.trabajadores[index].length; i<len; i++){
         if($scope.trabajadores[index][i].check){
           nom = $scope.trabajadores[index][i].nombreCompleto;
@@ -165,12 +179,15 @@ angular.module('angularjsApp')
           $scope.mensaje[0] = 'Se generarán las Liquidaciones de Sueldo de los <b>' + count + '</b> trabajadores seleccionados.';
           $scope.mensaje[1] = 'Se sobreescribirán las Liquidaciones de Sueldo de los <b>' + count + '</b> trabajadores seleccionados.';
           $scope.mensaje[2] = 'Se eliminarán las Liquidaciones de Sueldo de los <b>' + count + '</b> trabajadores seleccionados.';
+          $scope.mensaje[3] = 'Se imprimirán en conjunto las Liquidaciones de Sueldo de los <b>' + count + '</b> trabajadores seleccionados.';
         }
       }
       if(count===1){
         count = nom;
-        $scope.mensaje[0] = 'Se generará una nueva Liquidación de Sueldo de <b>' + count + '</b>, sobreescribiendo la anterior.';
-        $scope.mensaje[1] = 'Se eliminará la Liquidación de Sueldo de <b>' + count + '</b>.';
+        $scope.mensaje[0] = 'Se generará la Liquidación de Sueldo de <b>' + count + '</b>.';
+        $scope.mensaje[1] = 'Se sobreescribirá la Liquidación de Sueldo de <b>' + count + '</b>, sobreescribiendo la anterior.';
+        $scope.mensaje[2] = 'Se eliminará la Liquidación de Sueldo de <b>' + count + '</b>.';
+        $scope.imprimir = false;
       }
       return count;
     }
@@ -203,11 +220,7 @@ angular.module('angularjsApp')
       generarLiquidacion(liquidaciones, true);
     }*/
 
-    $scope.generar = function(sid, multi, update){
-      var index = 0;
-      if(update){
-        index = 1;
-      }
+    $scope.generar = function(index, sid, multi, update){
       var liquidaciones = { trabajadores : [], comprobar : update };
       if(multi){
         for(var i=0,len=$scope.trabajadores[index].length; i<len; i++){
@@ -221,6 +234,29 @@ angular.module('angularjsApp')
       generarLiquidacion(liquidaciones);
     }
 
+    $scope.imprimirMasivo = function(){
+      var liquidaciones = [];
+      for(var i=0,len=$scope.trabajadores[1].length; i<len; i++){
+        if($scope.trabajadores[1][i].check){
+          liquidaciones.push({ sid : $scope.trabajadores[1][i].sid});
+        }
+      }
+      $rootScope.cargando=true;        
+      var datos = liquidacion.imprimirMasivo().post({}, liquidaciones );  
+      datos.$promise.then(function(response){
+        if(response.success){
+          Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
+          openLiquidacion(response.datos, true);
+        }else{
+          Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
+        }
+        $rootScope.cargando = false;
+      });     
+      
+      /*var url = constantes.URL + 'trabajadores/documento/descargar-pdf/' + liq.sidDocumento;
+      window.open(url);*/
+    }
+
     function limpiarChecks(){
       for(var i=0, len=$scope.trabajadores[0].length; i<len; i++){
         $scope.trabajadores[0][i].check = false
@@ -228,9 +264,17 @@ angular.module('angularjsApp')
       for(var i=0, len=$scope.trabajadores[1].length; i<len; i++){
         $scope.trabajadores[1][i].check = false
       }
+      for(var i=0, len=$scope.trabajadores[2].length; i<len; i++){
+        $scope.trabajadores[2][i].check = false
+      }
+      for(var i=0, len=$scope.trabajadores[3].length; i<len; i++){
+        $scope.trabajadores[3][i].check = false
+      }
       $scope.isSelect[0] = false;
       $scope.isSelect[1] = false;
-      $scope.objeto.todos = [ false, false ];
+      $scope.isSelect[2] = false;
+      $scope.isSelect[3] = false;
+      $scope.objeto.todos = [ false, false, false, false ];
     }
 
     function openLiquidaciones(obj){
@@ -252,11 +296,11 @@ angular.module('angularjsApp')
       });
     };
 
-    function openLiquidacion(obj){
+    function openLiquidacion(obj, masivo){
       $rootScope.cargando = true;
-      /*$scope.url = constantes.URL + 'trabajadores/liquidacion/descargar-pdf/' + $scope.objeto.sid;
+      /*$scope.url = constantes.URL + 'trabajadores/documento/descargar-pdf/' + $scope.objeto.sid;
       window.open(url);*/
-      open(obj);
+      open(obj, masivo);
     }
     /*function openLiquidacion(obj, bool){
       var miModal = $uibModal.open({
@@ -280,16 +324,19 @@ angular.module('angularjsApp')
         limpiarChecks();
       });
     };   */ 
-    function open(obj){
+    function open(obj, masivo){
       var miModal = $uibModal.open({
         animation: true,
         backdrop: false,
-        templateUrl: 'views/forms/form-mi-liquidacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        templateUrl: 'views/forms/form-mi-documento.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
         controller: 'FormFrameCtrl',
         size: 'lg',
         resolve: {
           objeto: function () {
             return obj;          
+          },
+          masivo: function () {
+            return masivo;          
           }
         }
       });
@@ -303,7 +350,7 @@ angular.module('angularjsApp')
     $scope.detalle = function(liq, nuevaVentana){
       $rootScope.cargando=true;
       if(nuevaVentana){
-        var url = constantes.URL + 'trabajadores/liquidacion/descargar-pdf/' + liq.sidDocumento;
+        var url = constantes.URL + 'trabajadores/documento/descargar-pdf/' + liq.sidDocumento;
         window.open(url);
         $rootScope.cargando = false;
       }else{
@@ -311,13 +358,13 @@ angular.module('angularjsApp')
       }
     }
 
-    $scope.eliminar = function(liq, multi){
+    $scope.eliminar = function(index, liq, multi){
       $rootScope.cargando=true;
       if(multi){
         var liquidaciones = { trabajadores : [] };
-        for(var i=0,len=$scope.trabajadores[1].length; i<len; i++){
-          if($scope.trabajadores[1][i].check){
-            liquidaciones.trabajadores.push({ sid : $scope.trabajadores[1][i].sidDocumento });
+        for(var i=0,len=$scope.trabajadores[index].length; i<len; i++){
+          if($scope.trabajadores[index][i].check){
+            liquidaciones.trabajadores.push({ sid : $scope.trabajadores[index][i].sidDocumento });
           }
         }
         $scope.result = liquidacion.eliminarMasivo().post({}, liquidaciones );  
@@ -332,20 +379,50 @@ angular.module('angularjsApp')
       });
     }
 
-  })
-  .controller('FormFrameCtrl', function ($scope, $sce, $uibModal, constantes, $filter, $uibModalInstance, objeto, Notification, $rootScope) {
-    $scope.objeto = angular.copy(objeto);
+    $scope.generarObservacionLiquidacion = function(datosTrabajador){
+      var miModal = $uibModal.open({
+        animation: true,
+        backdrop: false,
+        templateUrl: 'views/forms/form-mi-liquidacion-observaciones.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormObservacionesLiquidacionCtrl',
+        size: 'lg',
+        resolve: {
+          objeto: function () {
+            return datosTrabajador;          
+          }
+        }
+      });
+      miModal.result.then(function () {
+        cargarDatos();
+      });
+    };
 
-    $scope.url = constantes.URL + 'trabajadores/liquidacion/descargar-pdf/' + $scope.objeto.sidDocumento;
-    $scope.cargado = false;
+  })
+  .controller('FormFrameCtrl', function ($scope, $sce, masivo, $uibModal, constantes, $filter, $uibModalInstance, objeto, Notification, $rootScope) {    
+    $scope.masivo = angular.copy(masivo);
+    $scope.constantes = constantes;
+
+    if($scope.masivo){
+      $scope.objeto = { nombreDocumento : "liquidaciones.pdf", aliasDocumento : "liquidaciones1.pdf" };
+      $scope.titulo = "Liquidaciones de Sueldo";
+      $scope.subtitulo = "Impresión Masiva";
+      $scope.url = constantes.URL + 'stories/liquidaciones.pdf';
+      $scope.descargar = "liquidaciones.pdf";
+    }else{
+      $scope.objeto = angular.copy(objeto);
+      $scope.titulo = "Liquidación de Sueldo";
+      $scope.subtitulo = $scope.objeto.nombreCompleto;
+      $scope.url = constantes.URL + 'trabajadores/documento/descargar-pdf/' + $scope.objeto.sidDocumento;
+      $scope.descargar = "liquidaciones.pdf";
+      if($scope.objeto.liquidacion){
+        $scope.trabajador = $scope.objeto.liquidacion;
+      }else{
+        $scope.trabajador = $scope.objeto;
+      }
+    }
+
     $rootScope.cargando = false;
     $scope.cargado = true;
-
-    if($scope.objeto.liquidacion){
-      $scope.trabajador = $scope.objeto.liquidacion;
-    }else{
-      $scope.trabajador = $scope.objeto;
-    }
 
     $scope.trustSrc = function(src){
       return $sce.trustAsResourceUrl(src);
@@ -356,19 +433,22 @@ angular.module('angularjsApp')
     }
 
   })
-  .controller('FormLiquidacionesCtrl', function ($scope, $uibModal, $filter, $uibModalInstance, objeto, Notification, $rootScope) {
+  .controller('FormLiquidacionesCtrl', function ($scope, constantes, $uibModal, $filter, $uibModalInstance, objeto, Notification, $rootScope) {
     $scope.datos = angular.copy(objeto);
 
     $scope.openLiquidacion = function(obj){
       var miModal = $uibModal.open({
         animation: true,
         backdrop: false,
-        templateUrl: 'views/forms/form-mi-liquidacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        templateUrl: 'views/forms/form-mi-documento.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
         controller: 'FormFrameCtrl',
         size: 'lg',
         resolve: {
           objeto: function () {
             return obj;          
+          },
+          masivo: function () {
+            return false;          
           }
         }
       });
@@ -378,6 +458,11 @@ angular.module('angularjsApp')
         javascript:void(0);
       });
     };
+
+    $scope.detalle = function(liq){
+      var url = constantes.URL + 'trabajadores/documento/descargar-pdf/' + liq.sidDocumento;
+      window.open(url);
+    }
     
     $scope.ingresar = function(){
       $uibModalInstance.close($scope.datos);
@@ -443,5 +528,33 @@ angular.module('angularjsApp')
       }
       return total;
     }
+
+  })
+  .controller('FormObservacionesLiquidacionCtrl', function ($scope, constantes, $filter, $uibModalInstance, objeto, Notification, $rootScope, trabajador) {
+      $scope.objeto = angular.copy(objeto);
+
+      $scope.gestion = {
+          sidTrabajador : objeto.sidTrabajador,
+          observaciones : objeto.observaciones
+      };
+
+      $scope.cerrar = function(){
+          $uibModalInstance.dismiss();
+      };
+
+      $scope.guardar = function(){
+          $rootScope.cargando = true;
+          var datos = trabajador.liquidacionObservaciones().post({}, $scope.gestion);
+          datos.$promise.then(function(response){
+              if(response.success){
+                  Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
+                  $rootScope.cargando = false;
+                  $uibModalInstance.close();
+              }else{
+                  Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
+                  $rootScope.cargando = false;
+              }
+          });
+      }
 
   });

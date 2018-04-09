@@ -145,117 +145,6 @@ class ValorIndicador extends Eloquent {
             }
         }
     }
-    /*
-    static function crearIndicadores()
-    {
-        $mes = \Session::get('mesActivo')->mes;
-        $fecha = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes)));
-        
-        $mesAnterior = MesDeTrabajo::where('mes', $fecha)->first()->mes;
-        
-        $rentasTopesImponibles = RentaTopeImponible::listaRentasTopeImponibles($mesAnterior);
-        foreach($rentasTopesImponibles as $rti){
-            $rentaTopeImponible = new RentaTopeImponible();
-            $rentaTopeImponible->mes = $mes;
-            $rentaTopeImponible->nombre = $rti['nombre'];
-            $rentaTopeImponible->valor = $rti['valor'];
-            $rentaTopeImponible->save();            
-        }
-        
-        $rentasMinimasImponibles = RentaMinimaImponible::listaRentasMinimasImponibles($mesAnterior);
-        foreach($rentasMinimasImponibles as $rmi){
-            $rentaMinimaImponible = new RentaMinimaImponible();
-            $rentaMinimaImponible->mes = $mes;
-            $rentaMinimaImponible->nombre = $rmi['nombre'];
-            $rentaMinimaImponible->valor = $rmi['valor'];
-            $rentaMinimaImponible->save();            
-        }
-        $ahorrosPrevisionalesVoluntarios = AhorroPrevisionalVoluntario::listaAhorroPrevisionalVoluntario($mesAnterior);
-        foreach($ahorrosPrevisionalesVoluntarios as $apv){
-            $ahorroPrevisionalVoluntario = new AhorroPrevisionalVoluntario();
-            $ahorroPrevisionalVoluntario->mes = $mes;
-            $ahorroPrevisionalVoluntario->nombre = $apv['nombre'];
-            $ahorroPrevisionalVoluntario->valor = $apv['valor'];
-            $ahorroPrevisionalVoluntario->save();            
-        }
-        $depositosConvenidos = DepositoConvenido::listaDepositoConvenido($mesAnterior);
-        foreach($depositosConvenidos as $dc){
-            $depositoConvenido = new DepositoConvenido();
-            $depositoConvenido->mes = $mes;
-            $depositoConvenido->nombre = $dc['nombre'];
-            $depositoConvenido->valor = $dc['valor'];
-            $depositoConvenido->save();            
-        }
-        $segurosDeCesantia = SeguroDeCesantia::listaSeguroDeCesantia($mesAnterior);
-        foreach($segurosDeCesantia as $sc){
-            $seguroDeCesantia = new SeguroDeCesantia();
-            $seguroDeCesantia->mes = $mes;
-            $seguroDeCesantia->tipo_contrato = $sc['tipoContrato'];
-            $seguroDeCesantia->financiamiento_empleador = $sc['financiamientoEmpleador'];
-            $seguroDeCesantia->financiamiento_trabajador = $sc['financiamientoTrabajador']; 
-            $seguroDeCesantia->save();            
-        }
-        $tasasCotizacionObligatorioAfp = TasaCotizacionObligatorioAfp::listaTasaCotizacionObligatorioAfp($mesAnterior);
-        foreach($tasasCotizacionObligatorioAfp as $tcoa){
-            $tasaCotizacionObligatorioAfp = new TasaCotizacionObligatorioAfp();
-            $tasaCotizacionObligatorioAfp->mes = $mes;
-            $tasaCotizacionObligatorioAfp->afp_id = $tcoa['idAfp'];
-            $tasaCotizacionObligatorioAfp->tasa_afp = $tcoa['tasaAfp'];
-            $tasaCotizacionObligatorioAfp->sis = $tcoa['sis'];
-            $tasaCotizacionObligatorioAfp->tasa_afp_independientes = $tcoa['tasaAfpIndependientes'];        
-            $tasaCotizacionObligatorioAfp->save();            
-        }
-        $asignacionesFamiliares = AsignacionFamiliar::listaAsignacionFamiliar($mesAnterior);
-        foreach($asignacionesFamiliares as $af){
-            $asignacionFamiliar = new AsignacionFamiliar();
-            $asignacionFamiliar->mes = $mes;
-            $asignacionFamiliar->tramo = $af['tramo'];
-            $asignacionFamiliar->monto = $af['monto'];
-            $asignacionFamiliar->renta_menor = $af['rentaMenor'];
-            $asignacionFamiliar->renta_mayor = $af['rentaMayor'];                
-            $asignacionFamiliar->save();            
-        }
-        $cotizacionesTrabajosPesados = CotizacionTrabajoPesado::listaCotizacionTrabajosPesados($mesAnterior);
-        foreach($cotizacionesTrabajosPesados as $ctp){
-            $cotizacionTrabajosPesados = new CotizacionTrabajoPesado();
-            $cotizacionTrabajosPesados->mes = $mes;
-            $cotizacionTrabajosPesados->trabajo = $ctp['trabajo'];
-            $cotizacionTrabajosPesados->valor = $ctp['valor'];
-            $cotizacionTrabajosPesados->financiamiento_empleador = $ctp['financiamientoEmpleador'];
-            $cotizacionTrabajosPesados->financiamiento_trabajador = $ctp['financiamientoTrabajador'];               
-            $cotizacionTrabajosPesados->save();            
-        }
-        
-        $tablasImpuestoUnico = TablaImpuestoUnico::where('mes', $mesAnterior)->get();
-        foreach($tablasImpuestoUnico as $tiu){
-            $tablaImpuestoUnico = new TablaImpuestoUnico();
-            $tablaImpuestoUnico->mes = $mes;            
-            $tablaImpuestoUnico->tramo = $tiu->tramo;            
-            $tablaImpuestoUnico->imponible_mensual_hasta = $tiu->imponible_mensual_hasta;            
-            $tablaImpuestoUnico->imponible_mensual_desde = $tiu->imponible_mensual_desde;            
-            $tablaImpuestoUnico->factor = $tiu->factor;            
-            $tablaImpuestoUnico->cantidad_a_rebajar = $tiu->cantidad_a_rebajar;            
-            $tablaImpuestoUnico->save();
-        }
-    }
-    
-    static function listaMesesDeTrabajo(){
-    	$listaMesesDeTrabajo = array();
-    	$mesesDeTrabajo = MesDeTrabajo::orderBy('id', 'DESC')->get();
-    	if( $mesesDeTrabajo->count() ){
-            foreach( $mesesDeTrabajo as $mesDeTrabajo ){
-                $listaMesesDeTrabajo[]=array(
-                    'id' => $mesDeTrabajo->id,
-                    'mes' => $mesDeTrabajo->mes,
-                    'nombre' => $mesDeTrabajo->nombre,
-                    'ano' => $mesDeTrabajo->ano,
-                    'fechaRemuneracion' => $mesDeTrabajo->fecha_remuneracion,
-                    'isIngresado' => $mesDeTrabajo->estado()
-                );
-            }
-    	}
-    	return $listaMesesDeTrabajo;
-    }*/
     
     static function valorFecha($fecha)
     {
@@ -279,6 +168,15 @@ class ValorIndicador extends Eloquent {
         }
                 
         
+    }
+    
+    static function ufAnterior()
+    {
+        $mes = \Session::get('mesActivo')->mes;
+        $fecha = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes)));
+        $ufAnterior = ValorIndicador::where('indicador_id', 1)->where('mes', $fecha)->first();
+        
+        return $ufAnterior;                        
     }
     
     static function errores($datos){

@@ -231,7 +231,7 @@ angular.module('angularjsApp')
       $rootScope.cargando=true;
       var response;
       var cuotas = calcularCuotas();
-      var Prestamo = { idTrabajador : trabajador.id, glosa : prest.glosa, nombreLiquidacion : prest.nombreLiquidacion, moneda : prest.moneda, monto : prest.monto, cuotas : prest.cuotas, primeraCuota : prest.primeraCuota, ultimaCuota : cuotas.ultimaCuota, detalleCuotas : cuotas.detalleCuotas };
+      var Prestamo = { idTrabajador : trabajador.id, glosa : prest.glosa, nombreLiquidacion : prest.nombreLiquidacion, moneda : prest.moneda, monto : prest.monto, cuotas : prest.cuotas, primeraCuota : prest.primeraCuota, ultimaCuota : cuotas.ultimaCuota, detalleCuotas : cuotas.detalleCuotas, prestamoCaja : prest.prestamoCaja, leassingCaja : prest.leassingCaja };
       if( $scope.prestamo.sid ){
         response = prestamo.datos().update({sid:$scope.prestamo.sid}, Prestamo);
       }else{
@@ -337,36 +337,12 @@ angular.module('angularjsApp')
 
     // Fecha 
 
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
-
     $scope.dateOptions = {
-      dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: new Date(2020, 5, 22),
-      minDate: new Date(),
+      minDate: new Date(1900, 1, 1),
       startingDay: 1
     };  
-
-    function disabled(data) {
-      var date = data.date,
-        mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
 
     $scope.openFecha = function() {
       $scope.popupFecha.opened = true;
@@ -383,10 +359,6 @@ angular.module('angularjsApp')
       format: "mm/yyyy"
     };
 
-    $scope.setDate = function(year, month) {
-      $scope.fecha = new Date(year, month);
-    };
-
     $scope.format = ['MMMM-yyyy'];
 
     $scope.popupFecha = {
@@ -396,20 +368,5 @@ angular.module('angularjsApp')
     $scope.popupFechaMes = {
       opened: false
     };
-
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
 
   });

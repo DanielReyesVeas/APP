@@ -49,13 +49,16 @@ angular.module('angularjsApp')
     };
 
     $scope.eliminar = function(sec){
-
       $rootScope.cargando=true;
       $scope.result = organica.datos().delete({ sid: sec.sid });
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
           cargarDatos();
+        }else{
+          $scope.erroresDatos = response.errores;
+          Notification.error({message: response.errores.error[0], title: 'Mensaje del Sistema', delay: ''});
+          $rootScope.cargando=false;
         }
       })
     };
@@ -102,14 +105,14 @@ angular.module('angularjsApp')
 
     function cargarTrabajadores(){
       $rootScope.cargando = true;
-      var datos = trabajador.input().get();
+      var datos = trabajador.inputActivos().get();
       datos.$promise.then(function(response){
         $scope.trabajadores = response.datos;
         $rootScope.cargando = false;        
       });
     };
 
-    cargarTrabajadores();
+    //cargarTrabajadores();
 
     $scope.seleccionarTrabajador = function(trabajador){
       $scope.trabajador = trabajador.trabajador;

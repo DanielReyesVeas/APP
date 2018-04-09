@@ -99,6 +99,52 @@ class MesDeTrabajo extends Eloquent {
         return $datosMesDeTrabajo;
     }
     
+    static function generarDocumentos($nombreEmpresa, $comprobante, $columnasCC, $sumaDebe, $sumaHaber)
+    {
+        $empresa = Session::get('empresa');
+        $mes = Session::get('mesActivo');
+        $periodo = date("m-Y", strtotime($mes->mes));
+        $nombrePDF = 'centralizacion-' . $empresa->rut . '-' . $periodo . '.pdf';
+        $nombreExcel = 'cent-' . $empresa->rut . '-' . $periodo;
+        
+        $view = View::make('pdf.centralizacion', [
+            'comprobante' => $comprobante,
+            'columnasCC' => $columnasCC,
+            'sumaDebe' => $sumaDebe,
+            'sumaHaber' => $sumaHaber,
+            'empresa' => $nombreEmpresa
+        ]);
+        $html = $view->render();
+        
+        $destination = public_path() . '/stories/' . $nombrePDF;
+        /*$pdf = new \Thujohn\Pdf\Pdf();
+        $content = $pdf->load($html, 'A4', 'portrait')->output();
+        File::put($destination, $content); */
+        
+        $datos = array(
+            'comprobante' => $comprobante,
+            'columnasCC' => $columnasCC,
+            'sumaDebe' => $sumaDebe,
+            'sumaHaber' => $sumaHaber,
+            'empresa' => $nombreEmpresa
+        );
+                
+        Excel::create($nombreExcel, function($excel) use($datos, $nombreExcel) {
+            $excel->sheet($nombreExcel, function($sheet) use($datos) {
+                $sheet->loadView('excel.centralizacion')->with($datos);
+            });
+        })->store('xls', public_path('stories'));
+        
+        $destination = public_path('stories/' . $nombreExcel);
+        
+        $respuesta = array(
+            'pdf' => $nombrePDF,
+            'excel' => $nombreExcel.'.xls'
+        );
+        
+        return $respuesta;
+    }
+    
     static function errores($datos){
          
         $rules = array(

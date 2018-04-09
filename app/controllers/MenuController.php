@@ -217,31 +217,32 @@ class MenuController extends BaseController {
         $posicion=1;
         if( count($menu) ){
             foreach($menu as $item){
+                if($item['datos']->administrador!=4){
+                    if( !in_array( $item['datos']->href, array('#funcionarios', '#perfiles') ) ) {
 
-                if( !in_array( $item['datos']->href, array('#funcionarios', '#perfiles') ) ) {
+                        $datos['datos'][] = array(
+                            'posicion' => $posicion,
+                            'sid' => $item['datos']->sid,
+                            'menu' => $item['datos']->menu,
+                            'title' => $item['datos']->title,
+                            'tipo' => 1
+                        );
 
-                    $datos['datos'][] = array(
-                        'posicion' => $posicion,
-                        'sid' => $item['datos']->sid,
-                        'menu' => $item['datos']->menu,
-                        'title' => $item['datos']->title,
-                        'tipo' => 1
-                    );
+                        if (count($item['hijos'])) {
+                            $posicionHij = 1;
+                            foreach ($item['hijos'] as $ind2 => $item2) {
+                                if( !in_array( $item2['datos']->href, array('#funcionarios', '#perfiles') ) ) {
+                                    $datos['datos'][] = array(
+                                        'posicion' => $posicionHij,
+                                        'sid' => $item2['datos']->sid,
+                                        'menu' => $item2['datos']->menu,
+                                        'title' => $item2['datos']->title,
+                                        'tipo' => 2
+                                    );
+                                    $posicionHij++;
+                                }
 
-                    if (count($item['hijos'])) {
-                        $posicionHij = 1;
-                        foreach ($item['hijos'] as $ind2 => $item2) {
-                            if( !in_array( $item2['datos']->href, array('#funcionarios', '#perfiles') ) ) {
-                                $datos['datos'][] = array(
-                                    'posicion' => $posicionHij,
-                                    'sid' => $item2['datos']->sid,
-                                    'menu' => $item2['datos']->menu,
-                                    'title' => $item2['datos']->title,
-                                    'tipo' => 2
-                                );
-                                $posicionHij++;
                             }
-
                         }
                     }
                 }
@@ -268,14 +269,16 @@ class MenuController extends BaseController {
     }
 
     public function generarMenuSistema($empresa_id=0, $menuAdmin=false){
-
         // obtenemos el menu del usuario
         $opcionesMenu=array();
+        $permisos = array();
         $opciones=array();
+        $a = 0;
         if( $empresa_id ){
             $empresa = Empresa::find($empresa_id);
+            \Session::put('empresa', $empresa);
             
-            if(Auth::user()->id == 1){
+            if(Auth::usuario()->user()->id == 1){
                 
                 if( $menuAdmin ){
                     $opciones = MenuSistema::where('administrador', '<=', '2')->get();
@@ -287,55 +290,87 @@ class MenuController extends BaseController {
                     foreach($opciones as $datos){
                         $opcionesMenu[]=$datos->id;
                     }
-                }
+                }                
                 // para manejar el menu de opciones
                 $opcionesMenu[]=1000000;
-            }else {
-                if(Auth::user()->perfil->id==2){
-                        $opciones = MenuSistema::where('administrador', '>', '2')->get();
-                }else{
-                    if( $menuAdmin ){
-                        $opciones = MenuSistema::where('administrador', '<=', '2')->get();
-                    }else{
-                        $opciones = MenuSistema::all();
+            }else if(Auth::usuario()->user()->perfil_id==2){
+                $opciones = MenuSistema::where('administrador', '4')->where('tipo', '2')->get();
+                $padre = MenuSistema::where('administrador', '4')->where('tipo', '1')->first();
+                $accesos = array();
+                $subopciones = array();
+                $MENU_USUARIO = array();
+                if(count($opciones)){
+                    foreach($opciones as $datos){
+                        if($datos->menu=='Mis Liquidaciones de Sueldo'){
+                            $accesos[]=str_replace("#", "/", $datos->href);
+                            $subopciones[] = array(
+                                'fontawesome' => $datos->fontawesome,
+                                'link' => $datos->href,
+                                'onclick' => '',
+                                'opcion' => $datos->menu,
+                                'subopciones' => array()
+                            );
+                        }
                     }
                 }
                 
+                $MENU_USUARIO[] = array(
+                    'fontawesome' => $padre['fontawesome'],
+                    'link' => $padre['href'],
+                    'onclick' => '',
+                    'opcion' => $padre['menu'],
+                    'subopciones' => $subopciones
+                );
                 
-                $opcionesMenu = Auth::user()->listaAccesosEmpresa($empresa_id);
-            }
-        }else if(Auth::user()->id == 1){  
-            if( $menuAdmin ){
-                $opciones = MenuSistema::where('administrador', '!=', '2')->get();
+                $data = array(
+                    'menu' => $MENU_USUARIO, 
+                    'inicio' => "/mis-liquidaciones",
+                    'secciones' => $accesos,
+                    'opciones' => $opciones
+                );
+
+                return $data;
             }else{
-                $opciones = MenuSistema::all();
+                if( $menuAdmin ){ 
+                    $opciones = MenuSistema::where('administrador', '<=', '2')->get();
+                }else{
+                    $opciones = MenuSistema::where('administrador', '<>', '4')->get();
+                }                
+                $permisos = Auth::usuario()->user()->misPermisos();
+                $opcionesMenu = Auth::usuario()->user()->listaAccesosEmpresa($empresa_id);
             }
-            
-            if(count($opciones)){
-                foreach($opciones as $datos){
-                    $opcionesMenu[]=$datos->id;
-                }
-            }
-            // para manejar el menu de opciones
-            $opcionesMenu[]=1000000;            
         }else{
-            if(Auth::user()->perfil->id==2){
-                $opciones = MenuSistema::where('administrador', '>', '2')->get();
-            }else{
+            if(Auth::usuario()->user()->id == 1){  
                 if( $menuAdmin ){
                     $opciones = MenuSistema::where('administrador', '!=', '2')->get();
                 }else{
                     $opciones = MenuSistema::all();
                 }
-            }
-            if(count($opciones)){
-                foreach($opciones as $datos){
-                    $opcionesMenu[]=$datos->id;
-                }
-            }
-        }
-        $option = $opciones;
 
+                if(count($opciones)){
+                    foreach($opciones as $datos){
+                        $opcionesMenu[]=$datos->id;
+                    }
+                }
+                // para manejar el menu de opciones
+                $opcionesMenu[]=1000000; 
+            }else{
+                if( $menuAdmin ){
+                $a = 1;
+                    $opciones = MenuSistema::where('administrador', '>=', '2')->get();                    
+                }else{                   
+                $a = 2;
+                    $opciones = MenuSistema::where('administrador', '<>', '4')->where('administrador', '<>', '2')->get();
+                }
+                if(count($opciones)){
+                    foreach($opciones as $datos){
+                        $opcionesMenu[]=$datos->id;
+                    }
+                }
+                $permisos = Auth::usuario()->user()->misPermisos();
+            }            
+        }
+        $option = $opciones;        
         // se obtiene el menu
         $indice=0;
         // se obtiene el menu
@@ -345,15 +380,19 @@ class MenuController extends BaseController {
         $secciones=array();
         if($empresa_id){
             $empresa = \Session::get('empresa');
-            $isCME = $empresa->isCME;
+            $isCME = $empresa->cme;
+            $portal = $empresa->portal ? true : false;
+            $centroCosto = $empresa->centro_costo ? true : false;
             if($empresa->gratificacion=='e'){
                 $gratificacionAnual = ($empresa->tipo_gratificacion=='a') ? true : false;
             }else{
-                $gratificacionAnual = FichaTrabajador::isGratificacionAnual();            
+                $gratificacionAnual = true;            
             }
         }else{
             $isCME = false;
+            $portal = false;
             $gratificacionAnual = false;
+            $centroCosto = false;
         }
         if(count($menu)){
             $indice=0;            
@@ -361,64 +400,70 @@ class MenuController extends BaseController {
                 
                 if (in_array($datomen['id'], $opcionesMenu)) {                    
                     if (count($datomen['hijos'])) {
-
-                        $MENU_USUARIO[$indice] = array(
-                            "link" => $datomen['datos']->href,
-                            "onclick" => $datomen['datos']->onclick,
-                            "opcion" => $datomen['datos']->menu,
-                            "fontawesome" => $datomen['datos']->fontawesome,
-                            "subopciones" => array()
-                        );
+                        if(Auth::usuario()->user()->id==1 || Auth::usuario()->user()->id>1 && in_array($datomen['id'], $permisos)){
+                            $MENU_USUARIO[$indice] = array(
+                                "link" => $datomen['datos']->href,
+                                "onclick" => $datomen['datos']->onclick,
+                                "opcion" => $datomen['datos']->menu,
+                                "fontawesome" => $datomen['datos']->fontawesome,
+                                "subopciones" => array(),
+                                'data' => $a
+                            );
+                        }
                         $indice2 = 0;
                         foreach ($datomen['hijos'] as $datoOpc) {
+                            if(Auth::usuario()->user()->id==1 || Auth::usuario()->user()->id>1 && in_array($datoOpc['id'], $permisos)){
+                                if (in_array($datoOpc['id'], $opcionesMenu)) {
+                                    $bool = ($datoOpc['id']!=142 || $gratificacionAnual);
+                                    if($bool){
+                                        $isPortal = ($datoOpc['id']!=150 || $portal);
+                                        $isCentroCosto = ($datoOpc['id']!=146 || $centroCosto);
+                                        $isCuentas = ($datoOpc['id']!=148 || !$isCME);
+                                        if($isPortal && $isCuentas && $isCentroCosto){
+                                            $MENU_USUARIO[$indice]['subopciones'][$indice2] = array(
+                                                "link" => $datoOpc['datos']->href,
+                                                "onclick" => $datoOpc['datos']->onclick,
+                                                "opcion" => $datoOpc['datos']->menu,
+                                                "fontawesome" => $datoOpc['datos']->fontawesome,
+                                                "subopciones" => array()
+                                            );                                
 
-                            if (in_array($datoOpc['id'], $opcionesMenu)) {
-                                $bool = ($datoOpc['id']!=142 || $gratificacionAnual);
-                                if($bool){
-                                    $MENU_USUARIO[$indice]['subopciones'][$indice2] = array(
-                                        "link" => $datoOpc['datos']->href,
-                                        "onclick" => $datoOpc['datos']->onclick,
-                                        "opcion" => $datoOpc['datos']->menu,
-                                        "fontawesome" => $datoOpc['datos']->fontawesome,
-                                        "subopciones" => array()
-                                    );                                
+                                            if( count($datoOpc['hijos']) ){
+                                                $indice3 = 0;
+                                                foreach ($datoOpc['hijos'] as $datoOpc2) {
 
-                                    if( count($datoOpc['hijos']) ){
-                                        $indice3 = 0;
-                                        foreach ($datoOpc['hijos'] as $datoOpc2) {
+                                                    if (in_array($datoOpc2['id'], $opcionesMenu)) {
+                                                        $MENU_USUARIO[$indice]['subopciones'][$indice2]['subopciones'][$indice3] = array(
+                                                            "link" => $datoOpc2['datos']->href,
+                                                            "onclick" => $datoOpc2['datos']->onclick,
+                                                            "opcion" => $datoOpc2['datos']->menu,
+                                                            "fontawesome" => $datoOpc2['datos']->fontawesome,
+                                                            "subopciones" => array()
+                                                        );
 
-                                            if (in_array($datoOpc2['id'], $opcionesMenu)) {
-                                                $MENU_USUARIO[$indice]['subopciones'][$indice2]['subopciones'][$indice3] = array(
-                                                    "link" => $datoOpc2['datos']->href,
-                                                    "onclick" => $datoOpc2['datos']->onclick,
-                                                    "opcion" => $datoOpc2['datos']->menu,
-                                                    "fontawesome" => $datoOpc2['datos']->fontawesome,
-                                                    "subopciones" => array()
-                                                );
+                                                        if (!$primeraOpcion and strlen($datoOpc2['datos']->href) > 3) {
+                                                            $primeraOpcion = $datoOpc2['datos']->href;
+                                                        }
+                                                        $secciones[] = str_replace("#", "/", $datoOpc2['datos']->href);
 
-                                                if (!$primeraOpcion and strlen($datoOpc2['datos']->href) > 3) {
-                                                    $primeraOpcion = $datoOpc2['datos']->href;
+                                                        $indice3++;
+                                                    }
                                                 }
-                                                $secciones[] = str_replace("#", "/", $datoOpc2['datos']->href);
-
-                                                $indice3++;
+                                            }else{
+                                                if (!$primeraOpcion and strlen($datoOpc['datos']->href) > 3) {
+                                                    $primeraOpcion = $datoOpc['datos']->href;
+                                                }
+                                                $secciones[] = str_replace("#", "/", $datoOpc['datos']->href);
                                             }
-                                        }
-                                    }else{
 
-                                        if (!$primeraOpcion and strlen($datoOpc['datos']->href) > 3) {
-                                            $primeraOpcion = $datoOpc['datos']->href;
+                                            $indice2++;
                                         }
-                                        $secciones[] = str_replace("#", "/", $datoOpc['datos']->href);
                                     }
-
-                                    $indice2++;
                                 }
                             }
                         }
 
-                    } else {
-                        
+                    } else {                        
                         if (!count($MENU_USUARIO)) {
                             $MENU_USUARIO[$indice] = array(
                                 "link" => $datomen['datos']->href,
@@ -454,8 +499,68 @@ class MenuController extends BaseController {
                 "fontawesome" => "fa-list",
                 "subopciones" => array()
             );
+            $indice++;
+            $MENU_USUARIO[$indice]=array(
+                "link" => "#reportes",
+                "opcion" => "Reportes",
+                "fontawesome" => "fa-eye",
+                "subopciones" => array()
+            );
             $secciones[]=str_replace("#", "/", "#menu");
+            $secciones[]=str_replace("#", "/", "#reportes");
         }
-        return array('menu' => $MENU_USUARIO, 'inicio' => str_replace("#", "/", $primeraOpcion), 'secciones' => $secciones);
+        
+        $data = array(
+            'menu' => $MENU_USUARIO, 
+            'inicio' => str_replace("#", "/", $primeraOpcion), 
+            'secciones' => $secciones
+        );
+        
+        return $data;
+    }
+    
+    public function generarMenuEmpleado($empresa_id){
+        // obtenemos el menu del usuario
+        $opciones=array();
+            
+        $empresa = Empresa::find($empresa_id);
+            
+        $opciones = MenuSistema::where('administrador', '4')->where('tipo', '2')->get();
+        $padre = MenuSistema::where('administrador', '4')->where('tipo', '1')->first();
+        $accesos = array();
+        $subopciones = array();
+        $MENU_USUARIO = array();
+        
+        if(count($opciones)){
+            foreach($opciones as $datos){
+                if($datos->menu!='Solicitudes'){
+                    $accesos[]=str_replace("#", "/", $datos->href);
+                    $subopciones[] = array(
+                        'fontawesome' => $datos->fontawesome,
+                        'link' => $datos->href,
+                        'onclick' => '',
+                        'opcion' => $datos->menu,
+                        'subopciones' => array()
+                    );
+                }
+            }
+        }
+
+        $MENU_USUARIO[] = array(
+            'fontawesome' => $padre['fontawesome'],
+            'link' => $padre['href'],
+            'onclick' => '',
+            'opcion' => $padre['menu'],
+            'subopciones' => $subopciones
+        );
+
+        $data = array(
+            'menu' => $MENU_USUARIO, 
+            'inicio' => "/mis-liquidaciones",
+            'secciones' => $accesos,
+            'opciones' => $opciones
+        );
+
+        return $data;
     }
 }

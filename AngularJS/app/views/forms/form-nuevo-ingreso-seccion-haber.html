@@ -5,9 +5,12 @@
   <h3 class="modal-title">Ingreso de Haberes por Sección</h3>
 </div>
 <div class="modal-body centered">
+
   <form class="form-horizontal" name="haberSeccionForm" id="haberSeccionForm">
     <div class="panel panel-default">
+
       <div class="panel-heading">{{haber.nombre}}</div>
+
       <div class="panel-body">     
         <div class="form-group">     
           <label class="col-sm-2 control-label">Sección:</label>
@@ -18,6 +21,7 @@
             </ul>
             <input type="text" ng-model="objeto.haber.seccion" placeholder="Buscar sección" typeahead-editable="false" uib-typeahead="sec as sec.nombre for sec in datos.secciones | filter:{nombre:$viewValue}" class="form-control" typeahead-on-select="seleccionarSeccion(objeto.haber.seccion)" ng-change="cambiarSeccion()" typeahead-show-hint="true" typeahead-min-length="0" />
           </div>
+
           <button type="button" class="btn btn-primary btn-sm pull-right col-sm-2" ng-class="{'hidden' : monto.montoGlobal}" ng-click="cambiarMontoGlobal()">Ingresar monto global</button>          
           <div class="col-sm-7" ng-class="{'hidden' : !monto.montoGlobal}">
             <button type="button" class="close" ng-click="cambiarMontoGlobal()">
@@ -27,8 +31,8 @@
               <select class="form-control form-white" ng-model="monto.moneda" ng-options="mon.nombre as mon.nombre for mon in monedas" ng-change="cambiarMoneda()" > 
               </select>
             </div>                            
-            <div class="col-sm-6" style="padding: 0px;">
-              <input ng-model="monto.global" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ monedaActualGlobal }}" >
+            <div class="col-sm-6" style="padding: 0px;" ng-if="monto.montoGlobal">
+              <input ng-model="monto.global" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ monedaActualGlobal }}" required>
             </div>                       
             <div class="col-sm-1" ng-if="monto.global && monto.moneda!=='$'">
               ${{ convertir(monto.global, monto.moneda) | currency:'':0  }}
@@ -55,13 +59,13 @@
               <td>{{ trabajador.rutFormato }}</td>
               <td>{{ trabajador.nombreCompleto }}</td>
               <td>
-                <div class="col-sm-12" ng-show="datos.haber[$index].check && !monto.montoGlobal">
+                <div class="col-sm-12" ng-if="datos.haber[$index].check && !monto.montoGlobal">
                   <div class="col-sm-4">
                     <select class="form-control form-white" ng-model="datos.haber[$index].moneda" ng-options="mon.nombre as mon.nombre for mon in monedas" ng-change="cambiarMonedaIndividual($index)" > 
                     </select>
                   </div>                            
-                  <div class="col-sm-6" style="padding: 0px;">
-                    <input ng-model="datos.haber[$index].monto" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ datos.haber[$index].monedaActual }}">
+                  <div class="col-sm-6" style="padding: 0px;" ng-if="!monto.montoGlobal">
+                    <input ng-model="datos.haber[$index].monto" class="form-control form-white" type="text" placeholder="ingrese el monto en {{ datos.haber[$index].monedaActual }}" required>
                   </div>                    
                   <div class="col-sm-2" ng-show="datos.haber[$index].monto && datos.haber[$index].moneda!=='$'">
                     ${{ convertir(datos.haber[$index].monto, datos.haber[$index].moneda) | currency:'':0  }}

@@ -13,7 +13,7 @@ class TiendasController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#tiendas');
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#tiendas');
         $tiendas = Tienda::all();
         $listaTiendas=array();
         if( $tiendas->count() ){
@@ -138,9 +138,25 @@ class TiendasController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        Tienda::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $tienda = Tienda::whereSid($sid)->first();
+        
+        $errores = $tienda->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#tiendas', $tienda->id, $tienda->nombre, 'Delete');       
+            $tienda->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){

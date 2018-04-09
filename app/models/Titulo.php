@@ -4,6 +4,10 @@ class Titulo extends Eloquent {
     
     protected $table = 'titulos';
     
+    public function fichas(){
+        return $this->hasMany('FichaTrabajador', 'titulo_id');
+    }
+    
     static function listaTitulos(){
     	$listaTitulos = array();
     	$titulos = Titulo::orderBy('nombre', 'ASC')->get();
@@ -32,6 +36,19 @@ class Titulo extends Eloquent {
     	return $codigosTitulos;
     }
         
+    public function comprobarDependencias()
+    {
+        $fichas = $this->fichas;        
+        
+        if($fichas->count()){
+            $errores = new stdClass();
+            $errores->error = array("El Título <b>" . $this->nombre . "</b> se encuentra asignado.<br /> Debe <b>reasignar</b> los trabajadores primero para poder realizar esta acción.");
+            return $errores;
+        }
+        
+        return;
+    }
+    
     static function errores($datos){
          
         $rules = array(

@@ -20,10 +20,19 @@ angular.module('angularjsApp')
           }
         );
       },
+      centroCosto : function(){
+        return $resource(constantes.URL + 'aportes/centro-costo/obtener/:sid');
+      },
       updateCuenta : function(){
         return $resource(constantes.URL + 'aportes/cuentas/actualizar',
-            {},
-            { post : { 'method': 'POST' } }
+          {},
+          { post : { 'method': 'POST' } }
+        );
+      },
+      updateCuentaCentrosCosto : function(){
+        return $resource(constantes.URL + 'aportes/cuentas-centros-costos/actualizar',
+          {},
+          { post : { 'method': 'POST' } }
         );
       }
     };

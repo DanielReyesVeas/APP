@@ -26,6 +26,12 @@ angular.module('angularjsApp')
                     { post : { 'method': 'POST' } }
                 );
             },
+            eliminarDocumento : function(){
+                return $resource(constantes.URL + 'documentos/archivo/eliminar',
+                    {},
+                    { post : { 'method': 'POST' } }
+                );
+            },
             subir : function(){
                 return $resource(constantes.URL + 'documentos/archivo/subir',
                     {},

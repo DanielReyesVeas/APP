@@ -145,7 +145,7 @@ class VariablesSistemaController extends \BaseController {
 			$comp->glosa = "APERTURA AÑO ".$actual;
 			$comp->debe = 0;
 			$comp->haber = 0;
-			$comp->responsable_id = Auth::user()->id;
+			$comp->responsable_id = Auth::usuario()->user()->id;
 			$comp->estado = 1;
 			$comp->save();
 

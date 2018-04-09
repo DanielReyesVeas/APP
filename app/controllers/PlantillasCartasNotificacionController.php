@@ -21,8 +21,7 @@ class PlantillasCartasNotificacionController extends \BaseController {
                     'cuerpo' => $plantillaCartaNotificacion->cuerpo
                 );
             }
-        }
-        
+        }        
         
         $datos = array(
             'accesos' => array(
@@ -61,6 +60,9 @@ class PlantillasCartasNotificacionController extends \BaseController {
             $plantillaCartaNotificacion->nombre = $datos['nombre'];
             $plantillaCartaNotificacion->cuerpo = $datos['cuerpo'];
             $plantillaCartaNotificacion->save();
+            
+            Logs::crearLog('#cartas-de-notificacion', $plantillaCartaNotificacion->id, $plantillaCartaNotificacion->nombre, 'Create', NULL, NULL, 'Plantillas Cartas de Notificación');
+
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -131,6 +133,9 @@ class PlantillasCartasNotificacionController extends \BaseController {
             $plantillaCartaNotificacion->cuerpo = $datos['cuerpo'];
             $plantillaCartaNotificacion->nombre = $datos['nombre'];
             $plantillaCartaNotificacion->save();
+            
+            Logs::crearLog('#cartas-de-notificacion', $plantillaCartaNotificacion->id, $plantillaCartaNotificacion->nombre, 'Update', NULL, NULL, 'Plantillas Cartas de Notificación');
+            
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
@@ -155,7 +160,12 @@ class PlantillasCartasNotificacionController extends \BaseController {
     public function destroy($sid)
     {
         $mensaje="La Información fue eliminada correctamente";
-        PlantillaCartaNotificacion::whereSid($sid)->delete();
+        $plantillaCartaNotificacion = PlantillaCartaNotificacion::whereSid($sid)->first();
+        
+        Logs::crearLog('#cartas-de-notificacion', $plantillaCartaNotificacion->id, $plantillaCartaNotificacion->nombre, 'Delete', NULL, NULL, 'Plantillas Cartas de Notificación');
+        
+        $plantillaCartaNotificacion->delete();
+        
         return Response::json(array('success' => true, 'mensaje' => $mensaje));
     }
     

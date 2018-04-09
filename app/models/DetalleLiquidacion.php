@@ -8,6 +8,14 @@ class DetalleLiquidacion extends Eloquent {
         return $this->belongsTo('Liquidacion','liquidacion_id');
     }
     
+    public function detalle(){
+        if($this->tipo_id==1){
+            return $this->belongsTo('TipoHaber','detalle_id');
+        }else{
+            return $this->belongsTo('TipoDescuento','detalle_id');
+        }
+    }
+    
     static function errores($datos){
          
         $rules = array(

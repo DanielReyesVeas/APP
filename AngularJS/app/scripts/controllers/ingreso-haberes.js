@@ -31,7 +31,7 @@ angular.module('angularjsApp')
       }
     }
 
-    $scope.cargarDatos = function(){
+    function cargarDatos(){
       $rootScope.cargando = true;
       var datos = tipoHaber.ingresoHaberes().get();
       datos.$promise.then(function(response){
@@ -43,7 +43,7 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.cargarDatos();
+    cargarDatos();
 
     $scope.openIngresoHaber = function (obj) {
       var miModal = $uibModal.open({
@@ -59,7 +59,22 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (object) {
         Notification.success({message: object.mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
+      }, function () {
+        javascript:void(0)
+      });
+    }
+
+    $scope.importarPlanillaMasivo = function () {
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-importar-planilla-haber-masivo.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormImportarPlanillaHaberMasivoCtrl',
+        size: 'lg'
+      });
+      miModal.result.then(function (mensaje) {
+        Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -107,7 +122,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (object) {
         Notification.success({message: object.mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -141,7 +156,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (mensaje) {
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -161,7 +176,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (mensaje) {
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -181,7 +196,7 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (mensaje) {
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos();
+        cargarDatos();
       }, function () {
         javascript:void(0)
       });
@@ -195,6 +210,67 @@ angular.module('angularjsApp')
         $rootScope.cargando=false;
       });
     };    
+
+  })
+  .controller('FormImportarPlanillaHaberMasivoCtrl', function ($scope, fecha, $uibModal, $uibModalInstance, $http, $filter, constantes, $rootScope, Notification, Upload, haber) {
+    
+    $scope.error = {};
+    $scope.datos=[];
+    $scope.listaErrores=[];
+    $scope.constantes = constantes;
+
+    $scope.convertirFechaFormato = function(date){
+      return fecha.convertirFechaFormato(date);
+    }
+
+    $scope.$watch('files', function() {
+      $scope.upload($scope.files);
+    });
+
+    $scope.upload = function(files) {   
+      if(files) {              
+        $scope.error = {};
+        $scope.datos=[];
+        $scope.listaErrores=[];
+        var file = files;
+        Upload.upload({
+          url: constantes.URL + 'haberes/planilla/importar-masivo',
+          data: { file : file}
+        }).progress(function (evt) {
+          var progressPercentage = parseInt(100.0 * evt.loaded / evt.total);
+          $scope.dynamic = progressPercentage;
+        }).success(function (data){
+          $scope.dynamic=0;
+          if( data.success ){
+              $scope.datos = data.datos.datos;
+              $scope.encabezado = data.datos.encabezado;
+          }else{
+            if( data.errores ){
+              $scope.listaErrores = data.errores;
+              Notification.error({message: 'Errores en los datos del archivo', title: 'Mensaje del Sistema'});
+            }else{
+              Notification.error({message: data.mensaje, title: 'Mensaje del Sistema'});                            
+            }
+          }
+        });                
+      }
+    };
+
+    $scope.confirmarDatos = function(){
+      $rootScope.cargando=true;
+      var obj = { datos : $scope.datos, haberes : $scope.encabezado };
+      var datos = haber.importarMasivo().post({}, obj);
+      datos.$promise.then(function(response){
+        if(response.success){
+          $uibModalInstance.close(response.mensaje);
+        }else{
+          // error
+          $scope.erroresDatos = response.errores;
+          Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
+        }
+        $rootScope.cargando = false;
+      });
+    }
 
   })
   .controller('FormImportarPlanillaHaberCtrl', function ($scope, $uibModal, $uibModalInstance, $http, $filter, constantes, $rootScope, Notification, Upload, objeto, haber) {
@@ -271,6 +347,30 @@ angular.module('angularjsApp')
       });
     }
 
+    $scope.confirmacion = function(hab, tipo){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaHaberCtrl',
+        resolve: {
+          hab: function () {
+            return hab;          
+          },
+          objeto: function () {
+            return tipo;          
+          },
+          tipo: function () {
+            return tipo;          
+          }
+        }
+      });
+     miModal.result.then(function (object) {
+        $scope.eliminar(object.haber, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
+
     $scope.cargarDatos = function(hab){
       $rootScope.cargando=true;
       var datos = tipoHaber.datos().get({sid: hab});
@@ -310,13 +410,17 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.eliminar = function(hab, tipo){
+    $scope.eliminar = function(hab, tipo, todosMeses){
       $rootScope.cargando=true;
-      $scope.result = haber.datos().delete({ sid: hab.sid });
+      if(todosMeses){
+        $scope.result = haber.datos().delete({ sid: hab.sid });
+      }else{
+        $scope.result = haber.eliminarPermanente().post({}, hab);        
+      }
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
-          $scope.cargarDatos(tipo);
+          $scope.cargarDatos(tipo.sid);
         }
       });
     };
@@ -343,6 +447,7 @@ angular.module('angularjsApp')
 
   })
   .controller('FormReporteTrabajadorHaberesCtrl', function ($scope, $uibModal, $uibModalInstance, objeto, $http, $filter, $rootScope, Notification, trabajador, haber) {
+    
     $scope.trabajador = angular.copy(objeto.datos);
     $scope.accesos = angular.copy(objeto.accesos);
 
@@ -356,6 +461,30 @@ angular.module('angularjsApp')
       });
     }; 
 
+    $scope.confirmacion = function(hab, trab){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaHaberCtrl',
+        resolve: {
+          hab: function () {
+            return hab;          
+          },
+          objeto: function () {
+            return trab;          
+          },
+          tipo: function () {
+            return hab.tipo;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.eliminar(object.haber, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
+
     $scope.editar = function(hab){  
       $rootScope.cargando=true;
       var datos = haber.datos().get({sid: hab.sid});
@@ -365,9 +494,13 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.eliminar = function(hab, trab){
+    $scope.eliminar = function(hab, trab, todosMeses){
       $rootScope.cargando=true;
-      $scope.result = haber.datos().delete({ sid: hab.sid });
+      if(todosMeses){
+        $scope.result = haber.datos().delete({ sid: hab.sid });
+      }else{
+        $scope.result = haber.eliminarPermanente().post({}, hab);        
+      }
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
@@ -401,6 +534,7 @@ angular.module('angularjsApp')
 
     $scope.haber = angular.copy(objeto);
     $scope.datos = angular.copy(trabajadores); 
+    $scope.monedaActual = 'pesos'; 
     $scope.monedaActualGlobal = 'pesos'; 
     $scope.cargado = true;  
 
@@ -492,6 +626,7 @@ angular.module('angularjsApp')
     }
 
     $scope.cambiarSeccion = function(){
+      $scope.datos.todos = false;
       if(!$scope.objeto.haber.seccion){
         $scope.datos = angular.copy(trabajadores); 
         crearModels();
@@ -500,6 +635,7 @@ angular.module('angularjsApp')
 
     $scope.seleccionarSeccion = function(seccion){      
       getTrabajadoresSeccion(seccion.sid);
+      $scope.datos.todos = false;
     }
 
     function crearModels(){
@@ -583,8 +719,34 @@ angular.module('angularjsApp')
       $scope.objeto.haber.anual = false;
     }
 
-    $scope.ingresoMasivoHaber = function(){
+    $scope.confirmacion = function(hab, haber){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaIngresoHaberCtrl',
+        resolve: {
+          hab: function () {
+            return hab;          
+          },
+          objeto: function () {
+            return haber;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.ingresoMasivoHaber(object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
+
+    $scope.ingresoMasivoHaber = function(todosMeses){
+
       var ingresoMasivo = { haberes : [] };
+      var mes = null;
+      if($scope.objeto.haber.permanente && !todosMeses){
+        mes = $scope.mesActual.mes;
+      }
       $rootScope.cargando=true;
 
       for(var i=0, len=$scope.datos.trabajadores.length; i<len; i++){
@@ -611,14 +773,14 @@ angular.module('angularjsApp')
           }else{
             $scope.datos.trabajadores[i].mes_id = null;
             $scope.datos.trabajadores[i].mes = null;
-            $scope.datos.trabajadores[i].desde = null;
+            $scope.datos.trabajadores[i].desde = mes;
             $scope.datos.trabajadores[i].hasta = null;
           }
 
           ingresoMasivo.haberes.push($scope.datos.trabajadores[i]);
         }
       }
-
+      
       var datos = haber.masivo().post({}, ingresoMasivo);
       datos.$promise.then(function(response){
         if(response.success){
@@ -634,36 +796,12 @@ angular.module('angularjsApp')
 
     // Fecha 
 
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
-
     $scope.dateOptions = {
-      dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: new Date(2020, 5, 22),
-      minDate: new Date(),
+      minDate: new Date(1900, 1, 1),
       startingDay: 1
     };  
-
-    function disabled(data) {
-      var date = data.date,
-        mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
 
     $scope.openFechaHasta = function() {
       $scope.popupFechaHasta.opened = true;
@@ -676,30 +814,11 @@ angular.module('angularjsApp')
       format: "mm/yyyy"
     };
 
-    $scope.setDate = function(year, month) {
-      $scope.fecha = new Date(year, month);
-    };
-
     $scope.format = ['MMMM-yyyy'];
 
     $scope.popupFechaHasta = {
       opened: false
     };
-
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
 
   })
   .controller('FormReporteTrabajadoresHaberCtrl', function ($scope, $uibModal, $uibModalInstance, objeto, $http, $filter, $rootScope, trabajador, Notification, haber) {
@@ -720,6 +839,30 @@ angular.module('angularjsApp')
       });
     }
 
+    $scope.confirmacion = function(hab, trab){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaHaberCtrl',
+        resolve: {
+          hab: function () {
+            return hab;          
+          },
+          objeto: function () {
+            return trab;          
+          },
+          tipo: function () {
+            return hab.tipo;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.eliminar(object.haber, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
+
     $scope.seleccionarTrabajador = function(sid){      
       cargarDatosTrabajador(sid);
     }
@@ -733,9 +876,13 @@ angular.module('angularjsApp')
       });
     };
 
-    $scope.eliminar = function(hab, trab){
+    $scope.eliminar = function(hab, trab, todosMeses){
       $rootScope.cargando=true;
-      $scope.result = haber.datos().delete({ sid: hab.sid });
+      if(todosMeses){
+        $scope.result = haber.datos().delete({ sid: hab.sid });
+      }else{
+        $scope.result = haber.eliminarPermanente().post({}, hab);        
+      }
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
@@ -765,7 +912,47 @@ angular.module('angularjsApp')
     }
 
   })
-  .controller('FormIngresoHaberCtrl', function ($scope, $uibModalInstance, objeto, $http, $filter, $rootScope, haber, trabajador, Notification, fecha, moneda) {    
+  .controller('FormAdvertenciaHaberCtrl', function ($scope, $http, hab, tipo, $rootScope, $uibModalInstance, objeto, $uibModal, $filter) {
+
+    $scope.titulo = 'Eliminar Haber';
+    $scope.mensaje = 'El Haber ' + tipo.nombre + ' es de tipo Permanente.';
+    $scope.mensaje2 = '¿Desea eliminarlo sólo para los <b>meses posteriores</b> o para <b>todos los meses del sistema</b> (incluidos los meses anteriores)?';
+    $scope.isOK = true;
+    $scope.isCerrar = true;
+    $scope.isExclamation = true;
+    $scope.ok = 'Sólo meses posteriores';
+    $scope.cancel = 'Todos los meses';
+
+    $scope.aceptar = function(){
+      $uibModalInstance.close({ todosMeses : false, haber : hab, objeto : objeto });
+    }
+
+    $scope.cerrar = function(){
+      $uibModalInstance.close({ todosMeses : true, haber : hab, objeto : objeto });
+    }
+
+  })
+  .controller('FormAdvertenciaIngresoHaberCtrl', function ($scope, $http, hab, $rootScope, $uibModalInstance, objeto, $uibModal, $filter) {
+
+    $scope.titulo = 'Ingreso Haber';
+    $scope.mensaje = 'El Haber ' + objeto.nombre + ' será ingresado de forma Permanente.';
+    $scope.mensaje2 = '¿Desea que este sea asignado <b>a partir de este mes</b> en adelante o para <b>todos los meses del sistema</b> (incluidos los meses anteriores)?';
+    $scope.isOK = true;
+    $scope.isCerrar = true;
+    $scope.isExclamation = true;
+    $scope.ok = 'A partir de este mes';
+    $scope.cancel = 'Todos los meses';
+
+    $scope.aceptar = function(){
+      $uibModalInstance.close({ todosMeses : false, haber : hab, objeto : objeto });
+    }
+
+    $scope.cerrar = function(){
+      $uibModalInstance.close({ todosMeses : true, haber : hab, objeto : objeto });
+    }
+
+  })
+  .controller('FormIngresoHaberCtrl', function ($scope, $uibModal, $uibModalInstance, objeto, $http, $filter, $rootScope, haber, trabajador, Notification, fecha, moneda) {    
     
     $scope.monedaActual = 'pesos'; 
 
@@ -782,6 +969,27 @@ angular.module('angularjsApp')
     $scope.uf = $rootScope.globals.indicadores.uf;
     $scope.utm = $rootScope.globals.indicadores.utm;
     $scope.mesActual = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
+
+    $scope.confirmacion = function(hab, haber){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormAdvertenciaIngresoHaberCtrl',
+        resolve: {
+          hab: function () {
+            return hab;          
+          },
+          objeto: function () {
+            return haber;          
+          }
+        }
+      });
+      miModal.result.then(function (object) {
+        $scope.ingresoIndividualHaber(object.haber, object.objeto, object.todosMeses);
+      }, function () {
+        javascript:void(0);
+      });
+    }
 
     $scope.cambiarMes = function(mes){
       if(mes==='mensual'){
@@ -811,21 +1019,28 @@ angular.module('angularjsApp')
       $scope.objeto.haber.anual = false;
     }
 
+    $scope.fechaActual = fecha.convertirFecha($scope.mesActual.mes);
+
     if(objeto.trabajador){
       $scope.objeto = {};
       $scope.objeto.haber = { trabajador : { nombreCompleto : objeto.trabajador.nombreCompleto, id : objeto.trabajador.id, sid : objeto.trabajador.sid} , monto : objeto.monto, sid : objeto.sid,  moneda : objeto.moneda, mensual : objeto.porMes, rangoMeses : objeto.rangoMeses, permanente : objeto.permanente, anual : objeto.todosAnios };
       $scope.trabajador = objeto.trabajador;
-      $scope.haber = objeto.tipo;
+      $scope.haber = objeto.tipo;    
+      $scope.objeto.haber.mes = fecha.convertirFecha(objeto.mes.mes);                 
 
-      if($scope.objeto.haber.mensual){
-        $scope.objeto.haber.mes = fecha.convertirFecha(objeto.mes.mes);
-        $scope.objeto.haber.hasta = null;
-      }else if($scope.objeto.haber.rangoMeses){
-        $scope.objeto.haber.mes = fecha.convertirFecha(objeto.desde);
+      if($scope.objeto.haber.rangoMeses){
+        $scope.objeto.haber.rangoHasta = fecha.convertirFecha(objeto.hasta);
+        $scope.fechaDesde = fecha.convertirFecha(objeto.desde);
+      }else if($scope.objeto.haber.permanente){
+        $scope.fechaDesde = fecha.convertirFecha($scope.mesActual.mes);
+        $scope.objeto.haber.desde = fecha.convertirFecha(objeto.desde);
         $scope.objeto.haber.hasta = fecha.convertirFecha(objeto.hasta);
       }else{
-        $scope.objeto.haber.mes = null;
-        $scope.objeto.haber.hasta = null;
+        $scope.fechaDesde = fecha.convertirFecha($scope.mesActual.mes);
+        $scope.objeto.haber.desde = fecha.convertirFecha(objeto.desde);
+        $scope.objeto.haber.hasta = fecha.convertirFecha(objeto.hasta);
+        $scope.fechaActual = $scope.objeto.haber.mes;
+        $scope.objeto.haber.idMes = objeto.mes.id;
       }
 
       switch($scope.objeto.haber.moneda){
@@ -839,14 +1054,14 @@ angular.module('angularjsApp')
           $scope.monedaActual = 'UTM'; 
           break;
       }
-
       $scope.mostrar = true;
       $scope.isEdit = true;
       $scope.titulo = 'Modificación Haber';
     }else{
       $scope.haber = objeto;
       $scope.objeto = {};
-      $scope.objeto.haber = { moneda : $scope.monedas[0].nombre, mensual : true, rangoMeses : false, permanente : false, anual : false, mes : fecha.convertirFecha($scope.mesActual.mes), desde : fecha.convertirFecha($scope.mesActual.mes) };
+      $scope.objeto.haber = { moneda : $scope.monedas[0].nombre, mensual : true, rangoMeses : false, permanente : false, anual : false, mes : fecha.convertirFecha($scope.mesActual.mes), desde : null };
+      $scope.fechaDesde = fecha.convertirFecha($scope.mesActual.mes);
       $scope.mostrar = false;
       $scope.isEdit = false;
       $scope.titulo = 'Ingreso Individual Haber';
@@ -884,28 +1099,37 @@ angular.module('angularjsApp')
       $scope.mostrar = true;
     }
 
-    $scope.ingresoIndividualHaber = function(obj, hab){
+    $scope.ingresoIndividualHaber = function(obj, hab, todosMeses){
       $rootScope.cargando=true;
       var response;
-      var Haber = { idTrabajador : obj.trabajador.id, porMes : obj.mensual, rangoMeses : obj.rangoMeses, permanente : obj.permanente, todosAnios : obj.anual, idTipoHaber : hab.id, moneda : obj.moneda, monto : obj.monto };
+      var Haber = { idTrabajador : obj.trabajador.id, porMes : obj.mensual, idMes : null, mes : null, desde : null, hasta : null, rangoMeses : obj.rangoMeses, permanente : obj.permanente, todosAnios : obj.anual, idTipoHaber : hab.id, moneda : obj.moneda, monto : obj.monto, todosMeses : false };
       
-      if(Haber.porMes){
-        Haber.idMes = $scope.mesActual.id;
-        Haber.mes = $scope.mesActual.mes;
-        Haber.desde = null;
-        Haber.hasta = null;
-      }else if(Haber.rangoMeses){
-        Haber.idMes = null;
-        Haber.mes = null;
-        Haber.desde = obj.mes;
-        Haber.hasta = obj.hasta;
+      if(obj.sid){
+        if(Haber.porMes){
+          Haber.idMes = obj.idMes;
+          Haber.mes = obj.mes;
+        }else if(Haber.rangoMeses){
+          Haber.desde = $scope.fechaDesde;
+          Haber.hasta = obj.rangoHasta;
+        }else{
+          Haber.desde = obj.desde;
+          Haber.hasta = obj.hasta;
+        }
       }else{
-        Haber.idMes = null;
-        Haber.mes = null;
-        Haber.desde = null;
-        Haber.hasta = null;
+        if(Haber.porMes){
+          Haber.idMes = $scope.mesActual.id;
+          Haber.mes = $scope.mesActual.mes;
+        }else if(Haber.rangoMeses){
+          Haber.desde = obj.mes;
+          Haber.hasta = obj.rangoHasta;
+        }else{
+          if(!todosMeses){
+            Haber.desde = $scope.mesActual.mes;
+          }
+        }
+        Haber.todosMeses = todosMeses;
       }
-
+      
       if( obj.sid ){
         response = haber.datos().update({sid:$scope.objeto.haber.sid}, Haber);
       }else{
@@ -928,39 +1152,23 @@ angular.module('angularjsApp')
 
     // Fecha 
 
-    $scope.today = function() {
-      $scope.dt = new Date();
-    };
-    $scope.today();
-    $scope.inlineOptions = {
-      customClass: getDayClass,
-      minDate: new Date(),
-      showWeeks: true
-    };
-
     $scope.dateOptions = {
-      dateDisabled: disabled,
       formatYear: 'yy',
       maxDate: new Date(2020, 5, 22),
-      minDate: new Date(),
+      minDate: new Date(1900, 1, 1),
       startingDay: 1
     };  
 
-    function disabled(data) {
-      var date = data.date,
-        mode = data.mode;
-      return mode === 'day' && (date.getDay() === 0 || date.getDay() === 6);
-    }
-
-    $scope.toggleMin = function() {
-      $scope.inlineOptions.minDate = $scope.inlineOptions.minDate ? null : new Date();
-      $scope.dateOptions.minDate = $scope.inlineOptions.minDate;
-    };
-
-    $scope.toggleMin();
-
     $scope.openFechaHasta = function() {
       $scope.popupFechaHasta.opened = true;
+    };
+
+    $scope.openFechaRangoHasta = function() {
+      $scope.popupFechaRangoHasta.opened = true;
+    };
+
+    $scope.openFechaDesde = function() {
+      $scope.popupFechaDesde.opened = true;
     };
 
     $scope.dateOptionsMes = {
@@ -970,29 +1178,18 @@ angular.module('angularjsApp')
       format: "mm/yyyy"
     };
 
-    $scope.setDate = function(year, month) {
-      $scope.fecha = new Date(year, month);
-    };
-
     $scope.format = ['MMMM-yyyy'];
 
     $scope.popupFechaHasta = {
       opened: false
     };
 
-    function getDayClass(data) {
-      var date = data.date,
-        mode = data.mode;
-      if (mode === 'day') {
-        var dayToCheck = new Date(date).setHours(0,0,0,0);
-        for (var i = 0; i < $scope.events.length; i++) {
-          var currentDay = new Date($scope.events[i].date).setHours(0,0,0,0);
-          if (dayToCheck === currentDay) {
-            return $scope.events[i].status;
-          }
-        }
-      }
-      return '';
-    }
+    $scope.popupFechaDesde = {
+      opened: false
+    };
+
+    $scope.popupFechaRangoHasta = {
+      opened: false
+    };
 
   });

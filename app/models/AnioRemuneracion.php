@@ -4,7 +4,7 @@ class AnioRemuneracion extends Eloquent {
     
     protected $table = 'anios_remuneraciones';
     
-    public function MesDeTrabajo(){
+    public function mesesDeTrabajo(){
         return $this->hasMany('MesDeTrabajo', 'anio_id');
     }
     
@@ -29,6 +29,20 @@ class AnioRemuneracion extends Eloquent {
         return $listaMeses;        
     }
     
+    public function isNuevoAnio()
+    {
+        $empresa =  \Session::get('empresa');
+        Config::set('database.default', 'admin' );                
+        $isIngresado = DB::table('meses')->where('mes', '2018-01-01')->first();
+        Config::set('database.default', $empresa->base_datos );
+        
+        if($isIngresado){
+            return true;
+        }
+        
+        return false;
+    }
+    
     public function mesesFestivos()
     {
         $listaMeses = array();
@@ -49,6 +63,61 @@ class AnioRemuneracion extends Eloquent {
                 'mes' => $mes,
                 'fechaRemuneracion' => $remuneracion,
                 'feriados' => Feriado::feriados($mes, $remuneracion)
+            );
+        }
+        
+        return $meses;        
+    }
+    
+    static function aniosF1887()
+    {
+        $lista = array();
+        $anios = AnioRemuneracion::orderBy('anio', 'DESC')->get();
+                
+        if( $anios->count() ){
+            foreach( $anios as $anio ){
+                $lista[]=array(
+                    'id' => $anio->id,
+                    'sid' => $anio->sid,
+                    'nombre' => $anio->anio,
+                    'isDiciembre' => $anio->isDiciembre()
+                );
+            }
+        }
+        
+        return $lista;
+    }
+    
+    public function isDiciembre()
+    {
+        $diciembre = MesDeTrabajo::where('anio_id', $this->id)->where('nombre', 'Diciembre')->first();
+        if($diciembre){
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public function mesesFestivosVacaciones()
+    {
+        $listaMeses = array();
+        $anio = $this->anio;
+        $meses = array();
+        
+        for($i=1; $i<=12; $i++){
+            if($i<10){
+                $index = '0' . $i;
+            }else{
+                $index = $i;                
+            }
+            $nombre = Funciones::obtenerMesTexto($index);
+            $mes = $anio . "-" . $index . "-01";
+            $remuneracion = Funciones::obtenerFechaRemuneracion($nombre, $anio);
+            $meses[] = array(
+                'nombre' => $nombre,
+                'mes' => $mes,
+                'fechaRemuneracion' => $remuneracion,
+                'feriados' => FeriadoVacaciones::feriados($mes, $remuneracion)
             );
         }
         
@@ -90,7 +159,6 @@ class AnioRemuneracion extends Eloquent {
         $id = $this->id;
         $isMes = MesDeTrabajo::where('anio_id', $id)->where('nombre', $mes)->first();
         $bool = false; 
-        
         if($isMes){
             $bool = true; 
         }
@@ -116,11 +184,21 @@ class AnioRemuneracion extends Eloquent {
         $isIngresado = DB::table('meses')->where('mes', $fechaActual)->first();
         Config::set('database.default', $empresa->base_datos );
         
-        if($fecha<=$date && $fechaActual>=$fechaInicial && $isIngresado){
+        if($fecha<=$date && $fechaActual>=$fechaInicial && ($isIngresado || ($mes=="Enero" && $anio==2018) ) ){
             $disponible = true;
         }
         
         return $disponible;
+    }
+    
+    static function isCentralizado($mes)
+    {
+        $centralizacion = ComprobanteCentralizacion::where('mes', $mes)->get();
+        if($centralizacion->count()){
+            return true;
+        }
+        
+        return false;
     }
 
     
@@ -128,126 +206,20 @@ class AnioRemuneracion extends Eloquent {
     {
         $estadoMeses = array();
         $anio = $this->anio;
+        $meses = Config::get('constants.meses');
         
-        $estadoMeses[] = array(
-            'nombre' => 'Enero',
-            'abierto' => $this->enero==1 ? true : false,
-            'iniciado' => $this->isIniciado('Enero'),
-            'disponible' => $this->isDisponible('Enero'), 
-            'mes' => Funciones::obtenerFechaMes('Enero', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Enero', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Enero', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Febrero',
-            'abierto' => $this->febrero==1 ? true : false,
-            'iniciado' => $this->isIniciado('Febrero'),
-            'disponible' => $this->isDisponible('Febrero'),
-            'mes' => Funciones::obtenerFechaMes('Febrero', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Febrero', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Febrero', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Marzo',
-            'abierto' => $this->marzo==1 ? true : false,
-            'iniciado' => $this->isIniciado('Marzo'),
-            'disponible' => $this->isDisponible('Marzo'), 
-            'mes' => Funciones::obtenerFechaMes('Marzo', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Marzo', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Marzo', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Abril',
-            'abierto' => $this->abril==1 ? true : false,
-            'iniciado' => $this->isIniciado('Abril'),
-            'disponible' => $this->isDisponible('Abril'), 
-            'mes' => Funciones::obtenerFechaMes('Abril', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Abril', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Abril', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Mayo',
-            'abierto' => $this->mayo==1 ? true : false,
-            'iniciado' => $this->isIniciado('Mayo'),
-            'disponible' => $this->isDisponible('Mayo'),
-            'mes' => Funciones::obtenerFechaMes('Mayo', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Mayo', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Mayo', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Junio',
-            'abierto' => $this->junio==1 ? true : false,
-            'iniciado' => $this->isIniciado('Junio'),
-            'disponible' => $this->isDisponible('Junio'), 
-            'mes' => Funciones::obtenerFechaMes('Junio', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Junio', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Junio', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Julio',
-            'abierto' => $this->julio==1 ? true : false,
-            'iniciado' => $this->isIniciado('Julio'),
-            'disponible' => $this->isDisponible('Julio'), 
-            'mes' => Funciones::obtenerFechaMes('Julio', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Julio', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Julio', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Agosto',
-            'abierto' => $this->agosto==1 ? true : false,
-            'iniciado' => $this->isIniciado('Agosto'),
-            'disponible' => $this->isDisponible('Agosto'), 
-            'mes' => Funciones::obtenerFechaMes('Agosto', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Agosto', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Agosto', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Septiembre',
-            'abierto' => $this->septiembre==1 ? true : false,
-            'iniciado' => $this->isIniciado('Septiembre'),
-            'disponible' => $this->isDisponible('Septiembre') , 
-            'mes' => Funciones::obtenerFechaMes('Septiembre', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Septiembre', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Septiembre', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Octubre',
-            'abierto' => $this->octubre==1 ? true : false,
-            'iniciado' => $this->isIniciado('Octubre'),
-            'disponible' => $this->isDisponible('Octubre'), 
-            'mes' => Funciones::obtenerFechaMes('Octubre', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Octubre', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Octubre', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Noviembre',
-            'abierto' => $this->noviembre==1 ? true : false,
-            'iniciado' => $this->isIniciado('Noviembre'),
-            'disponible' => $this->isDisponible('Noviembre'), 
-            'mes' => Funciones::obtenerFechaMes('Noviembre', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Noviembre', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Noviembre', $anio))
-        );
-        
-        $estadoMeses[] = array(
-            'nombre' => 'Diciembre',
-            'abierto' => $this->diciembre==1 ? true : false,
-            'iniciado' => $this->isIniciado('Diciembre'),
-            'disponible' => $this->isDisponible('Diciembre'), 
-            'mes' => Funciones::obtenerFechaMes('Diciembre', $anio),
-            'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion('Diciembre', $anio),
-            'isCentralizar' => AnioRemuneracion::isLiquidaciones(Funciones::obtenerFechaMes('Diciembre', $anio))
-        );
+        foreach($meses as $mes){
+            $nombre = strtolower($mes['value']);
+            $estadoMeses[] = array(
+                'nombre' => $mes['value'],
+                'abierto' => $this->$nombre ? true : false,
+                'iniciado' => $this->isIniciado($mes['value']),
+                'disponible' => $this->isDisponible($mes['value']), 
+                'mes' => Funciones::obtenerFechaMes($mes['value'], $anio),
+                'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion($mes['value'], $anio),
+                'isCentralizado' => AnioRemuneracion::isCentralizado(Funciones::obtenerFechaMes($mes['value'], $anio))
+            );            
+        }            
 
         return $estadoMeses;
     }

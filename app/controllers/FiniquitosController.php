@@ -56,7 +56,38 @@ class FiniquitosController extends \BaseController {
         if(!$errores){
             $filename = date("d-m-Y-H-i-s")."_Finiquito_".$datos['trabajador']['rut']. '.pdf';
             $destination = public_path() . '/stories/' . $filename;
-                        
+            
+            $datos['cuerpo'] = $datos['cuerpo'] . 
+                '<div style="margin-left: 10px; margin-top: 200px;">
+                    <table style="width: 100%;" class="noClass">
+                        <tr>
+                            <td style="width: 30%; border-bottom: 1px solid black;"></td>
+                            <td style="width: 10%;"></td>
+                            <td style="width: 30%; border-bottom: 1px solid black;"></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: center;">' . strtoupper($datos['trabajador']['nombreCompleto']) . '</td>
+                            <td></td>
+                            <td style="text-align: center;">' . strtoupper($datos['empresa']['empresa']) . '</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: center;">' . Funciones::formatear_rut($datos['trabajador']['rut']) . '</td>
+                            <td></td>
+                            <td style="text-align: center;">' . Funciones::formatear_rut($datos['empresa']['rut']) . '</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: center; font-size: 12px;">c.c. carpeta personal</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: center; font-size: 12px;">Inspección del Trabajo</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </table>
+                </div></body></html>';
+            
             File::put($destination, PDF::load(utf8_decode($datos['cuerpo']), 'A4', 'portrait')->output());
             $idTrabajador = $datos['trabajador']['id'];
             
@@ -104,7 +135,9 @@ class FiniquitosController extends \BaseController {
             $finiquito->sueldo_variable = $datos['sueldoVariable'];
             $finiquito->total_finiquito = $datos['totalFiniquito'];
             $finiquito->recibido = false;
-            $finiquito->save();                            
+            $finiquito->save();     
+            
+            Logs::crearLog('#finiquitar-trabajador', $documento->id, $documento->alias, 'Create', $documento->trabajador_id, $finiquito->trabajador_nombre_completo, NULL);
             
             $respuesta=array(
             	'success' => true,
@@ -178,6 +211,8 @@ class FiniquitosController extends \BaseController {
         $trabajador = Trabajador::find($idTrabajador);
         $empleado = $trabajador->ficha();
         $mes = \Session::get('mesActivo')->mes;
+        $ufAnterior = ValorIndicador::ufAnterior();
+        $tope = round($ufAnterior->valor * 90);
         $sumaImponibles = 0;
         $totalImponibles = 0;
         $sumaNoImponibles = 0;
@@ -244,39 +279,20 @@ class FiniquitosController extends \BaseController {
                             }
                         }                                            
                     }
-
-                    if($datos['noImponibles']){
-                        if($liquidacion['colacion'] > 0){
-                            $noImponibles[] = array(
-                                'id' => 1,
-                                'nombre' => 'Colación',
-                                'monto' => $liquidacion['colacion']
-                            );
-                            $sumaNoImponibles = ($sumaNoImponibles + $liquidacion['colacion']);
-                        }
-                        if($liquidacion['movilizacion'] > 0){
-                            $noImponibles[] = array(
-                                'id' => 1,
-                                'nombre' => 'Moviliación',
-                                'monto' => $liquidacion['movilizacion']
-                            );
-                            $sumaNoImponibles = ($sumaNoImponibles + $liquidacion['movilizacion']);
-                        }
-                        if($liquidacion['viatico'] > 0){
-                            $noImponibles[] = array(
-                                'id' => 1,
-                                'nombre' => 'Viático',
-                                'monto' => $liquidacion['viatico']
-                            );
-                            $sumaNoImponibles = ($sumaNoImponibles + $liquidacion['viatico']);
-                        }
-                    }
                     
                     if($datos['mesAviso']){
                         $rentaImponible = ($sumaImponibles + $sueldo + $gratificacion);
+                        $rentaImponible = $liquidacion->sueldo_base;
+                        if($datos['gratificacionMesAviso']){
+                            $rentaImponible += $liquidacion->gratificacion;
+                        }
+                        if($rentaImponible > $tope){
+                            $rentaImponible = $tope;
+                        }
                     }else{
                         $rentaImponible = 0;
                     }
+                    
                     
                     $detalle[] = array(
                         'mes' => $mesAnterior['nombre'] . ' ' . $mesAnterior->anioRemuneracion->anio,
@@ -304,6 +320,11 @@ class FiniquitosController extends \BaseController {
                         ),                        
                     );
                     $totalImponibles = ($sumaImponibles + $sueldo + $gratificacion);
+                    $totalImponibles = $liquidacion->sueldo_base;
+                    $totalImponiblesVacaciones = $totalImponibles;
+                    if($totalImponibles>$tope){
+                        $totalImponibles = $tope;
+                    }
                     $totalNoImponibles = $sumaNoImponibles;
                 }else{
                     $respuesta=array(
@@ -392,40 +413,16 @@ class FiniquitosController extends \BaseController {
                                 }
                             }
                         }
-                        
-                        if($datos['noImponibles']){
-                            if($liquidacion['colacion'] > 0){
-                                $noImponibles[] = array(
-                                    'id' => 1,
-                                    'nombre' => 'Colación',
-                                    'monto' => $liquidacion['colacion']
-                                );
-                                $sumaNoImponibles = ($sumaNoImponibles + $liquidacion['colacion']);
-                            }
-                            if($liquidacion['movilizacion'] > 0){
-                                $noImponibles[] = array(
-                                    'id' => 1,
-                                    'nombre' => 'Moviliación',
-                                    'monto' => $liquidacion['movilizacion']
-                                );
-                                $sumaNoImponibles = ($sumaNoImponibles + $liquidacion['movilizacion']);
-                            }
-                            if($liquidacion['viatico'] > 0){
-                                $noImponibles[] = array(
-                                    'id' => 1,
-                                    'nombre' => 'Viático',
-                                    'monto' => $liquidacion['viatico']
-                                );
-                                $sumaNoImponibles = ($sumaNoImponibles + $liquidacion['viatico']);
-                            }
-                        }
-                        
                         $rentaImponible = ($sumaImponibles + $sueldo + $gratificacion);
+                        $sueldoBase = $liquidacion->sueldo_base;
+                        if($sueldoBase > $tope){
+                            $sueldoBase = $tope;
+                        }
                         $detalle[] = array(
                             'mes' => $liquidacion['mes'],
                             'imponibles' => array(
                                 'sueldo' => array(
-                                    'monto' => $sueldo
+                                    'monto' => $sueldoBase
                                 ),
                                 'gratificacion' => array(
                                     'monto' => $gratificacion,
@@ -449,13 +446,23 @@ class FiniquitosController extends \BaseController {
                         $sumaSueldos = ($sumaSueldos + $sueldo);
                         $sumaGratificacion = ($sumaGratificacion + $gratificacion);
                         $totalImponibles = ($totalImponibles + $rentaImponible);
+                        $totalImponibles = $liquidacion->sueldo_base;
+                        $totalImponiblesVacaciones = $totalImponibles;
                         $totalNoImponibles = ($totalNoImponibles + $sumaNoImponibles);
                     }
                     
                     if($datos['mesAviso']){
                         $rentaImponible = ($sumaImponibles + $sueldo + $gratificacion);
+                        $rentaImponible = $trabajador->sueldoBase();
+                        $sueldoBase = $trabajador->sueldoBase();
+                        if($datos['gratificacionMesAviso']){
+                            $rentaImponible += $gratificacion;
+                        }
+                        if($sueldoBase > $tope){
+                            $sueldoBase = $tope;
+                        }
                     }else{
-                        $rentaImponible = 0;
+                        $sueldoBase = 0;
                     }
                     
                     $montoSueldo = round($sumaSueldos / $meses);
@@ -489,7 +496,12 @@ class FiniquitosController extends \BaseController {
                         $anios = $datos['tope']['id'];
                     }
                 }
-
+                if($datos['gratificacionIndemnizacion']){
+                    $totalImponibles += $gratificacion;
+                }
+                if($totalImponibles > $tope){
+                    $totalImponibles = $tope;
+                }
                 $indemnizacion = ($anios * $totalImponibles);                    
             }
 
@@ -499,9 +511,18 @@ class FiniquitosController extends \BaseController {
                 }else{
                     $vacaciones = $trabajador->misVacaciones();     
                 }
-                $montoVacaciones = round(($totalImponibles / 30 ) * $vacaciones);
-            }                              
+                $sueldoVacaciones = $trabajador->sueldoBase();
+                $montoVacaciones = round(($sueldoVacaciones / 30 ) * $vacaciones);
+            }      
+            $sueldoBase = 0;
+            if($datos['indemnizacion'] || $datos['mesAviso']){
+                $sueldoBase = $trabajador->sueldoBase();
+            }
+            if($sueldoBase > $tope){
+                $sueldoBase = $tope;
+            }
         }else{
+            $sueldoBase = 0;
             $rentaImponible = 0;
         }
         
@@ -518,7 +539,8 @@ class FiniquitosController extends \BaseController {
                 'suma' => $totalNoImponibles
             ),
             'imponibles' => array(
-                'suma' => $rentaImponible
+                'suma' => $rentaImponible,
+                'sumas' => $rentaImponible
             ),
             'indemnizacion' => array(
                 'indemnizacion' => $datos['indemnizacion'],
@@ -532,7 +554,9 @@ class FiniquitosController extends \BaseController {
             ),
             'fecha' => $datos['fecha'],
             'idCausal' => $datos['idCausal'],
-            'detalle' => $detalle
+            'detalle' => $detalle,
+            'totalImponibles' => $totalImponibles,
+            'tope' => $tope
         );     
   
         return Response::json($respuesta);
@@ -603,6 +627,9 @@ class FiniquitosController extends \BaseController {
         $ficha->estado = 'Ingresado';
         $ficha->save();
         $documento = Documento::find($finiquito->documento_id);
+        
+        Logs::crearLog('#finiquitar-trabajador', $documento->id, $documento->alias, 'Delete', $documento->trabajador_id, $ficha->nombreCompleto(), NULL);
+        
         $documento->eliminarDocumento();
         
         return Response::json(array('success' => true, 'mensaje' => $mensaje));

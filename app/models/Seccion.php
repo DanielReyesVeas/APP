@@ -16,6 +16,10 @@ class Seccion extends Eloquent {
     	return $this->hasMany('Seccion', 'dependencia_id');
     }
     
+    public function fichas(){
+        return $this->hasMany('FichaTrabajador', 'seccion_id');
+    }
+    
     static function listaSecciones(&$lista, $padreId, $nivel)
     {
         //obtener hijos de padreId
@@ -27,9 +31,10 @@ class Seccion extends Eloquent {
                     'sid' => $seccion->sid,
                     'nombre' => $seccion->nombre,
                     'nivel' => $nivel,
+                    'codigo' => $seccion->codigo,
                     'dependencia' => $seccion->dependencia_id,
                     'isPadre' => $seccion->isPadre(),
-                    'encargado' => $seccion->encargado()
+                    //'encargado' => $seccion->encargado()
                 );
                 if( $seccion->obtenerHijos->count() ){
                     Seccion::listaSecciones( $lista, $seccion->id, $nivel+1 );
@@ -75,8 +80,9 @@ class Seccion extends Eloquent {
                     'id' => $seccion->id,
                     'sid' => $seccion->sid,
                     'nombre' => $seccion->nombre,
+                    'codigo' => $seccion->codigo,
                     'nivel' => $nivel,
-                    'encargado' => $seccion->encargado()
+                    //'encargado' => $seccion->encargado()
                 );
                 if( $seccion->obtenerHijos->count() ){
                     Seccion::listaSeccionesDependencia( $lista, $seccion->id, $nivel+1, $seccion_id );
@@ -104,6 +110,7 @@ class Seccion extends Eloquent {
             $datosDependencia = array(
                 'id' => $dependencia->id,
                 'sid' => $dependencia->sid,
+                'codigo' => $dependencia->codigo,
                 'nombre' => $dependencia->nombre
             );
         }
@@ -124,6 +131,19 @@ class Seccion extends Eloquent {
         }
         
         return $datosEncargado;
+    }
+    
+    public function comprobarDependencias()
+    {
+        $fichas = $this->fichas;        
+        
+        if($fichas->count()){
+            $errores = new stdClass();
+            $errores->error = array("La Sección <b>" . $this->nombre . "</b> se encuentra asignada.<br /> Debe <b>reasignar</b> los trabajadores primero para poder realizar esta acción.");
+            return $errores;
+        }
+        
+        return;
     }
     
     static function errores($datos)

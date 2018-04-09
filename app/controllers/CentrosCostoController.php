@@ -13,24 +13,13 @@ class CentrosCostoController extends \BaseController {
         if(!\Session::get('empresa')){
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
-        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::user(), '#centro-costo');
-        $centrosCosto = CentroCosto::all();
-        $listaCentrosCosto=array();
-        if( $centrosCosto->count() ){
-            foreach( $centrosCosto as $centroCosto ){
-                $listaCentrosCosto[]=array(
-                    'id' => $centroCosto->id,
-                    'sid' => $centroCosto->sid,
-                    'codigo' => $centroCosto->codigo,
-                    'nombre' => $centroCosto->nombre
-                );
-            }
-        }
-        
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#centro-costos');
+        $listaCentrosCostos=array();
+        CentroCosto::arbolCentrosCosto($listaCentrosCostos, 0, 1);
         
         $datos = array(
             'accesos' => $permisos,
-            'datos' => $listaCentrosCosto
+            'centrosCostos' => $listaCentrosCostos
         );
         
         return Response::json($datos);
@@ -60,6 +49,7 @@ class CentrosCostoController extends \BaseController {
             $centroCosto = new CentroCosto();
             $centroCosto->nombre = $datos['nombre'];
             $centroCosto->codigo = $datos['codigo'];
+            $centroCosto->dependencia_id = $datos['dependencia'] ? $datos['dependencia']['id'] : 0;
             $centroCosto->sid = Funciones::generarSID();
             $centroCosto->save();
             $respuesta=array(
@@ -85,7 +75,30 @@ class CentrosCostoController extends \BaseController {
      */
     public function show($sid)
     {
-        //
+        $centroCosto = CentroCosto::whereSid($sid)->first();
+        $listaCentrosCosto=array();
+        CentroCosto::listaCentrosCostoDependencia($listaCentrosCosto, 0, 1, $centroCosto->id);
+        $detallesCentroCosto = array();
+
+        $detallesCentroCosto = array(
+            'id' => $centroCosto->id,
+            'sid' => $centroCosto->sid,            
+            'codigo' => $centroCosto->codigo,            
+            'nivel' => $centroCosto->nivel(),            
+            'nombre' => $centroCosto->nombre,         
+            'dependencia' => $centroCosto->dependencia()
+        );
+        
+        $datos = array(
+            'accesos' => array(
+                'ver' => true,
+                'editar' => true
+            ),
+            'datos' => $detallesCentroCosto,
+            'centrosCostos' => $listaCentrosCosto
+        );
+        
+        return Response::json($datos);
     }
 
     /**
@@ -114,6 +127,7 @@ class CentrosCostoController extends \BaseController {
         if(!$errores and $centroCosto){
             $centroCosto->nombre = $datos['nombre'];
             $centroCosto->codigo = $datos['codigo'];
+            $centroCosto->dependencia_id = $datos['dependencia'] ? $datos['dependencia']['id'] : 0;
             $centroCosto->save();
             $respuesta = array(
             	'success' => true,
@@ -138,14 +152,32 @@ class CentrosCostoController extends \BaseController {
      */
     public function destroy($sid)
     {
-        $mensaje="La Información fue eliminada correctamente";
-        CentroCosto::whereSid($sid)->delete();
-        return Response::json(array('success' => true, 'mensaje' => $mensaje));
+        $centroCosto = CentroCosto::whereSid($sid)->first();
+        
+        $errores = $centroCosto->comprobarDependencias();
+        
+        if(!$errores){
+            Logs::crearLog('#centro-costos', $centroCosto->id, $centroCosto->nombre, 'Delete');       
+            $centroCosto->delete();
+            $datos = array(
+                'success' => true,
+                'mensaje' => "La Información fue eliminada correctamente"
+            );
+        }else{
+            $datos = array(
+                'success' => false,
+                'errores' => $errores,
+                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada"
+            );
+        }
+
+        return Response::json($datos);
     }
     
     public function get_datos_formulario(){
         $datos = array(
             'codigo' => Input::get('codigo'),
+            'dependencia' => Input::get('dependencia'),
             'nombre' => Input::get('nombre')
         );
         return $datos;
