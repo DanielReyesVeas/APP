@@ -162,15 +162,15 @@
         </table>
       </div>    
 
-      <div class="col-sm-12 text-center" style="margin-top: 60px;">
+      <div class="col-sm-12 text-center" style="margin-top: 60px;" ng-if="mostrarFiniquitados">
         <h3>Trabajadores Finiquitados</h3>
       </div>
 
-      <div class="col-sm-12 text-center" ng-if="trabajadores[2].length<=0" style="margin-top: 60px;">
+      <div class="col-sm-12 text-center" ng-if="trabajadores[2].length<=0 && mostrarFiniquitados" style="margin-top: 60px;">
         <i>No hay trabajadores pendientes</i>
       </div>
 
-      <div class="col-sm-12" style="margin-top: 50px;" ng-class="{ 'hidden' : trabajadores[2].length==0}">        
+      <div class="col-sm-12" style="margin-top: 50px;" ng-class="{ 'hidden' : trabajadores[2].length==0 || !mostrarFiniquitados}">        
         <div class="form-group">
           <label for="orden3" class="control-label col-md-1">
             Ordenar:
@@ -197,7 +197,7 @@
         </div>
       </div>      
 
-      <div class="col-sm-12" style="margin-top: 40px;">
+      <div class="col-sm-12" style="margin-top: 40px;" ng-if="mostrarFiniquitados">
         <table class="table table-striped table-hover" ng-if="trabajadores[2].length>0">
           <thead>
             <tr>    
@@ -235,15 +235,15 @@
         </table>
       </div>
 
-      <div class="col-sm-12 text-center" style="margin-top: 60px;">
+      <div class="col-sm-12 text-center" style="margin-top: 60px;" ng-if="false">
         <h3>Trabajadores Finiquitados con Liquidaciones</h3>
       </div>
 
-      <div class="col-sm-12 text-center" ng-if="trabajadores[3].length<=0" style="margin-top: 60px;">
+      <div class="col-sm-12 text-center" ng-if="trabajadores[3].length<=0 && false" style="margin-top: 60px;">
         <i>No se han ingresado liquidaciones</i>
       </div>
 
-      <div class="col-sm-12" style="margin-top: 50px;" ng-class="{ 'hidden' : trabajadores[3].length==0}">        
+      <div class="col-sm-12" style="margin-top: 50px;" ng-class="{ 'hidden' : trabajadores[3].length==0 || true }">        
         <div class="form-group">
           <label for="orden4" class="control-label col-md-1">
             Ordenar:
@@ -267,7 +267,7 @@
         </div>
       </div>      
 
-      <div class="col-sm-12" style="margin-top: 40px;">
+      <div class="col-sm-12" style="margin-top: 40px;" ng-if="false">
         <table class="table table-striped table-hover" ng-if="trabajadores[3].length>0">
           <thead>
             <tr>    

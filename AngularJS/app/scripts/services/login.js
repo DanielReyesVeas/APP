@@ -19,12 +19,12 @@ angular.module('angularjsApp')
                     callback(response.data);
                 });
             },
-            SetCredentials : function(username, password, cliente, nomUsuario, menu, accesos, defecto, imagen, nombre, empresas, empresa, max, uID, listaMesesDeTrabajo, uf, utm, uta, isEmpleado){
+            SetCredentials : function(username, url, password, cliente, nomUsuario, menu, accesos, defecto, imagen, nombre, empresas, empresa, max, uID, listaMesesDeTrabajo, uf, utm, uta, isEmpleado){
                 var authdata = username;
- 
                 $rootScope.globals = {
                     currentUser: {
                         username: username,
+                        url: url,
                         cliente: cliente,
                         authdata: authdata,
                         nomUsuario : nomUsuario,

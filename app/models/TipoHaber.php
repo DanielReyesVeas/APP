@@ -88,7 +88,7 @@ class TipoHaber extends Eloquent {
     	$tiposHaber = TipoHaber::orderBy('nombre', 'ASC')->get();
     	if( $tiposHaber->count() ){
             foreach( $tiposHaber as $tipoHaber ){
-                if($tipoHaber->id>15){
+                if($tipoHaber->id>15 || $tipoHaber->nombre=='Colación' || $tipoHaber->nombre=='Movilización' || $tipoHaber->nombre=='Viático'){
                     $listaTiposHaber[]=array(
                         'id' => $tipoHaber->id,
                         'imponible' => $tipoHaber->imponible ? true : false,
@@ -129,6 +129,60 @@ class TipoHaber extends Eloquent {
         return $listaHaberes;
     }
     
+    public function misHaberesFicha($tipo)
+    {        
+        $listaHaberes = array();
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
+        $trabajadores = Trabajador::all();
+        if($tipo=='Movilización'){
+            $monto = 'monto_movilizacion';
+            $proporcional = 'proporcional_movilizacion';
+            $moneda = 'moneda_movilizacion';
+        }else if($tipo=='Colación'){
+            $monto = 'monto_colacion';
+            $proporcional = 'proporcional_colacion';
+            $moneda = 'moneda_colacion';
+        }else if($tipo=='Viático'){
+            $monto = 'monto_viatico';
+            $proporcional = 'proporcional_viatico';
+            $moneda = 'moneda_viatico';
+        }
+        
+        if( $trabajadores->count() ){
+            foreach( $trabajadores as $trabajador ){
+                $empleado = $trabajador->ficha();
+                if($empleado){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes && $empleado->$monto>0 || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMes && $empleado->fecha_finiquito >= $mesAnterior && $empleado->$monto>0){
+                        $listaHaberes[] = array(
+                            'id' => $this->id,
+                            'sid' => $tipo,
+                            'moneda' => $empleado->$moneda,
+                            'permanente' => true,
+                            'porMes' => false,
+                            'rangoMeses' => false,
+                            'monto' => $empleado->$monto,
+                            'trabajador' => array(
+                                'id' => $trabajador->id,
+                                'sid' => $trabajador->sid,
+                                'nombreCompleto' => $empleado->nombreCompleto(),
+                                'rutFormato' => Funciones::formatear_rut($trabajador->rut)
+                            ),
+                            'mes' => '',
+                            'desde' => '',
+                            'hasta' => '',
+                            'fechaIngreso' => date('Y-m-d H:i:s', strtotime($empleado->created_at))
+                        );
+                    }                    
+                }                
+            }            
+        }
+        
+        return $listaHaberes;
+    }
+    
     public function validar($datos)
     {
         $codigos = TipoHaber::where('codigo', $datos['codigo'])->get();
@@ -137,7 +191,7 @@ class TipoHaber extends Eloquent {
             foreach($codigos as $codigo){
                 if($codigo['codigo']==$datos['codigo'] && $codigo['id']!=$this->id){
                     $errores = new stdClass();
-                    $errores->codigo = array('El c贸digo ya se encuentra registrado');
+                    $errores->codigo = array('El código ya se encuentra registrado');
                     return $errores;
                 }
             }
@@ -151,24 +205,35 @@ class TipoHaber extends Eloquent {
         
         if($haberes->count()){
             $errores = new stdClass();
-            $errores->error = array("El Tipo de Haber <b>" . $this->nombre . "</b> se encuentra asignado.<br /> Debe <b>eliminar</b> estos haberes primero para poder realizar esta acci贸n.");
+            $errores->error = array("El Tipo de Haber <b>" . $this->nombre . "</b> se encuentra asignado.<br /> Debe <b>eliminar</b> estos haberes primero para poder realizar esta acción.");
             return $errores;
         }
         
         return;
     }
     
-    static function errores($datos){
-         
-        $rules = array(
-            'codigo' => 'required|unique:tipos_haber',
-            'nombre' => 'required'
-        );
+    static function errores($datos){        
+        if($datos['id']){
+            $rules =    array(
+                'codigo' => 'required|unique:tipos_haber,codigo,'.$datos['id'],
+                'nombre' => 'required|unique:tipos_haber,nombre,'.$datos['id']
+            );
+        }else{
+            $rules =    array(
+                'codigo' => 'required|unique:tipos_haber,codigo',
+                'nombre' => 'required|unique:tipos_haber,nombre'
+            );
+        }
 
         $message = array(
             'tipoHaber.required' => 'Obligatorio!'
         );
-
+        $message =  array(
+            'nombre.required' => 'Obligatorio!',
+            'codigo.required' => 'Obligatorio!',
+            'nombre.unique' => 'El nombre ya se encuentra registrado!',
+            'codigo.unique' => 'El código ya se encuentra registrado!'
+        );
         $verifier = App::make('validation.presence');
         //$verifier->setConnection("principal");
 
@@ -176,8 +241,10 @@ class TipoHaber extends Eloquent {
         $validation->setPresenceVerifier($verifier);
 
         if($validation->fails()){
-            return $validation->messages();
+            // la validacion tubo errores
+            return $validation->getMessageBag()->toArray();
         }else{
+            // no hubo errores de validacion
             return false;
         }
     }

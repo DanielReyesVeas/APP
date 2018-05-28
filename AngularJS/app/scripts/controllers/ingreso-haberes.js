@@ -365,6 +365,7 @@ angular.module('angularjsApp')
         }
       });
      miModal.result.then(function (object) {
+      console.log(object)
         $scope.eliminar(object.haber, object.objeto, object.todosMeses);
       }, function () {
         javascript:void(0);
@@ -373,8 +374,9 @@ angular.module('angularjsApp')
 
     $scope.cargarDatos = function(hab){
       $rootScope.cargando=true;
-      var datos = tipoHaber.datos().get({sid: hab});
+      var datos = tipoHaber.datos().get({sid: hab.sidHaber});                
       datos.$promise.then(function(response){
+        console.log(response)
         $scope.haber = response.datos;
         $scope.accesos = response.accesos;
         $rootScope.cargando=false;
@@ -397,13 +399,13 @@ angular.module('angularjsApp')
         Notification.success({message: mensaje, title: 'Mensaje del Sistema'});        
         $scope.reporteTrabajador();
       }, function () {
-        javascript:void(0)
+        javascript:void(0);
       });
     }
 
     $scope.editar = function(hab){
       $rootScope.cargando=true;
-      var datos = haber.datos().get({sid: hab.sid});
+      var datos = haber.datos().get({sid: hab.sid});                
       datos.$promise.then(function(response){
         $scope.openEditarHaber( response );
         $rootScope.cargando=false;
@@ -411,6 +413,7 @@ angular.module('angularjsApp')
     };
 
     $scope.eliminar = function(hab, tipo, todosMeses){
+      tipo.sidHaber = tipo.sid;
       $rootScope.cargando=true;
       if(todosMeses){
         $scope.result = haber.datos().delete({ sid: hab.sid });
@@ -420,7 +423,7 @@ angular.module('angularjsApp')
       $scope.result.$promise.then( function(response){
         if(response.success){
           Notification.success({message: response.mensaje, title:'Notificación del Sistema'});
-          $scope.cargarDatos(tipo.sid);
+          $scope.cargarDatos(tipo);
         }
       });
     };
@@ -439,7 +442,8 @@ angular.module('angularjsApp')
       });
       miModal.result.then(function (object) {
         Notification.success({message: object.mensaje, title: 'Mensaje del Sistema'});
-        $scope.cargarDatos(object.sidHaber);
+        console.log(object)
+        $scope.cargarDatos(object);
       }, function () {
         javascript:void(0)
       });
@@ -916,12 +920,13 @@ angular.module('angularjsApp')
 
     $scope.titulo = 'Eliminar Haber';
     $scope.mensaje = 'El Haber ' + tipo.nombre + ' es de tipo Permanente.';
-    $scope.mensaje2 = '¿Desea eliminarlo sólo para los <b>meses posteriores</b> o para <b>todos los meses del sistema</b> (incluidos los meses anteriores)?';
-    $scope.isOK = true;
-    $scope.isCerrar = true;
-    $scope.isExclamation = true;
+    $scope.mensaje2 = '¿Desea eliminarlo sólo para los <b>meses posteriores</b> o para <b>todos los meses del sistema</b> (incluidos los meses anteriores)?';      
     $scope.ok = 'Sólo meses posteriores';
     $scope.cancel = 'Todos los meses';
+    
+    $scope.isOK = true;
+    $scope.isExclamation = true;  
+    $scope.isCerrar = true;
 
     $scope.aceptar = function(){
       $uibModalInstance.close({ todosMeses : false, haber : hab, objeto : objeto });
@@ -1023,7 +1028,7 @@ angular.module('angularjsApp')
 
     if(objeto.trabajador){
       $scope.objeto = {};
-      $scope.objeto.haber = { trabajador : { nombreCompleto : objeto.trabajador.nombreCompleto, id : objeto.trabajador.id, sid : objeto.trabajador.sid} , monto : objeto.monto, sid : objeto.sid,  moneda : objeto.moneda, mensual : objeto.porMes, rangoMeses : objeto.rangoMeses, permanente : objeto.permanente, anual : objeto.todosAnios };
+      $scope.objeto.haber = { trabajador : { nombreCompleto : objeto.trabajador.nombreCompleto, id : objeto.trabajador.id, sid : objeto.trabajador.sid} , monto : objeto.monto, sid : objeto.sid,  moneda : objeto.moneda, mensual : objeto.porMes, rangoMeses : objeto.rangoMeses, permanente : objeto.permanente, anual : objeto.todosAnios, proporcional : objeto.proporcional };
       $scope.trabajador = objeto.trabajador;
       $scope.haber = objeto.tipo;    
       $scope.objeto.haber.mes = fecha.convertirFecha(objeto.mes.mes);                 
@@ -1139,6 +1144,8 @@ angular.module('angularjsApp')
       response.$promise.then(
         function(response){
           if(response.success){
+            var o = { mensaje : response.mensaje, sidHaber : hab.sid, sidTrabajador : obj.trabajador.sid};
+            console.log(o)
             $uibModalInstance.close({ mensaje : response.mensaje, sidHaber : hab.sid, sidTrabajador : obj.trabajador.sid});
           }else{
             // error

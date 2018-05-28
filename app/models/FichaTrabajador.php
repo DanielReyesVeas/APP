@@ -285,8 +285,18 @@ class FichaTrabajador extends Eloquent {
     {
         $nombres = $this->nombres;
         $apellidos = $this->apellidos;
+        $empresa = \Session::get('empresa');
+        $apellidoNombre = Empresa::variableConfiguracion('apellido_nombre');
         
-        $nombreCompleto = $nombres . " " . $apellidos;
+        if($apellidoNombre){
+            if($apellidos && $nombres){
+                $nombreCompleto = $apellidos . ", " . $nombres;            
+            }else{
+                $nombreCompleto = $apellidos . " " . $nombres;                            
+            }
+        }else{
+            $nombreCompleto = $nombres . " " . $apellidos;            
+        }
         
         return $nombreCompleto;
     }

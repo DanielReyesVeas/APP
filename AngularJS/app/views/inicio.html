@@ -13,7 +13,7 @@
   		  </a>
       </div>   
       <div class="col-md-2">
-        <a href="" ng-click="comprobarAcceso('/tabla-global-mensual')" class="boton-accesos">
+        <a href="" ng-click="comprobarAcceso('/tabla-global-mensual')" class="boton-accesos" ng-if="globals.currentUser.empresas.length>0">
           <img src="images/accesos/TABLA_GLOBAL.png" style="width: 130px;" />
         </a>
       </div>   

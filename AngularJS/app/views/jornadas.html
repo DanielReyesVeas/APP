@@ -17,8 +17,8 @@
         <thead>
           <th class="col-sm-1">#</th>
           <th class="col-sm-4">Jornada</th>
-          <th class="col-sm-2">N° de Horas</th>
-          <th class="col-sm-4">Tramo Horas Extra</th>
+          <th class="col-sm-1">N° de Horas</th>
+          <th class="col-sm-5">Tramo Horas Extra</th>
           <th class="col-sm-1"></th>
         </thead>
         <tbody>
@@ -26,7 +26,7 @@
             <td>{{ $index + 1 }}</td>
             <td>{{ jornada.nombre }}</td>
             <td>{{ jornada.numeroHoras }}</td>
-            <td>{{ jornada.tramoHoraExtra.factor }}</td>
+            <td>{{ jornada.tramosMostrar }}</td>
             <td class="text-right">
               <a href="" ng-if="accesos.editar" ng-click="editar(jornada)"><i class="fa fa-pencil"></i></a>
               <a href="" ng-if="accesos.eliminar" confirmation-click="eliminar(jornada)" confirmation-needed="El Tipo de Jornada <b>{{jornada.nombre}}</b> será eliminado del sistema. ¿Desea continuar?"><i class="fa fa-trash"></i></a>

@@ -8,8 +8,8 @@
  * Constant in the angularjsApp.
  */
 angular.module('angularjsApp')
-  	.constant('constantes', {
-  		URL : 1 ?  'http://rrhh.easysystems.test/' : '',
+	.constant('constantes', {
+		URL : 0 ?  'http://rrhh.easysystems.test/' : '',
 	 	MESES : [
 	 		{ id:1 , mes:'Enero', abrev:'Ene', fecha : '01-01' },
 	 		{ id:2 , mes:'Febrero', abrev:'Feb', fecha : '02-01' },
@@ -24,6 +24,6 @@ angular.module('angularjsApp')
 	 		{ id:11 , mes:'Noviembre', abrev:'Nov', fecha : '11-01' },
 	 		{ id:12 , mes:'Diciembre', abrev:'Dic', fecha : '12-01' }
 	 	],
-	 	version : '1.4.9',
-	 	versionFecha : '04-04-2018'
-  	});
+	 	version : '1.6.6',
+	 	versionFecha : '28-05-2018'
+		});

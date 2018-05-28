@@ -172,6 +172,7 @@ class TiposHaberController extends \BaseController {
         $cuentas = Cuenta::listaCuentas();
         if($sid){
             $tipoHaber = TipoHaber::whereSid($sid)->first();
+            $misHaberes = $tipoHaber->misHaberes();                
             $datosHaber=array(
                 'id' => $tipoHaber->id,
                 'sid' => $tipoHaber->sid,
@@ -183,7 +184,7 @@ class TiposHaberController extends \BaseController {
                 'calculaSemanaCorrida' => $tipoHaber->calcula_semana_corrida ? true : false,
                 'imponible' => $tipoHaber->imponible ? true : false,
                 'gratificacion' => $tipoHaber->gratificacion ? true : false,
-                'haberes' => $tipoHaber->misHaberes(),
+                'haberes' => $misHaberes,
                 'cuenta' => $tipoHaber->cuenta()
             );
         }
@@ -289,7 +290,7 @@ class TiposHaberController extends \BaseController {
     {
         $tipoHaber = TipoHaber::whereSid($sid)->first();
         $datos = $this->get_datos_formulario();
-        $errores = $tipoHaber->validar($datos);       
+        $errores = TipoHaber::errores($datos);    
         
         if(!$errores and $tipoHaber){
             $tipoHaber->codigo = $datos['codigo'];
@@ -401,6 +402,7 @@ class TiposHaberController extends \BaseController {
     
     public function get_datos_formulario(){
         $datos = array(
+            'id' => Input::get('id'),
             'codigo' => Input::get('codigo'),
             'nombre' => Input::get('nombre'),
             'tributable' => Input::get('tributable'),

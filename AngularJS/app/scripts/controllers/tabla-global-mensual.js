@@ -450,32 +450,6 @@ angular.module('angularjsApp')
       return '';
     }
 
-    $scope.agregar = function(mes){
-      var remuneracion = new Date(mes.mes.getFullYear(), (mes.mes.getMonth()), 0);
-      
-      $rootScope.cargando=true;
-      var response;
-      var nuevoMes = { mes : mes.mes, nombre : fecha.obtenerMesTexto(mes.mes.getMonth()), fechaRemuneracion : remuneracion, ano : mes.mes.getFullYear() };
-
-      if( $scope.mes.id ){
-        response = mesDeTrabajo.datos().update({sid: $scope.mes.sid}, nuevoMes);
-      }else{
-        response = mesDeTrabajo.datos().create({}, nuevoMes);
-      }
-      response.$promise.then(
-        function(response){
-          if(response.success){
-            $uibModalInstance.close(response.mensaje);
-          }else{
-            // error
-            $scope.erroresDatos = response.errores;
-            Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
-          }
-          $rootScope.cargando=false;
-        }
-      );
-    }
-
     $scope.openDatosMes = function(obj, nuevo){
       var miModal = $uibModal.open({
         animation: true,

@@ -5,7 +5,7 @@
     <div class="col-sm-12" ng-if="cargado">
 
       <div class="col-sm-12" ng-if="isGenerar && accesos.crear && accesos.abierto">
-        <a ng-click="generarArchivo()" href="" class="btn btn-primary pull-right"><i class="fa fa-download"></i> Generar Archivo</a>
+        <a ng-click="generarArchivo()" href="" class="btn btn-primary pull-right">Generar Archivo</a>
       </div> 
       <div class="col-sm-12" ng-if="!isGenerar">
         <a href="#liquidaciones-de-sueldo">
@@ -75,7 +75,9 @@
                 <span ng-if="trabajador.monedaSueldo==='$'">${{ trabajador.sueldoBase | currency :"":0 }}</span>
                 <span ng-if="trabajador.monedaSueldo!=='$'">{{ trabajador.sueldoBase }} {{ trabajador.monedaSueldo }}</span>
               </td>
-              <td>{{ trabajador.estado }}</td>
+              <td>                
+                <span ng-class="trabajador.estado=='Ingresado' ? 'text-success' : 'text-danger'">{{ trabajador.estado }}</span>
+              </td>
               <td>
                 <i class="fa fa-check text-success" ng-if="trabajador.isLiquidacion"></i>
                 <i class="fa fa-times text-danger" ng-if="!trabajador.isLiquidacion"></i>

@@ -459,7 +459,7 @@
                                                 
                                         </a>
 
-                                        <a href="javascript:void(0)" ng-if="opcion.onclick" ng-click="this[ opcion.onclick ]()" style="padding-right: 50px !important; white-space: nowrap;">
+                                        <a href="javascript:void(0)" ng-if="opcion.onclick" ng-click="this[ opcion.onclick ]()" style="color:#fff; padding-right: 50px !important; white-space: nowrap;">
                                             <i class="fa fa-fw {{ opcion.fontawesome? opcion.fontawesome : 'fa-ban' }} icon-fixed-width"></i> 
                                             <i ng-show="opcion.subopciones.length > 0" class="fa fa-caret-right"></i>
                                             {{ opcion.opcion }}
@@ -881,6 +881,9 @@
         <script src="scripts/services/factor-actualizacion.js"></script>
         <script src="scripts/services/declaracion.js"></script>
         <script src="scripts/services/declaracion-trabajador.js"></script>
+        <script src="scripts/controllers/atrasos.js"></script>
+        <script src="scripts/services/atraso.js"></script>
+        <script src="scripts/controllers/configuracion.js"></script>
         <!-- endbuild -->
 
 

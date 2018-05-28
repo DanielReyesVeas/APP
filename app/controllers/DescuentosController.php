@@ -71,6 +71,27 @@ class DescuentosController extends \BaseController {
         $errores = Descuento::errores($datos);      
         
         if(!$errores){
+            if($datos['tipo_descuento_id']==0){
+                $trabajador = Trabajador::find($datos['trabajador_id']);
+                $ficha = $trabajador->ficha();
+                if($ficha){
+                    $afp = $ficha->afp_id;
+                    if(!$afp){
+                        $afp = $ficha->afp_seguro_id;
+                    }
+                    if(!$afp){
+                        $respuesta=array(
+                            'success' => false,
+                            'mensaje' => "La acción no pudo ser completada porque el trabajador no está en AFP.",
+                            'errores' => $errores
+                        );
+                        return Response::json($respuesta);
+                    }else{
+                        $tipo = TipoDescuento::where('estructura_descuento_id', 7)->where('nombre', $afp)->first();
+                        $datos['tipo_descuento_id'] = $tipo->id;
+                    }
+                }
+            }
             $descuento = new Descuento();
             $descuento->sid = Funciones::generarSID();
             $descuento->trabajador_id = $datos['trabajador_id'];
@@ -109,6 +130,7 @@ class DescuentosController extends \BaseController {
                 'errores' => $errores
             );
         } 
+        
         return Response::json($respuesta);
     }
     
@@ -503,7 +525,10 @@ class DescuentosController extends \BaseController {
     public function show($sid)
     {
         $descuento = Descuento::whereSid($sid)->first();
-
+        $nombre = $descuento->tipoDescuento->nombre;
+        if($descuento->tipoDescuento->estructura_descuento_id==7){
+            $nombre = 'Cuenta de Ahorro AFP ' . $descuento->tipoDescuento->nombreAfp();
+        }
         $datos=array(
             'id' => $descuento->id,
             'sid' => $descuento->sid,            
@@ -523,7 +548,7 @@ class DescuentosController extends \BaseController {
             'monto' => $descuento->monto,
             'moneda' => $descuento->moneda,
             'tipo' => array(
-                'nombre' => $descuento->tipoDescuento->nombre,
+                'nombre' => $nombre,
                 'sid' => $descuento->tipoDescuento->sid,
                 'id' => $descuento->tipoDescuento->id,
             ),            

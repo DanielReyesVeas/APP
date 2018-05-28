@@ -65,10 +65,13 @@ class MesDeTrabajoController extends \BaseController {
         
         if($datos['nombre']=='NuevoAnio'){
             $datos['nombre'] = 'Enero';
-            $nuevoAnio = date('Y', strtotime($mes->mes));
+            $nuevoAnio = AnioRemuneracion::orderBy('id', 'DESC')->first();
+            $nuevo = (int) $nuevoAnio->anio;
+            $datos['mes'] = ($nuevo + 1) . '-01-01';
+            $datos['fecha_remuneracion'] = ($nuevo + 1) . '-01-31';
             $anio = new AnioRemuneracion();
             $anio->sid = Funciones::generarSID();
-            $anio->anio = $nuevoAnio;
+            $anio->anio = ($nuevo + 1);
             $anio->enero = 1;
             $anio->febrero = 0;
             $anio->marzo = 0;
@@ -81,11 +84,30 @@ class MesDeTrabajoController extends \BaseController {
             $anio->octubre = 0;
             $anio->noviembre = 0;
             $anio->diciembre = 0;
-            $anio->gratificacion = 0;
+            $anio->gratificacion = NULL;
             $anio->pagar = 0;
             $anio->utilidad = NULL;
             $anio->save();
-            $idAnio = $anio->id;            
+            $idAnio = $anio->id;
+            
+            $mutual = Mutual::where('anio_id', $datos['anio_id'])->first();
+            $nuevaMutual = new Mutual();
+            $nuevaMutual->mutual_id = $mutual->mutual_id;
+            $nuevaMutual->tasa_fija = $mutual->tasa_fija;
+            $nuevaMutual->tasa_adicional = $mutual->tasa_adicional;
+            $nuevaMutual->extraordinaria = $mutual->extraordinaria;
+            $nuevaMutual->sanna = $mutual->sanna;
+            $nuevaMutual->codigo = $mutual->codigo;
+            $nuevaMutual->anio_id = $idAnio;
+            $nuevaMutual->save();
+            
+            $caja = Caja::where('anio_id', $datos['anio_id'])->first();
+            $nuevaCaja = new Caja();
+            $nuevaCaja->caja_id = $caja->caja_id;
+            $nuevaCaja->codigo = $caja->codigo;
+            $nuevaCaja->anio_id = $idAnio;
+            $nuevaCaja->save();
+            
         }else{
             $idAnio = $datos['anio_id'];    
             $anioRem = AnioRemuneracion::find($idAnio);
@@ -96,41 +118,32 @@ class MesDeTrabajoController extends \BaseController {
             }
         }
         
-        if($mes){
-            $mesDeTrabajo = new MesDeTrabajo();
-            $mesDeTrabajo->id = $mes->id;
-            $mesDeTrabajo->sid = Funciones::generarSID();
-            $mesDeTrabajo->mes = $datos['mes'];
-            $mesDeTrabajo->nombre = $datos['nombre'];
-            $mesDeTrabajo->fecha_remuneracion = $datos['fecha_remuneracion'];
-            $mesDeTrabajo->anio_id = $idAnio;
-            $mesDeTrabajo->save();
-            Trabajador::crearSemanasCorridas($mesDeTrabajo);
-            Trabajador::calcularVacaciones($mesDeTrabajo);
-            ValorIndicador::crearIndicadores($mesDeTrabajo->mes, $datos['fecha_remuneracion']);
-            Config::set('database.default', $empresa->base_datos );
-            $respuesta=array(
-            	'success' => true,
-            	'mensaje' => "La Información fue almacenada correctamente",
-            	'mes' => array(
-                    'id' => $mes->id,
-                    'nombre' => $mesDeTrabajo->nombre,
-                    'fechaRemuneracion' => $mesDeTrabajo->fecha_remuneracion,
-                    'idAnio' => $mesDeTrabajo->anio_id,
-                    'mes' => $mesDeTrabajo->mes,
-                    'isIngresado' => true,
-                    'anio' => $mesDeTrabajo->anioRemuneracion->anio,
-                    'mesActivo' => $mesDeTrabajo->nombre . ' ' . $mesDeTrabajo->anioRemuneracion->anio
-                )
-            );
-            
-        }else{
-            $respuesta=array(
-                'success' => false,
-                'mensaje' => "La acción no pudo ser completada debido a errores en la información ingresada",
-                'errores' => $errores
-            );
-        } 
+        $mesDeTrabajo = new MesDeTrabajo();
+        $mesDeTrabajo->sid = Funciones::generarSID();
+        $mesDeTrabajo->mes = $datos['mes'];
+        $mesDeTrabajo->nombre = $datos['nombre'];
+        $mesDeTrabajo->fecha_remuneracion = $datos['fecha_remuneracion'];
+        $mesDeTrabajo->anio_id = $idAnio;
+        $mesDeTrabajo->save();
+        Trabajador::crearSemanasCorridas($mesDeTrabajo);
+        Trabajador::calcularVacaciones($mesDeTrabajo);
+        ValorIndicador::crearIndicadores($mesDeTrabajo->mes, $datos['fecha_remuneracion']);
+        Config::set('database.default', $empresa->base_datos );
+        $respuesta=array(
+            'success' => true,
+            'mensaje' => "La Información fue almacenada correctamente",
+            'mes' => array(
+                'id' => $mesDeTrabajo->id,
+                'nombre' => $mesDeTrabajo->nombre,
+                'fechaRemuneracion' => $mesDeTrabajo->fecha_remuneracion,
+                'idAnio' => $mesDeTrabajo->anio_id,
+                'mes' => $mesDeTrabajo->mes,
+                'isIngresado' => true,
+                'anio' => $mesDeTrabajo->anioRemuneracion->anio,
+                'mesActivo' => $mesDeTrabajo->nombre . ' ' . $mesDeTrabajo->anioRemuneracion->anio
+            )
+        );
+
         return Response::json($respuesta);
     }    
     
@@ -1044,7 +1057,8 @@ class MesDeTrabajoController extends \BaseController {
             'mes' => Input::get('mes'),
             'nombre' => Input::get('nombre'),
             'fecha_remuneracion' => Input::get('fechaRemuneracion'),
-            'anio_id' => Input::get('idAnio')
+            'anio_id' => Input::get('idAnio'),
+            'indicadores' => Input::get('indicadores')
         );
         
         return $datos;

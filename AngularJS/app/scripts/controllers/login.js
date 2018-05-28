@@ -28,7 +28,7 @@ angular.module('angularjsApp')
         if (response.success) {
           if(response.isEmpleado){
             Notification.clearAll();
-            login.SetCredentials($scope.username, $scope.password, response.cliente, response.usuario, response.menu, response.accesos, response.inicio, response.imagen, response.nombre, response.empresas, response.empresa, response.max, response.uID, response.listaMesesDeTrabajo, response.uf, response.utm, response.uta, response.isEmpleado );                                  
+            login.SetCredentials($scope.username, response.url, $scope.password, response.cliente, response.usuario, response.menu, response.accesos, response.inicio, response.imagen, response.nombre, response.empresas, response.empresa, response.max, response.uID, response.listaMesesDeTrabajo, response.uf, response.utm, response.uta, response.isEmpleado );                                  
             $location.path(response.inicio);
             $route.reload();
             $rootScope.cargando= false;
@@ -38,9 +38,10 @@ angular.module('angularjsApp')
           }else{
             if(response.accesos.length>0){
               Notification.clearAll();
-              login.SetCredentials($scope.username, $scope.password, response.cliente, response.usuario, response.menu, response.accesos, response.inicio, response.imagen, response.nombre, response.empresas, response.empresa, response.max, response.uID, response.listaMesesDeTrabajo, response.uf, response.utm, response.uta, response.isEmpleado );                                  
+              login.SetCredentials($scope.username, response.url, $scope.password, response.cliente, response.usuario, response.menu, response.accesos, response.inicio, response.imagen, response.nombre, response.empresas, response.empresa, response.max, response.uID, response.listaMesesDeTrabajo, response.uf, response.utm, response.uta, response.isEmpleado );                                  
               $location.path(response.inicio);
               $route.reload();
+              $rootScope.checkNotificaciones();
               $timeout(function(){
                 $('#main-menu').smartmenus('refresh');
               }, 500);

@@ -16,7 +16,8 @@ class HoraExtra extends Eloquent {
                 'id' => $trabajador->id,
                 'sid' => $trabajador->sid,
                 'nombreCompleto' => $empleado->nombreCompleto(),
-                'rutFormato' => $trabajador->rut_formato()
+                'rutFormato' => $trabajador->rut_formato(),
+                'tramos' => $trabajador->tramosHorasExtra()
             );        
         }
         return $datosTrabajador;

@@ -395,6 +395,7 @@ class Liquidacion extends Eloquent {
     {
         $detalleAfp = $this->detalleAfp;
         $codigoAfp = 0;
+        $nombreAfp = '';
         $rentaImponible = 0;
         $cotizacionAfp = 0;
         $sis = 0;
@@ -411,9 +412,11 @@ class Liquidacion extends Eloquent {
         
         if($detalleAfp){
             $codigoAfp = $detalleAfp->afp_id ? $detalleAfp->codigoAfp(1) : '';
+            $nombreAfp = $detalleAfp->afp_id ? $detalleAfp->nombreAfp(1) : '';
             $rentaImponible = $detalleAfp->renta_imponible;
             $cotizacionAfp = $detalleAfp->cotizacion;
-            $sis = $this->sisDetalleAfp();
+            //$sis = $this->sisDetalleAfp();
+            $sis = $detalleAfp->sis;
             $cuentaAhorroVoluntario = $detalleAfp->cuenta_ahorro_voluntario;
             $rentaSustitutiva = $detalleAfp->renta_sustitutiva;
             $tasaSustitutiva = $detalleAfp->tasa_sustitutiva;
@@ -428,6 +431,7 @@ class Liquidacion extends Eloquent {
         
         $datos = array(
             'codigoAfp' => $codigoAfp,
+            'nombreAfp' => $nombreAfp,
             'rentaImponible' => $rentaImponible,
             'cotizacionAfp' => $cotizacionAfp,
             'sis' => $sis,
@@ -450,6 +454,7 @@ class Liquidacion extends Eloquent {
     {
         $detalleSalud = $this->detalleSalud;
         $codigoSalud = 0;
+        $nombreSalud = '';
         $numeroFun = 0;
         $rentaImponible = 0;
         $moneda = 0;
@@ -460,6 +465,7 @@ class Liquidacion extends Eloquent {
         
         if($detalleSalud){
             $codigoSalud = $detalleSalud->codigoSalud(1);
+            $nombreSalud = $detalleSalud->salud_id ? $detalleSalud->nombreSalud(1) : '';
             $rentaImponible = $detalleSalud->renta_imponible;
             if($codigoSalud!=7){
                 $numeroFun = $detalleSalud->numero_fun;
@@ -481,6 +487,7 @@ class Liquidacion extends Eloquent {
         
         $datos = array(
             'codigoSalud' => $codigoSalud,
+            'nombreSalud' => $nombreSalud,
             'numeroFun' => $numeroFun,
             'rentaImponible' => $rentaImponible,
             'moneda' => $moneda,
@@ -519,11 +526,13 @@ class Liquidacion extends Eloquent {
             $descuentosSeguro = $detalleCaja->descuentos_seguro;
             $otrosDescuentos = $detalleCaja->otros_descuentos;
             $cotizacion = $detalleCaja->cotizacion;            
-            $descuentoCargas = $detalleCaja->descuentos_cargas;            
             $otrosDescuentos1 = $detalleCaja->otros_descuentos_1;            
             $otrosDescuentos2 = $detalleCaja->otros_descuentos_2;            
             $bonosGobierno = $detalleCaja->bonos_gobierno;            
             $codigoSucursal = $detalleCaja->codigo_sucursal;            
+            if($this->total_cargas>0){
+                $descuentoCargas = $this->total_cargas;            
+            }
         }
         
         $datos = array(
@@ -617,6 +626,7 @@ class Liquidacion extends Eloquent {
     public function miDetalleIpsIslFonasa()
     {
         $detalleIpsIslFonasa = $this->detalleIpsIslFonasa;
+        $empresa = \Session::get('empresa');
         $codigoExCaja = '';
         $tasa = 0;
         $rentaImponible = 0;
@@ -643,8 +653,10 @@ class Liquidacion extends Eloquent {
             $cotizacionFonasa = $detalleIpsIslFonasa->cotizacion_fonasa;
             $cotizacionIsl = $detalleIpsIslFonasa->cotizacion_isl;
             $bonificacion = $detalleIpsIslFonasa->bonificacion;
-            $descuentoCargasIsl = $detalleIpsIslFonasa->descuento_cargas_isl;
             $bonosGobierno = $detalleIpsIslFonasa->bonos_gobierno;
+            if($this->total_cargas>0 && $empresa->caja_id==257){
+                $descuentoCargasIsl = $this->total_cargas;            
+            }
         }
         
         $datos = array(
@@ -670,6 +682,7 @@ class Liquidacion extends Eloquent {
     {
         $detalle = $this->detalleApvi;
         $codigo = 0;
+        $nombreAPVI = '';
         $numeroContrato = '';
         $formaPago = 0;
         $cotizacion = 0;
@@ -686,6 +699,7 @@ class Liquidacion extends Eloquent {
             $formaPago = $formaPago;
             $cotizacion = round($detalle[0]->monto);
             $cotizacionDepositosConvenidos = $detalle[0]->cotizacion_depositos_convenidos;
+            $nombreAPVI = $detalle[0]->afp_id ? $detalle[0]->nombreAfp(1) : '';
             if(count($detalle)>1){
                 foreach($detalle as $index => $det){
                     if($index>0){
@@ -695,11 +709,18 @@ class Liquidacion extends Eloquent {
                             $formaPago = 2;                
                         }
                         $lineaAdicional[] = array(
-                            'codigo' => $det->codigoAfp(1),
-                            'numeroContrato' => $det->numero_contrato ? $detalle->numero_contrato : '',
-                            'formaPago' => $formaPago,
-                            'cotizacion' => round($det->monto),
-                            'cotizacionDepositosConvenidos' => $det->cotizacion_depositos_convenidos
+                            'codigoAPVI' => $det->codigoAfp(1),
+                            'nombreAPVI' => $det->afp_id ? $det->nombreAfp(1) : '',
+                            'numeroContratoAPVI' => $det->numero_contrato ? $detalle->numero_contrato : '',
+                            'formaPagoAPVI' => $formaPago,
+                            'cotizacionAPVI' => round($det->monto),
+                            'cotizacionDepositosConvenidosAPVI' => $det->cotizacion_depositos_convenidos,
+                            'codigoAPVC' => 0,
+                            'numeroContratoAPVC' => '',
+                            'nombreAPVC' => '',
+                            'formaPagoAPVC' => 0,
+                            'cotizacionTrabajadorAPVC' => 0,
+                            'cotizacionEmpleadorAPVC' => 0
                         );
                     }
                 } 
@@ -707,11 +728,18 @@ class Liquidacion extends Eloquent {
         }
         
         $datos = array(
-            'codigo' => $codigo,
-            'numeroContrato' => $numeroContrato,
-            'formaPago' => $formaPago,
-            'cotizacion' => $cotizacion,
-            'cotizacionDepositosConvenidos' => $cotizacionDepositosConvenidos
+            'codigoAPVI' => $codigo,
+            'nombreAPVI' => $nombreAPVI,
+            'numeroContratoAPVI' => $numeroContrato,
+            'formaPagoAPVI' => $formaPago,
+            'cotizacionAPVI' => $cotizacion,
+            'cotizacionDepositosConvenidosAPVI' => $cotizacionDepositosConvenidos,
+            'codigoAPVC' => 0,
+            'numeroContratoAPVC' => '',
+            'nombreAPVC' => '',
+            'formaPagoAPVC' => 0,
+            'cotizacionTrabajadorAPVC' => 0,
+            'cotizacionEmpleadorAPVC' => 0
         );
         
         return $datos;
@@ -734,6 +762,7 @@ class Liquidacion extends Eloquent {
     {
         $detalle = $this->detalleApvc;
         $codigo = 0;
+        $nombreAPVC = '';
         $numeroContrato = '';
         $formaPago = 0;
         $cotizacionTrabajador = 0;
@@ -749,17 +778,47 @@ class Liquidacion extends Eloquent {
             }
             $cotizacionTrabajador = $detalle[0]->monto;
             $cotizacionEmpleador = $detalle[0]->cotizacion_empleador;
+            $nombreAPVC = $detalle[0]->afp_id ? $detalle[0]->nombreAfp(1) : '';
             if(count($detalle)>1){
-                $lineaAdicional = true;
+                foreach($detalle as $index => $det){
+                    if($index>0){
+                        if($det->forma_pago_id==102){
+                            $formaPago = 1;
+                        }else if($det->forma_pago_id==103){
+                            $formaPago = 2;                
+                        }
+                        $lineaAdicional[] = array(
+                            'codigoAPVC' => $det->codigoAfp(1),
+                            'numeroContratoAPVC' => $det->numero_contrato ? $detalle->numero_contrato : '',
+                            'nombreAPVC' => $det->afp_id ? $det->nombreAfp(1) : '',
+                            'formaPagoAPVC' => $formaPago,
+                            'cotizacionTrabajadorAPVC' => round($det->monto),
+                            'cotizacionEmpleadorAPVC' => $det->cotizacion_empleador,
+                            'codigoAPVI' => 0,
+                            'nombreAPVI' => '',
+                            'numeroContratoAPVI' => '',
+                            'formaPagoAPVI' => 0,
+                            'cotizacionAPVI' => 0,
+                            'cotizacionDepositosConvenidosAPVI' => 0
+                        );
+                    }
+                }
             }
         }
         
         $datos = array(
-            'codigo' => $codigo,
-            'numeroContrato' => $numeroContrato,
-            'formaPago' => $formaPago,
-            'cotizacionTrabajador' => $cotizacionTrabajador,
-            'cotizacionEmpleador' => $cotizacionEmpleador
+            'codigoAPVC' => $codigo,
+            'numeroContratoAPVC' => $numeroContrato,
+            'nombreAPVC' => $nombreAPVC,
+            'formaPagoAPVC' => $formaPago,
+            'cotizacionTrabajadorAPVC' => $cotizacionTrabajador,
+            'cotizacionEmpleadorAPVC' => $cotizacionEmpleador,
+            'codigoAPVI' => 0,
+            'nombreAPVI' => '',
+            'numeroContratoAPVI' => '',
+            'formaPagoAPVI' => 0,
+            'cotizacionAPVI' => 0,
+            'cotizacionDepositosConvenidosAPVI' => 0
         );
         
         return $datos;

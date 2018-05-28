@@ -333,8 +333,6 @@ angular.module('angularjsApp')
       var licen = crearObjeto();    
       var response;
 
-      console.log(licen)
-
       if( $scope.licencia.sid ){
         response = licencia.datos().update({sid:$scope.licencia.sid}, licen);
       }else{

@@ -241,6 +241,26 @@ CREATE TABLE IF NOT EXISTS `apvs` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `atrasos`
+--
+
+CREATE TABLE IF NOT EXISTS `atrasos` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sid` varchar(50) NOT NULL,
+  `trabajador_id` int(11) NOT NULL,
+  `fecha` date NOT NULL,
+  `horas` int(11) NOT NULL,
+  `minutos` int(11) NOT NULL,
+  `observacion` text,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `cajas`
 --
 
@@ -752,6 +772,7 @@ CREATE TABLE IF NOT EXISTS `detalles_afp` (
   `liquidacion_id` int(11) NOT NULL,
   `afp_id` int(11) DEFAULT NULL,
   `renta_imponible` int(11) DEFAULT NULL,
+  `renta_imponible_ingresada` int(11) NULL,
   `cotizacion` int(11) DEFAULT NULL,
   `sis` int(11) DEFAULT NULL,
   `paga_sis` varchar(255) NOT NULL DEFAULT 'empresa',
@@ -1002,6 +1023,7 @@ CREATE TABLE IF NOT EXISTS `detalles_seguro_cesantia` (
   `liquidacion_id` int(11) NOT NULL,
   `afp_id` int(11) NOT NULL,
   `renta_imponible` int(11) NOT NULL,
+  `renta_imponible_ingresada` int(11) NULL,
   `aporte_trabajador` int(11) NOT NULL,
   `aporte_empleador` int(11) NOT NULL,
   `afc_trabajador` decimal(6,3) NOT NULL,
@@ -1092,6 +1114,7 @@ CREATE TABLE `emails` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `trabajador_id` int(11) NOT NULL,
   `email` varchar(50) NOT NULL,
+  `clave` varchar(50) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`)
@@ -1327,6 +1350,7 @@ CREATE TABLE IF NOT EXISTS `haberes` (
   `por_mes` tinyint(1) NOT NULL DEFAULT '0',
   `rango_meses` tinyint(1) NOT NULL DEFAULT '0',
   `permanente` tinyint(1) NOT NULL DEFAULT '0',
+  `proporcional` tinyint(1) NOT NULL DEFAULT '0',
   `todos_anios` tinyint(1) NOT NULL DEFAULT '0',
   `mes` date DEFAULT NULL,
   `desde` date DEFAULT NULL,
@@ -1387,7 +1411,6 @@ CREATE TABLE IF NOT EXISTS `inasistencias` (
 CREATE TABLE IF NOT EXISTS `jornadas` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `sid` varchar(50) NOT NULL,
-  `tramo_hora_extra_id` int(11) NOT NULL,
   `nombre` varchar(255) NOT NULL,
   `numero_horas` int(255) NOT NULL,
   `updated_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -1399,10 +1422,10 @@ CREATE TABLE IF NOT EXISTS `jornadas` (
 -- Volcado de datos para la tabla `jornadas`
 --
 
-INSERT INTO `jornadas` (`id`, `sid`, `tramo_hora_extra_id`, `nombre`, `numero_horas`, `updated_at`, `created_at`) VALUES
-(1, 'T20170307145827XFT1183', 1, 'Jornada reducida', 30, '2017-03-07 17:58:28', '2017-03-07 17:58:28'),
-(2, 'R20170307145832ADJ2555', 2, 'Jornada continuada', 45, '2017-03-07 17:58:33', '2017-03-07 17:58:33'),
-(3, 'I20170307145836ABX3588', 1, 'Jornada partida', 20, '2017-03-07 17:58:37', '2017-03-07 17:58:37');
+INSERT INTO `jornadas` (`id`, `sid`, `nombre`, `numero_horas`, `updated_at`, `created_at`) VALUES
+(1, 'T20170307145827XFT1183', 'Jornada reducida', 30, '2017-03-07 17:58:28', '2017-03-07 17:58:28'),
+(2, 'R20170307145832ADJ2555', 'Jornada continuada', 45, '2017-03-07 17:58:33', '2017-03-07 17:58:33'),
+(3, 'I20170307145836ABX3588', 'Jornada partida', 20, '2017-03-07 17:58:37', '2017-03-07 17:58:37');
 
 
 -- --------------------------------------------------------
@@ -1419,6 +1442,11 @@ CREATE TABLE IF NOT EXISTS `jornadas_tramos` (
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+INSERT INTO `jornadas_tramos` (`id`, `jornada_id`, `tramo_id`, `created_at`, `updated_at`) VALUES
+(1, 1, 1, '2018-04-06 13:25:51', '2018-04-06 13:25:51'),
+(2, 2, 2, '2018-04-06 13:25:51', '2018-04-06 13:25:51'),
+(3, 3, 1, '2018-04-06 13:25:51', '2018-04-06 13:25:51');
 
 -- --------------------------------------------------------
 
@@ -1942,9 +1970,7 @@ INSERT INTO `tipos_descuento` (`id`, `estructura_descuento_id`, `cuenta_id`, `si
 (69, 7, NULL, 'N20171108113003RLG6326', 401, '40', 0, 'Cuenta de Ahorro AFP Capital', NULL, NULL, '2017-11-16 20:52:34', '2017-11-08 14:30:04'),
 (3, 1, NULL, 'L20170309190616GCZ2827', '10103', 'Sobregiro Mes Anterior', 1, 'Sobregiro Remuneración del Mes Anterior', NULL, NULL, '2017-08-17 12:22:13', '2017-03-09 22:06:17'),
 (5, 2, NULL, 'B20170407131109SUM7022', '10201', 'Anticipo', 1, 'Anticipo de Sueldo', NULL, NULL, '2017-11-08 13:51:42', '2017-04-07 16:11:10'),
-(14, 1, NULL, 'V20170412232326TER7208', 4564, 'Autopista', 0, 'Tag', NULL, NULL, '2017-08-17 12:08:06', '2017-04-13 02:23:27'),
 (4, 1, NULL, 'K20170309190412CWL7499', 123, 'Cuota Sindical', 1, 'Cuota fijada por el Sindicato de Trabajadores', NULL, NULL, '2017-09-27 20:57:35', '2017-03-09 22:04:13'),
-(12, 1, NULL, 'Y20170309190530OKA1010', 1112, 'Celular', 1, 'Celular de la Empresa', NULL, NULL, '2017-04-13 03:26:59', '2017-03-09 22:05:31'),
 (13, 1, NULL, 'L20170309190616GCZ2877', 853, 'Seguro Médico', 0, 'Seguro médico contratado por el trabajador de forma adicional al seguro de la empresa', NULL, NULL, '2017-03-18 06:18:45', '2017-03-09 22:06:17'),
 (46, 3, NULL, 'K20170928112236BLB2952', 306, '41', 0, 'APVC AFP Modelo', 44, 103, '2017-09-28 14:59:27', '2017-09-28 14:22:37'),
 (47, 4, NULL, 'U20171024101405QJI1967', 101, '47', 0, 'APV Régimen A AFP Capital', NULL, NULL, '2017-11-16 21:11:44', '2017-10-24 13:14:07'),
@@ -1957,7 +1983,6 @@ INSERT INTO `tipos_descuento` (`id`, `estructura_descuento_id`, `cuenta_id`, `si
 (7, 6, NULL, 'N20171024113502SJE3859', 503, 'Descuento Dental CCAF', 0, 'Descuento Dental Caja de Compensación', NULL, NULL, '2017-10-24 14:35:03', '2017-10-24 14:35:03'),
 (8, 6, NULL, 'V20171024113542IMR6395', 504, 'Descuento por Leasing CCAF', 0, 'Descuento por Leasing (Programa Ahorro) Caja de Compensación', NULL, NULL, '2017-10-24 14:35:43', '2017-10-24 14:35:43'),
 (9, 6, NULL, 'N20171024113611SXY6641', 505, 'Descuento por seguro de vida CCAF', 0, 'Descuento por seguro de vida Caja de Compensación', NULL, NULL, '2017-10-24 14:36:12', '2017-10-24 14:36:12'),
-(10, 6, NULL, 'Q20171024113712ZKK6415', 506, 'Descuento Cargas Familiares CCAF', 0, 'Descuento Cargas Familiares Caja de Compensación', NULL, NULL, '2017-10-24 14:37:13', '2017-10-24 14:37:13'),
 (58, 5, NULL, 'D20171108102138COK9022', 201, '47', 0, 'APV Régimen B AFP Capital', NULL, NULL, '2017-11-08 13:21:39', '2017-11-08 13:21:39'),
 (59, 5, NULL, 'E20171108102224QXE1469', 202, '43', 0, 'APV Régimen B AFP Cuprum', NULL, NULL, '2017-11-08 13:22:25', '2017-11-08 13:22:25'),
 (60, 5, NULL, 'M20171108102301UVT7059', 203, '44', 0, 'APV Régimen B AFP Habitat', NULL, NULL, '2017-11-08 13:23:02', '2017-11-08 13:23:02'),
@@ -2214,7 +2239,19 @@ CREATE TABLE IF NOT EXISTS `variables_sistema` (
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=1 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=13 ;
+
+INSERT INTO `variables_sistema` (`id`, `variable`, `valor1`, `valor2`, `valor3`, `valor4`, `valor5`, `created_at`, `updated_at`) VALUES
+(3, 'apellido_nombre', '0', '', '', '', '', '0000-00-00 00:00:00', '2018-05-16 18:08:03'),
+(4, 'finiquitados_liquidacion', '0', '', '', '', '', '0000-00-00 00:00:00', '2018-05-16 19:50:32'),
+(5, 'logo_liquidacion', '0', '', '', '', '', '0000-00-00 00:00:00', '2018-05-16 17:28:08'),
+(6, 'notificaciones', '1', '', '', '', '', '0000-00-00 00:00:00', '2018-05-16 18:10:57'),
+(7, 'formato_pesos', '1', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(8, 'cargo_liquidacion', '1', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(9, 'seccion_liquidacion', '1', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(10, 'firma_liquidacion', '1', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(11, 'cuenta_liquidacion', '1', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(12, 'uf_liquidacion', '1', '', '', '', '', '0000-00-00 00:00:00', '0000-00-00 00:00:00');
 
 
 -- --------------------------------------------------------
@@ -2441,7 +2478,6 @@ ALTER TABLE `inasistencias` ADD INDEX `trabajador_mes` (`trabajador_id`, `mes_id
 
 ALTER TABLE `jornadas` ADD INDEX(`id`);
 ALTER TABLE `jornadas` ADD INDEX(`sid`);
-ALTER TABLE `jornadas` ADD INDEX(`tramo_hora_extra_id`);
 
 ALTER TABLE `licencias` ADD INDEX(`id`);
 ALTER TABLE `licencias` ADD INDEX(`sid`);

@@ -51,6 +51,17 @@ class DetalleSalud extends Eloquent {
         return $codigo;
     }
     
+    public function nombreSalud()
+    {
+        $salud = $this->isapre;
+        $nombre = '';
+        if($salud){
+            $nombre = $salud->glosa;
+        }
+        
+        return $nombre;
+    }
+    
     static function errores($datos){
          
         $rules = array(

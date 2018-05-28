@@ -18,15 +18,15 @@
             <tr>    
               <th class="col-sm-1"><input type="checkbox" ng-model="objeto.todos" ng-if="accesos.crear && accesos.abierto" ng-change="selectAll(objeto.todos)" icheck></th>
               <th class="col-sm-1">RUT</th>
-              <th class="col-sm-2">Nombre</th>              
-              <th class="col-sm-1">Sueldo Base</th>
+              <th class="col-sm-3">Nombre</th>              
+              <th class="col-sm-1">Sueldo</th>
               <th class="col-sm-1">Imponibles</th>
               <th class="col-sm-1">No Imponibles</th>
               <th class="col-sm-1">Seguro Cesantía</th>
-              <th class="col-sm-1">SIS AFP</th>
-              <th class="col-sm-1">Fonasa</th>
+              <th class="col-sm-1">SIS</th>
               <th class="col-sm-1">Caja</th>
-              <th class="col-sm-1">Mutual</th>
+              <th ng-if="empresa.isMutual" class="col-sm-1">Mutual</th>
+              <th ng-if="!empresa.isMutual" class="col-sm-1">ISL</th>
             </tr>
           </thead>
           <tbody>
@@ -39,11 +39,23 @@
               <td>${{ dato.noImponibles | currency:'':0 }}</td>
               <td>${{ dato.seguroCesantia | currency:'':0 }}</td>
               <td>${{ dato.sis | currency:'':0 }}</td>
-              <td>${{ dato.fonasa | currency:'':0 }}</td>
               <td>${{ dato.caja | currency:'':0 }}</td>
-              <td>${{ dato.mutual | currency:'':0 }}</td>
+              <td ng-if="empresa.isMutual">${{ dato.mutual | currency:'':0 }}</td>
+              <td ng-if="!empresa.isMutual">${{ dato.isl | currency:'':0 }}</td>
+            </tr>
+            <tr style="font-size: 13px;"> 
+              <td colspan="3" class="text-center"><b>{{ 'Total General:' | uppercase }}</b></td>
+              <td><b>${{ totales.totalSueldo | currency:'':0 }}</b></td>
+              <td><b>${{ totales.totalImponibles | currency:'':0 }}</b></td>
+              <td><b>${{ totales.totalNoImponibles | currency:'':0 }}</b></td>
+              <td><b>${{ totales.totalSC | currency:'':0 }}</b></td>
+              <td><b>${{ totales.totalSIS | currency:'':0 }}</b></td>
+              <td><b>${{ totales.totalCaja | currency:'':0 }}</b></td>
+              <td ng-if="empresa.isMutual"><b>${{ totales.totalMutual | currency:'':0 }}</b></td>
+              <td ng-if="!empresa.isMutual"><b>${{ totales.totalISL | currency:'':0 }}</b></td>
             </tr>
           </tbody>
+
         </table>
 
       </div>          

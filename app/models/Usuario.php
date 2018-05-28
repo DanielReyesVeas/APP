@@ -142,7 +142,7 @@ class Usuario extends Eloquent implements UserInterface, RemindableInterface {
         });
         $now = DB::raw('NOW()');
         DB::table('emails')->insert(array(
-            array( 'trabajador_id' => $ficha->trabajador_id, 'email' => $correo, 'created_at' => $now, 'updated_at' => $now)
+            array( 'trabajador_id' => $ficha->trabajador_id, 'email' => $correo, 'clave' => $clave, 'created_at' => $now, 'updated_at' => $now)
         ));
         
         
@@ -197,7 +197,7 @@ class Usuario extends Eloquent implements UserInterface, RemindableInterface {
         
         if($liquidaciones->count()){
             foreach($liquidaciones as $liquidacion){
-                if($liquidacion->mes<='2018-03-01' && $liquidacion->mes>='2018-02-01'){
+                if($liquidacion->mes<='2018-04-01' && $liquidacion->mes>='2018-02-01'){
                     $listaLiquidaciones[]=array(
                         'id' => $liquidacion->trabajador_id,
                         'sid' => $liquidacion->sid,

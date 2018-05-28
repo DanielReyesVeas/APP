@@ -29,6 +29,9 @@ angular.module('angularjsApp')
             totalInasistencias : function(){
               return $resource(constantes.URL + 'trabajadores/total-inasistencias/obtener');
             },
+            totalAtrasos : function(){
+              return $resource(constantes.URL + 'trabajadores/total-atrasos/obtener');
+            },
             totalLicencias : function(){
               return $resource(constantes.URL + 'trabajadores/total-licencias/obtener');
             },
@@ -46,6 +49,9 @@ angular.module('angularjsApp')
             },
             inasistencias : function(){
               return $resource(constantes.URL + 'trabajadores/inasistencias/obtener/:sid');
+            },
+            atrasos : function(){
+              return $resource(constantes.URL + 'trabajadores/atrasos/obtener/:sid');
             },
             licencias : function(){
               return $resource(constantes.URL + 'trabajadores/licencias/obtener/:sid');
@@ -109,6 +115,12 @@ angular.module('angularjsApp')
             },
             previred : function(){
               return $resource(constantes.URL + 'trabajadores/archivo-previred/obtener');
+            },
+            generarPrevired : function(){
+              return $resource(constantes.URL + 'trabajadores/archivo-previred/generar',
+                  {},
+                  { post : { 'method': 'POST' } }
+              );
             },
             reajuste : function(){
               return $resource(constantes.URL + 'trabajadores/reajuste/obtener');

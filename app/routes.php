@@ -6,7 +6,7 @@ use GuzzleHttp\Client;
 //ini_set('display_errors', 'On');
 
 ini_set('max_execution_time', 30000);
-define('VERSION_SISTEMA', '1.4.9');
+define('VERSION_SISTEMA', '1.6.6');
 ini_set('memory_limit', '3048M');
 
 if(Config::get('cliente.LOCAL')){
@@ -28,6 +28,105 @@ Route::get('/', function(){
     return View::make('index');
 });
 
+Route::get('aaa', function(){
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $empleados = array();
+            Config::set('database.default', $empresa->base_datos);
+            $empleados = Trabajador::all();
+            echo '<h1>' . $empresa->razon_social . '</h1>';
+            echo '<h3>' . $empresa->rut . '</h3>';
+            $count = 0;
+            foreach($empleados as $empleado){
+                $ultimaFicha = $empleado->ultimaFicha();
+                if($ultimaFicha){
+                    if($ultimaFicha->estado!='En Creación'){
+                        $haberes = $empleado->haberes;
+                        if($haberes->count()){
+                            echo '<br />' . $ultimaFicha->nombreCompleto() . '<br />';
+                            foreach($haberes as $haber){
+                                if($haber->tipoHaber->nombre=='Colación'){
+                                    echo $haber->tipoHaber->nombre;
+                                    if($ultimaFicha->proporcional_colacion){
+                                        echo ' proporcional<br />';
+                                        $haber->proporcional = 1;
+                                        $haber->save();
+                                    }else{
+                                        echo ' no proporcional<br />';                                        
+                                    }
+                                }else if($haber->tipoHaber->nombre=='Movilización'){
+                                    echo $haber->tipoHaber->nombre;
+                                    if($ultimaFicha->proporcional_movilizacion){
+                                        echo ' proporcional<br />';
+                                        $haber->proporcional = 1;
+                                        $haber->save();
+                                    }else{
+                                        echo ' no proporcional<br />';                                        
+                                    }
+                                }else if($haber->tipoHaber->nombre=='Viático'){
+                                    echo $haber->tipoHaber->nombre;
+                                    if($ultimaFicha->proporcional_viatico){
+                                        echo ' proporcional<br />';
+                                        $haber->proporcional = 1;
+                                        $haber->save();
+                                    }else{
+                                        echo ' no proporcional<br />';                                        
+                                    }
+                                }
+                            }
+                        }
+                    }                    
+                }                
+            }            
+        }        
+    }else{
+        echo "Sin Empresas";
+    }
+    
+});
+
+Route::get('liq', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $empleados = array();
+            Config::set('database.default', $empresa->base_datos);
+            $empleados = Trabajador::all();
+            echo '<h1>' . $empresa->razon_social . '</h1>';
+            echo '<h3>' . $empresa->rut . '</h3>';
+            $count = 0;
+            foreach($empleados as $empleado){
+                $ultimaFicha = $empleado->ultimaFicha();
+                if($ultimaFicha){
+                    if($ultimaFicha->estado!='En Creación'){
+                        $liquidaciones = $empleado->liquidaciones;
+
+                        if($liquidaciones->count()){
+                            foreach($liquidaciones as $index => $liquidacion){
+                                if($liquidacion->created_at>'2018-05-15 00:00:00'){
+                                    echo $liquidacion->id . ' <br />';
+                                }
+                            }
+                        }else{
+                            echo 'Sin liquidaciones<br />';
+                        }
+
+                    }
+                }
+            }
+            echo '<br />Total: ' . $count . '<br />';
+        }
+        
+    }else{
+        echo "Sin Empresas";
+    }
+});
 
 Route::group(array('prefix' => 'rest/cme', 'before'=>'auth_ajax'), function() {
     
@@ -351,6 +450,339 @@ Route::get('crear-factores', function(){
     }
 });
 
+
+Route::get('crear-haberes', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+        
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            Config::set('database.default', $empresa->base_datos);
+            $trabajadores = Trabajador::all();
+            echo '<br /><br /><h2>' . $empresa->razon_social . '</h2><br /><br />';
+            if($trabajadores->count()){
+                foreach($trabajadores as $trabajador){
+                    $fichas = $trabajador->fichaTrabajador;        
+                    $colaciones = array();
+                    $movilizaciones = array();
+                    $viaticos = array();
+                    if($fichas->count()){
+                        $colacionAnterior = 101010101010101010;
+                        $movilizacionAnterior = 101010101010101010;
+                        $viaticoAnterior = 101010101010101010;
+                        $colacionIguales = true;
+                        $movilizacionIguales = true;
+                        $viaticoIguales = true;
+                        $colacionInicial = false;
+                        $movilizacionInicial = false;
+                        $viaticoInicial = false;
+                        echo '<br /><b>' . $trabajador->ultimaFicha()->nombreCompleto() . '</b><br />';
+                        foreach($fichas as $ficha){
+                            if($ficha->estado!='En Creación'){                                
+                                echo '<br />' . $ficha->fecha . '<br />';
+                                $colacion = $ficha->monto_colacion ? $ficha->monto_colacion : 0;
+                                $movilizacion = $ficha->monto_movilizacion ? $ficha->monto_movilizacion : 0;
+                                $viatico = $ficha->monto_viatico ? $ficha->monto_viatico : 0;
+                                $fecha = $ficha->fecha;
+                                
+                                if($colacionAnterior==101010101010101010){
+                                    if($colacion>0){
+                                        echo 'Colacion inicial: ' . $colacion . '<br />';
+                                        $colaciones[] = array(
+                                            'idTrabajador' => $trabajador->id,
+                                            'idHaber' => 3,
+                                            'monto' => $colacion,
+                                            'moneda' => $ficha->moneda_colacion,
+                                            'proporcional' => $ficha->proporcional_colacion ? true : false,
+                                            'desde' => $ficha->fecha,
+                                            'hasta' => NULL
+                                        );
+                                        $colacionInicial = true;
+                                    }else{
+                                        echo 'Sin Colacion<br />';
+                                    }                                    
+                                }else{
+                                    if($colacionAnterior!=$colacion){
+                                        echo 'Colacion: anterior ' . $colacionAnterior . ' - actual ' . $colacion . '<br />';
+                                        $colaciones[] = array(
+                                            'idTrabajador' => $trabajador->id,
+                                            'idHaber' => 3,
+                                            'monto' => $colacion,
+                                            'moneda' => $ficha->moneda_colacion,
+                                            'proporcional' => $ficha->proporcional_colacion ? true : false,
+                                            'desde' => $ficha->fecha,
+                                            'hasta' => NULL
+                                        );
+                                        $colacionIguales = false;
+                                    }else{
+                                        echo 'Iguales<br />';
+                                    }
+                                }
+                                if($movilizacionAnterior==101010101010101010){
+                                    if($movilizacion>0){
+                                        echo 'Movilizacion inicial: ' . $movilizacion. '<br />';
+                                        $movilizaciones[] = array(
+                                            'idTrabajador' => $trabajador->id,
+                                            'idHaber' => 4,
+                                            'monto' => $movilizacion,
+                                            'moneda' => $ficha->moneda_movilizacion,
+                                            'proporcional' => $ficha->proporcional_movilizacion ? true : false,
+                                            'desde' => $ficha->fecha,
+                                            'hasta' => NULL
+                                        );
+                                        $movilizacionInicial = true;
+                                    }else{
+                                        echo 'Sin Movilizacion<br />';
+                                    }                                    
+                                }else{
+                                    if($movilizacionAnterior!=$movilizacion){
+                                        echo 'Movilizacion: anterior ' . $movilizacionAnterior . ' - actual ' . $movilizacion . '<br />';
+                                        $movilizaciones[] = array(
+                                            'idTrabajador' => $trabajador->id,
+                                            'idHaber' => 4, 
+                                            'monto' => $movilizacion,
+                                            'moneda' => $ficha->moneda_movilizacion,
+                                            'proporcional' => $ficha->proporcional_movilizacion ? true : false,
+                                            'desde' => $ficha->fecha,
+                                            'hasta' => NULL
+                                        );
+                                        $movilizacionIguales = false;
+                                    }else{
+                                        echo 'Iguales<br />';
+                                    }
+                                }
+                                if($viaticoAnterior==101010101010101010){
+                                    if($viatico>0){
+                                        echo 'Viatico inicial: ' . $viatico . '<br />';
+                                        $viaticos[] = array(
+                                            'idTrabajador' => $trabajador->id,
+                                            'idHaber' => 5,
+                                            'monto' => $viatico,
+                                            'moneda' => $ficha->moneda_viatico,
+                                            'proporcional' => $ficha->proporcional_viatico ? true : false,
+                                            'desde' => $ficha->fecha,
+                                            'hasta' => NULL
+                                        );
+                                        $viaticoInicial = true;
+                                    }else{
+                                        echo 'Sin Viatico<br />';
+                                    }                                    
+                                }else{
+                                    if($viaticoAnterior!=$viatico){
+                                        echo 'Viatico: anterior ' . $viaticoAnterior . ' - actual ' . $viatico . '<br />';
+                                        $viaticos[] = array(
+                                            'idTrabajador' => $trabajador->id,
+                                            'idHaber' => 5,
+                                            'monto' => $viatico,
+                                            'moneda' => $ficha->moneda_viatico,
+                                            'proporcional' => $ficha->proporcional_viatico ? true : false,
+                                            'desde' => $ficha->fecha,
+                                            'hasta' => NULL
+                                        );
+                                        $viaticoIguales = false;
+                                    }else{
+                                        echo 'Iguales<br />';
+                                    }
+                                }
+                                $colacionAnterior = $colacion;
+                                $movilizacionAnterior = $movilizacion;
+                                $viaticoAnterior = $viatico;
+                                $fechaAnterior = $fecha;
+                            }                            
+                        }
+                        if($colaciones){
+                            $fechaAnterior = NULL;
+                            echo '<br /><b>Colaciones: </b><br />';   
+                            
+                            if($colacionIguales){
+                                if($colacionInicial){
+                                    echo '<b>Siempre iguales</b><br />';
+                                    $colaciones[0]['desde'] = NULL;
+                                }else{
+                                    echo '<b>Iguales</b><br />';
+                                }
+                            }else{
+                                foreach($colaciones as $index => $colacion){                                    
+                                    if($index && isset($colaciones[($index - 1)])){
+                                        $hasta = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($colacion['desde'])));
+                                        $colaciones[($index - 1)]['hasta'] = $hasta;
+                                    }
+                                    if($fechaAnterior){
+                                        $hasta = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($fechaAnterior)));
+                                        $colacion['hasta'] = $hasta;                                    
+                                    }
+                                    if(($index + 1)==count($colaciones)){
+                                        $colacion['hasta'] = NULL;
+                                    }                                    
+                                    $fechaAnterior = $colacion['desde'];
+                                    if($index==0 && $colacionInicial){
+                                        $colaciones[$index]['desde'] = NULL;
+                                    }
+                                    if($colacion['monto']==0){
+                                        unset($colaciones[$index]);
+                                    }
+                                }                                    
+                            }        
+                            print_r($colaciones);
+                            echo '<br />';
+                        }
+                        if($movilizaciones){
+                            $fechaAnterior = NULL;
+                            echo '<br /><b>Movilizaciones: </b><br />';
+                            
+                            if($movilizacionIguales){
+                                if($movilizacionInicial){
+                                    echo '<b>Siempre iguales</b><br />';
+                                    $movilizaciones[0]['desde'] = NULL;
+                                }else{
+                                    echo '<b>Iguales</b><br />';
+                                }
+                            }else{
+                                foreach($movilizaciones as $index => $movilizacion){
+                                    if($index && isset($movilizaciones[($index - 1)])){
+                                        $hasta = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($movilizacion['desde'])));
+                                        $movilizaciones[($index - 1)]['hasta'] = $hasta;
+                                    }
+                                    if($fechaAnterior){
+                                        $hasta = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($fechaAnterior)));
+                                        $movilizacion['hasta'] = $hasta;                                    
+                                    }
+                                    if(($index + 1)==count($colaciones)){
+                                        $movilizacion['hasta'] = NULL;
+                                    }                                    
+                                    $fechaAnterior = $movilizacion['desde'];
+                                    if($movilizacion['monto']==0){
+                                        unset($movilizaciones[$index]);
+                                    }
+                                }                                    
+                            } 
+                            print_r($movilizaciones);
+                            echo '<br />';
+                        }
+                        if($viaticos){
+                            $fechaAnterior = NULL;
+                            echo '<br /><b>Viaticos: </b><br />';
+                            
+                            if($viaticoIguales){
+                                if($viaticoInicial){
+                                    echo '<b>Siempre iguales</b><br />';
+                                    $viaticos[0]['desde'] = NULL;
+                                }else{
+                                    echo '<b>Iguales</b><br />';
+                                }
+                            }else{
+                                foreach($viaticos as $index => $viatico){
+                                    if($index && isset($viaticos[($index - 1)])){
+                                        $hasta = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($viatico['desde'])));
+                                        $viaticos[($index - 1)]['hasta'] = $hasta;
+                                    }
+                                    if($fechaAnterior){
+                                        $hasta = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($fechaAnterior)));
+                                        $viatico['hasta'] = $hasta;                                    
+                                    }
+                                    if(($index + 1)==count($viaticos)){
+                                        $viatico['hasta'] = NULL;
+                                    }
+                                    
+                                    $fechaAnterior = $viatico['desde'];
+                                    if($viatico['monto']==0){
+                                        unset($viaticos[$index]);
+                                    }
+                                }                                    
+                            } 
+                            print_r($viaticos);
+                            echo '<br />';
+                        }                        
+                    }
+                    echo '<br /><h1>Inserts:</h1><br />';
+                    if(count($colaciones)){
+                        foreach($colaciones as $colacion){
+                            echo $colacion['idTrabajador'] . '<br />';
+                        }
+                    }
+                    if(count($movilizaciones)){
+                        foreach($movilizaciones as $movilizacion){
+                            echo $movilizacion['idTrabajador'] . '<br />';
+                        }
+                    }
+                    if(count($viaticos)){
+                        foreach($viaticos as $viatico){
+                            echo $viatico['idTrabajador'] . '<br />';
+                        }
+                    }
+                    
+                    if(count($colaciones)){
+                        foreach($colaciones as $colacion){
+                            $haber = new Haber();
+                            $haber->sid = Funciones::generarSID();
+                            $haber->trabajador_id = $colacion['idTrabajador'];
+                            $haber->tipo_haber_id = $colacion['idHaber'];
+                            $haber->mes_id = NULL;
+                            $haber->moneda = $colacion['moneda'];
+                            $haber->monto = $colacion['monto'];
+                            $haber->por_mes = 0;
+                            $haber->rango_meses = 0;
+                            $haber->permanente = 1;
+                            $haber->todos_anios = 0;
+                            $haber->todos_anios = 0;
+                            $haber->mes = NULL;
+                            $haber->desde = $colacion['desde'];
+                            $haber->hasta = $colacion['hasta'];
+                            $haber->save();
+                        }
+                    }
+                    if(count($movilizaciones)){
+                        foreach($movilizaciones as $movilizacion){
+                            $haber = new Haber();
+                            $haber->sid = Funciones::generarSID();
+                            $haber->trabajador_id = $movilizacion['idTrabajador'];
+                            $haber->tipo_haber_id = $movilizacion['idHaber'];
+                            $haber->mes_id = NULL;
+                            $haber->moneda = $movilizacion['moneda'];
+                            $haber->monto = $movilizacion['monto'];
+                            $haber->por_mes = 0;
+                            $haber->rango_meses = 0;
+                            $haber->permanente = 1;
+                            $haber->todos_anios = 0;
+                            $haber->todos_anios = 0;
+                            $haber->mes = NULL;
+                            $haber->desde = $movilizacion['desde'];
+                            $haber->hasta = $movilizacion['hasta'];
+                            $haber->save();
+                        }
+                    }
+                    if(count($viaticos)){
+                        foreach($viaticos as $viatico){
+                            $haber = new Haber();
+                            $haber->sid = Funciones::generarSID();
+                            $haber->trabajador_id = $viatico['idTrabajador'];
+                            $haber->tipo_haber_id = $viatico['idHaber'];
+                            $haber->mes_id = NULL;
+                            $haber->moneda = $viatico['moneda'];
+                            $haber->monto = $viatico['monto'];
+                            $haber->por_mes = 0;
+                            $haber->rango_meses = 0;
+                            $haber->permanente = 1;
+                            $haber->todos_anios = 0;
+                            $haber->todos_anios = 0;
+                            $haber->mes = NULL;
+                            $haber->desde = $viatico['desde'];
+                            $haber->hasta = $viatico['hasta'];
+                            $haber->save();
+                        }
+                    }
+                }
+            }else{
+                echo "Sin Trabajadores <br />";
+            }
+        }
+        
+    }else{
+        echo "Sin Empresas";
+    }
+});
+
 Route::get('crear-usuarios', function(){
 
     Config::set('database.default', 'principal' );
@@ -365,28 +797,30 @@ Route::get('crear-usuarios', function(){
             $empleados = Trabajador::all();
             foreach($empleados as $empleado){
                 $ultimaFicha = $empleado->ultimaFicha();
-                if($ultimaFicha->estado!='En Creación'){
-                    $user = new Usuario();
-                    $user->sid = Funciones::generarSID();
-                    $user->funcionario_id = $empleado->id;
-                    $user->username = $empleado->rut;
-                    $pass = $user->generarClave();
-                    $user->password = Hash::make($pass);
-                    $user->activo = 2;
-                    $user->save();
+                if($ultimaFicha){
+                    if($ultimaFicha->estado!='En Creación'){
+                        $user = new Usuario();
+                        $user->sid = Funciones::generarSID();
+                        $user->funcionario_id = $empleado->id;
+                        $user->username = $empleado->rut;
+                        $pass = $user->generarClave();
+                        $user->password = Hash::make($pass);
+                        $user->activo = 2;
+                        $user->save();
 
-                    $permiso = new Permiso();
-                    $permiso->usuario_id = $user->id;
-                    $permiso->documentos_empresa = 1;
-                    $permiso->cartas_notificacion = 1;
-                    $permiso->certificados = 1;
-                    $permiso->liquidaciones = 1;
-                    $permiso->solicitudes = 1;
-                    $permiso->save();
+                        $permiso = new Permiso();
+                        $permiso->usuario_id = $user->id;
+                        $permiso->documentos_empresa = 1;
+                        $permiso->cartas_notificacion = 1;
+                        $permiso->certificados = 1;
+                        $permiso->liquidaciones = 1;
+                        $permiso->solicitudes = 1;
+                        $permiso->save();
 
-                    echo 'user_id : ' . $empleado->rut . '<br />';
-                    echo 'empresa_id : ' . $empresa->id . '<br />';
-                    echo 'pass : ' . $pass . '<br /><br />';
+                        echo 'user_id : ' . $empleado->rut . '<br />';
+                        echo 'empresa_id : ' . $empresa->id . '<br />';
+                        echo 'pass : ' . $pass . '<br /><br />';
+                    }
                 }
             }
         }
@@ -395,6 +829,154 @@ Route::get('crear-usuarios', function(){
         echo "Sin Usuarios";
     }
 });
+
+Route::get('sis', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            $empleados = array();
+            Config::set('database.default', $empresa->base_datos);
+            $empleados = Trabajador::all();
+            echo '<h1>' . $empresa->razon_social . '</h1>';
+            $count = 0;
+            foreach($empleados as $empleado){
+                $ultimaFicha = $empleado->ultimaFicha();
+                if($ultimaFicha){
+                    if($ultimaFicha->estado!='En Creación'){
+                        $liquidaciones = $empleado->liquidaciones;
+
+                        if($liquidaciones->count()){
+                            $sis = false;
+                            foreach($liquidaciones as $index => $liquidacion){
+                                if($liquidacion->mes>='2018-01-01'){
+                                    if($liquidacion->detalleAfp){
+                                        if($liquidacion->detalleAfp->sis==0){
+                                            $sc = $liquidacion->detalleSeguroCesantia;
+                                            if(!$sis){
+                                                $count++;
+                                                echo '<br />RUT: ' . Funciones::formatear_rut($empleado->rut) . '<br />';
+                                                echo 'Nombre: ' . $ultimaFicha->nombreCompleto() . '<br />';
+                                                echo 'AFP: ' . $liquidacion->detalleAfp->afp->glosa . '<br />';
+                                                if($sc){
+                                                    echo 'SC: ' . $sc->afp->glosa . '<br />';
+                                                }else{
+                                                    $seguro = $ultimaFicha->seguro_desempleo ? 'Sí' : 'Sin Seguro';
+                                                    echo 'SC: ' . $seguro . '<br />';
+                                                }
+                                                echo 'Liquidaciones:<br /><br />';
+                                            }
+                                            echo '-Liquidacion ' . $liquidacion->mes . '<br />';
+                                            echo 'Ingreso: ' . $liquidacion->trabajador_fecha_ingreso . '<br />';
+                                            echo 'Dias trabajados: ' . $liquidacion->dias_trabajados . '<br />';
+                                            echo 'AFP: ' . Funciones::formatoPesos($liquidacion->detalleAfp->cotizacion) . '<br />';
+                                            echo 'SIS: ' . Funciones::formatoPesos($liquidacion->detalleAfp->sis) . '<br />';
+                                            if($sc){
+                                                echo 'SC: ' . Funciones::formatoPesos($sc->aporte_empleador) . '<br />';
+                                            }
+
+                                            $mutual = $liquidacion->detalleMutual;
+                                            if($mutual){
+                                                echo 'Mutual: ' . Funciones::formatoPesos($mutual->cotizacion_accidentes) . '<br />';
+                                            }
+                                            $sis = true;
+                                        }
+                                    }
+                                    /*$mutual = $liquidacion->detalleMutual;
+                                    if($mutual){
+                                        if($mutual->cotizacion_accidentes==0){
+                                            if(!$sis){
+                                                $count++;
+                                                echo '<br />RUT: ' . Funciones::formatear_rut($empleado->rut) . '<br />';
+                                                echo 'Nombre: ' . $ultimaFicha->nombreCompleto() . '<br />';
+                                                echo 'Liquidaciones:<br />';
+                                            }
+                                            echo '-Liquidacion ' . $liquidacion->mes . '<br />';
+                                            echo 'Ingreso: ' . $liquidacion->trabajador_fecha_ingreso . '<br />';
+                                            echo 'Dias trabajados: ' . $liquidacion->dias_trabajados . '<br />';
+                                            echo 'AFP: ' . Funciones::formatoPesos($liquidacion->detalleAfp->cotizacion) . '<br />';
+                                            echo 'SIS: ' . Funciones::formatoPesos($liquidacion->detalleAfp->sis) . '<br />';
+                                            $sc = $liquidacion->detalleSeguroCesantia;
+                                            if($sc){
+                                                echo 'SC: ' . Funciones::formatoPesos($sc->aporte_empleador) . '<br />';
+                                            }
+
+
+                                            if($mutual){
+                                                echo 'Mutual: ' . Funciones::formatoPesos($mutual->cotizacion_accidentes) . '<br />';
+                                            }
+                                            $sis = true;
+                                        }
+                                    }*/
+                                }
+                            }
+                        }else{
+                            echo 'Sin liquidaciones<br />';
+                        }
+
+                    }
+                }
+            }
+            echo '<br />Total: ' . $count . '<br />';
+        }
+        
+    }else{
+        echo "Sin Empresas";
+    }
+});
+
+
+Route::get('crear-usuario', function(){
+
+    Config::set('database.default', 'principal' );
+    $empresas = Empresa::all();
+    
+    if($empresas->count()){
+        foreach($empresas as $empresa){
+            echo $empresa->rut;
+            if($empresa->rut=='765748798'){
+                echo '<b>' . $empresa->rut . '</b>';
+                Config::set('database.default', $empresa->base_datos);
+                $empleados = DB::table('trabajadores')->whereIn('id', [])->get();
+                print_r($empleados);
+                foreach($empleados as $empleado){
+                    
+                    $ultimaFicha = FichaTrabajador::where('trabajador_id', $empleado->id)->orderBy('id', 'DESC')->first();
+                    if($ultimaFicha->estado!='En Creación'){
+                        
+                        $user = new Usuario();
+                        $user->sid = Funciones::generarSID();
+                        $user->funcionario_id = $empleado->id;
+                        $user->username = $empleado->rut;
+                        $pass = $user->generarClave();
+                        $user->password = Hash::make($pass);
+                        $user->activo = 2;
+                        $user->save();
+
+                        $permiso = new Permiso();
+                        $permiso->usuario_id = $user->id;
+                        $permiso->documentos_empresa = 1;
+                        $permiso->cartas_notificacion = 1;
+                        $permiso->certificados = 1;
+                        $permiso->liquidaciones = 1;
+                        $permiso->solicitudes = 1;
+                        $permiso->save();
+
+                        echo 'user_id : ' . $empleado->rut . '<br />';
+                        echo 'empresa_id : ' . $empresa->id . '<br />';
+                        echo 'pass : ' . $pass . '<br /><br />';
+                    }
+                }
+            }
+        }
+        
+    }else{
+        echo "Sin Usuarios";
+    }
+});
+
 Route::get('session', function(){
 
     session_destroy();
@@ -602,12 +1184,7 @@ Route::get('corregir-observaciones', function(){
                     echo $observacion->trabajador_id;
                     echo '<br /> Sin Ficha <br />';
                 }
-
             }
-            
-            
-
-
         }
         
     }else{
@@ -641,12 +1218,13 @@ Route::group(array('before'=>'auth_ajax'), function() {
             return Response::json(array("success" => true, 'accesos' => array()));
         }
         $urlActual = Input::get('actual');
-        $empresa = Empresa::find($empresa_id);
-        \Session::put('empresa', $empresa);
+        $empresa = Empresa::find($empresa_id);        
         if($empresa){
-            $recargar=false;
+            $recargar=false;                        
             \Session::put('basedatos', $empresa->base_datos);
             Config::set('database.default', $empresa->base_datos);
+            \Session::put('empresa', $empresa);
+            Empresa::configuracion();
             $menuController = new MenuController();
             // se carga el menu con los permisos permitidos para la empresa
             if( Auth::usuario()->user()->id > 1 ){
@@ -657,7 +1235,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
                 $recargar = Auth::usuario()->user()->comprobarUrlMenuEmpresa($url, $empresa_id);
                 $recargar=true;
 
-            }elseif(Auth::usuario()->user()->id == 1){
+            }else if(Auth::usuario()->user()->id == 1){
                 $MENU_USUARIO = $menuController->generarMenuSistema($empresa_id, false);
                 $recargar=true;
             }
@@ -926,8 +1504,8 @@ c139f46406b37dedd4062fea30a5ccec
     
     /*  VARIABLES DEL SISTEMA   */
     Route::resource('variables-sistema', 'VariablesSistemaController');
+    Route::get('empresas/configuracion/obtener', 'VariablesSistemaController@configuracion');
     
-
     /* MODIFICACION DE CONTRASENA Y VISTA A DATOS DEL PERFIL DE USUARIO */
     Route::get('misdatos', 'PerfilController@index');
     Route::post('misdatos', 'PerfilController@actualizar_password');
@@ -941,8 +1519,11 @@ c139f46406b37dedd4062fea30a5ccec
 Route::group(array('before'=>'auth_ajax'), function() {
     /*  EMPRESAS    */
     Route::resource('empresas', 'EmpresasController');
-
     Route::get('empresas/exportar/excel/{version}', "EmpresasController@exportar_excel");
+    Route::get('empresa/notificaciones', "EmpresasController@notificaciones");
+    Route::post('empresas/habilitar/cambiar', "EmpresasController@habilitar");
+    Route::post('empresas/configuracion/cambiar', "EmpresasController@cambiarConfiguracion");
+    Route::post('empresas/valor-configuracion/cambiar', "EmpresasController@cambiarValorConfiguracion");
 
     /* PROVINCIAS Y COMUNAS */
     Route::get('provincias/listado/{region}', 'ProvinciaController@ajaxSelectListaProvincias');
@@ -997,6 +1578,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::resource('trabajadores', 'TrabajadoresController');
     Route::get('trabajadores/secciones/obtener', 'TrabajadoresController@secciones');
     Route::get('trabajadores/total-inasistencias/obtener', 'TrabajadoresController@trabajadoresInasistencias');
+    Route::get('trabajadores/total-atrasos/obtener', 'TrabajadoresController@trabajadoresAtrasos');
     Route::get('trabajadores/total-licencias/obtener', 'TrabajadoresController@trabajadoresLicencias');
     Route::get('trabajadores/total-horas-extra/obtener', 'TrabajadoresController@trabajadoresHorasExtra');
     Route::get('trabajadores/total-prestamos/obtener', 'TrabajadoresController@trabajadoresPrestamos');
@@ -1004,6 +1586,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('trabajadores/total-apvs/obtener', 'TrabajadoresController@trabajadoresApvs');
     Route::get('trabajadores/apvs/obtener/{sid}', 'TrabajadoresController@trabajadorApvs');
     Route::get('trabajadores/inasistencias/obtener/{sid}', 'TrabajadoresController@trabajadorInasistencias');
+    Route::get('trabajadores/atrasos/obtener/{sid}', 'TrabajadoresController@trabajadorAtrasos');
     Route::get('trabajadores/licencias/obtener/{sid}', 'TrabajadoresController@trabajadorLicencias');
     Route::get('trabajadores/horas-extra/obtener/{sid}', 'TrabajadoresController@trabajadorHorasExtra');
     Route::get('trabajadores/prestamos/obtener/{sid}', 'TrabajadoresController@trabajadorPrestamos');
@@ -1024,6 +1607,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('trabajadores/f1887/ver/{anio}', 'TrabajadoresController@verF1887');
     Route::get('trabajadores/ingresados/obtener', 'TrabajadoresController@ingresados');
     Route::get('trabajadores/archivo-previred/obtener', 'TrabajadoresController@archivoPrevired');
+    Route::get('trabajadores/archivo-previred/descargar', 'TrabajadoresController@descargarPrevired');
     Route::get('trabajadores/trabajadores-finiquitos/obtener', 'TrabajadoresController@trabajadoresFiniquitos');
     Route::get('trabajadores/trabajadores-documentos/obtener', 'TrabajadoresController@trabajadoresDocumentos');
     Route::get('trabajadores/vigentes/obtener', 'TrabajadoresController@vigentes');
@@ -1056,7 +1640,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::get('trabajadores/nomina-bancaria/descargar-excel/{nombre}', 'TrabajadoresController@descargarNominaExcel');
     Route::post('trabajadores/planilla-costo-empresa/generar-excel', 'TrabajadoresController@generarPlanillaExcel');
     Route::get('trabajadores/planilla-costo-empresa/descargar-excel/{nombre}', 'TrabajadoresController@descargarPlanillaExcel');
-    Route::get('trabajadores/archivo-previred/descargar-excel', 'TrabajadoresController@descargarArchivoPreviredExcel');
+    Route::post('trabajadores/archivo-previred/generar', 'TrabajadoresController@generarArchivoPreviredExcel');
     Route::get('trabajadores/planilla/descargar-excel/{tipo}', 'TrabajadoresController@descargarPlantilla');
     Route::get('trabajadores/planilla-masivo/descargar-excel/{tipo}', 'TrabajadoresController@descargarPlantillaMasivo');
     Route::get('trabajadores/planilla-trabajadores/descargar', 'TrabajadoresController@descargarPlantillaTrabajadores');
@@ -1066,8 +1650,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::post('trabajadores/generar-ingreso/masivo', 'TrabajadoresController@generarIngresoMasivo');
     Route::post('trabajadores/tramo/cambiar', 'TrabajadoresController@cambiarTramo');
     Route::post('trabajadores/liquidacion/registro-observaciones', 'TrabajadoresController@miLiquidacionObservaciones_store');
-    
-    
+        
     /*   NACIONALIDADES    */
     Route::resource('nacionalidades', 'NacionalidadesController');
     
@@ -1132,6 +1715,8 @@ Route::group(array('before'=>'auth_ajax'), function() {
     Route::post('haberes/generar-ingreso/masivo', 'HaberesController@generarIngresoMasivo');
     Route::post('haberes/generar-ingreso-masivo/masivo', 'HaberesController@generarIngresoMasivoHaberes');
     Route::post('haberes/permanentes/eliminar', 'HaberesController@eliminarPermanente');
+    Route::post('haberes/haberes-ficha/obtener', 'HaberesController@haberesFicha');
+    Route::post('haberes/haberes-ficha/update', 'HaberesController@updateHaberFicha');
     
     /*   DESCUENTOS    */
     Route::resource('descuentos', 'DescuentosController');
@@ -1144,6 +1729,9 @@ Route::group(array('before'=>'auth_ajax'), function() {
     
     /*   INASISTENCIAS    */
     Route::resource('inasistencias', 'InasistenciasController');
+    
+    /*   ATRASOS    */
+    Route::resource('atrasos', 'AtrasosController');
         
     /*   LICENCIAS    */
     Route::resource('licencias', 'LicenciasController');
@@ -1304,6 +1892,10 @@ Route::group(array('before'=>'auth_ajax'), function() {
     
     /*   REPORTES    */
     Route::resource('reportes', 'LogsController');
+
+    
+    
+    
     
     
     
@@ -1325,6 +1917,7 @@ Route::group(array('before'=>'auth_ajax'), function() {
 Route::post('login', function (){
     $_SESSION['basedatos']="";
     $indice=0;
+    $apellidoNombre = false;
     $userdata = array(
         'username' => Input::get('username'),
         'password' => Input::get('password')
@@ -1361,6 +1954,7 @@ Route::post('login', function (){
                     "imagen" => "images/usuario.png", 
                     "usuario" => ucwords ( mb_strtolower( Auth::empleado()->user()->nombreCompleto() ) ), 
                     "cliente" => Config::get('cliente.CLIENTE.NOMBRE'), 
+                    "url" => Empresa::suite(), 
                     "uID" => Auth::empleado()->user()->id,
                     'isEmpleado' => true
                 );
@@ -1384,9 +1978,9 @@ Route::post('login', function (){
                 $empresas=Auth::usuario()->user()->listaEmpresasPerfil();
                 $listaEmpresas=array();
                 if( !in_array(100000, $empresas) ) {
-                    $empresas = Empresa::whereIn('id', $empresas)->orderBy('razon_social', 'ASC')->get();
+                    $empresas = Empresa::whereIn('id', $empresas)->where('habilitada', 1)->orderBy('razon_social', 'ASC')->get();
                 }else{
-                    $empresas = Empresa::orderBy('razon_social', 'ASC')->get();
+                    $empresas = Empresa::orderBy('razon_social', 'ASC')->where('habilitada', 1)->get();
                 }
                 if($empresas->count()){
                     foreach( $empresas as $empresa ){
@@ -1406,8 +2000,9 @@ Route::post('login', function (){
                     Config::set('database.default', $empresa->base_datos);
                     $mesActual = MesDeTrabajo::selectMes();
                     \Session::put('basedatos', $empresa->base_datos);
-                    \Session::put('mesActivo', $mesActual);  
+                    \Session::put('mesActivo', $mesActual);                                          
                     \Session::put('empresa', $empresa);
+                    Empresa::configuracion();
                     $MENU_USUARIO = $menuController->generarMenuSistema( $empresa_id, false );
                 }else{
                     $opciones = MenuSistema::where('administrador', '!=', '2')->get();
@@ -1442,6 +2037,7 @@ Route::post('login', function (){
                     \Session::put('basedatos', $empresa->base_datos);
                     \Session::put('mesActivo', $mesActual);  
                     \Session::put('empresa', $empresa);
+                    Empresa::configuracion();
                     \Session::put('mesActivo', $mesActual); 
 
                     $MENU_USUARIO = $menuController->generarMenuSistema( $empresa_id, false );
@@ -1484,6 +2080,7 @@ Route::post('login', function (){
                     ),
                     'isMutual' => Empresa::isMutual(),
                     'isCaja' => Empresa::isCaja(),
+                    'apellidoNombre' => $apellidoNombre,
                     'comuna' => array(
                         'id' => $empresa->comuna->id,
                         'nombre' => $empresa->comuna->comuna,
@@ -1529,6 +2126,7 @@ Route::post('login', function (){
                 "imagen" => "images/usuario.png", 
                 "usuario" => ucwords ( mb_strtolower( Auth::usuario()->user()->nombreCompleto() ) ), 
                 "cliente" => Config::get('cliente.CLIENTE.NOMBRE'), 
+                "url" => Empresa::suite(), 
                 "uID" => Auth::usuario()->user()->id,
                 'isEmpleado' => false
             );

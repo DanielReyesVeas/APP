@@ -218,7 +218,7 @@ class MenuController extends BaseController {
         if( count($menu) ){
             foreach($menu as $item){
                 if($item['datos']->administrador!=4){
-                    if( !in_array( $item['datos']->href, array('#funcionarios', '#perfiles') ) ) {
+                    if( !in_array( $item['datos']->href, array('#funcionarios', '#perfiles', '#recaudadores', '#tipos-carga') ) ) {
 
                         $datos['datos'][] = array(
                             'posicion' => $posicion,
@@ -231,7 +231,7 @@ class MenuController extends BaseController {
                         if (count($item['hijos'])) {
                             $posicionHij = 1;
                             foreach ($item['hijos'] as $ind2 => $item2) {
-                                if( !in_array( $item2['datos']->href, array('#funcionarios', '#perfiles') ) ) {
+                                if( !in_array( $item2['datos']->href, array('#funcionarios', '#perfiles', '#recaudadores', '#tipos-carga') ) ) {
                                     $datos['datos'][] = array(
                                         'posicion' => $posicionHij,
                                         'sid' => $item2['datos']->sid,
@@ -283,7 +283,7 @@ class MenuController extends BaseController {
                 if( $menuAdmin ){
                     $opciones = MenuSistema::where('administrador', '<=', '2')->get();
                 }else{
-                    $opciones = MenuSistema::all();
+                    $opciones = MenuSistema::where('administrador', '<>', '4')->get();
                 }
                 
                 if(count($opciones)){
@@ -344,7 +344,7 @@ class MenuController extends BaseController {
                 if( $menuAdmin ){
                     $opciones = MenuSistema::where('administrador', '!=', '2')->get();
                 }else{
-                    $opciones = MenuSistema::all();
+                    $opciones = MenuSistema::where('administrador', '<>', '4')->get();
                 }
 
                 if(count($opciones)){

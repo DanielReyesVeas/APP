@@ -672,6 +672,7 @@ CREATE TABLE IF NOT EXISTS `empresas` (
   `niveles_centro_costo` int(10) NOT NULL,
   `impuesto_unico` char(1) NOT NULL DEFAULT 'e',
   `zona` DECIMAL(5,2) NOT NULL,
+  `habilitada` TINYINT NOT NULL DEFAULT '1', 
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`),
@@ -2560,14 +2561,25 @@ CREATE TABLE IF NOT EXISTS `variables_globales` (
   `created_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `updated_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=2 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci AUTO_INCREMENT=13 ;
 
 --
 -- Volcado de datos para la tabla `variables_globales`
 --
 
 INSERT INTO `variables_globales` (`id`, `variable`, `valor`, `created_at`, `updated_at`) VALUES
-(1, 'EMPRESAS', '50', '0000-00-00 00:00:00', '0000-00-00 00:00:00');
+(1, 'EMPRESAS', '50', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(2, 'configuracion', 'g', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(3, 'apellido_nombre', '0', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(4, 'finiquitados_liquidacion', '0', '0000-00-00 00:00:00', '2018-05-16 16:23:45'),
+(5, 'logo_liquidacion', '0', '0000-00-00 00:00:00', '2018-05-16 16:24:10'),
+(6, 'notificaciones', '1', '0000-00-00 00:00:00', '0000-00-00 00:00:00'),
+(7, 'formato_pesos', '1', '0000-00-00 00:00:00', '2018-05-16 16:04:46'),
+(8, 'cargo_liquidacion', '1', '0000-00-00 00:00:00', '2018-05-16 16:23:51'),
+(9, 'seccion_liquidacion', '1', '0000-00-00 00:00:00', '2018-05-16 16:24:16'),
+(10, 'firma_liquidacion', '1', '0000-00-00 00:00:00', '2018-05-16 16:24:36'),
+(11, 'cuenta_liquidacion', '1', '0000-00-00 00:00:00', '2018-05-16 16:23:58'),
+(12, 'uf_liquidacion', '1', '0000-00-00 00:00:00', '2018-05-16 16:24:04');
 
 -- --------------------------------------------------------
 

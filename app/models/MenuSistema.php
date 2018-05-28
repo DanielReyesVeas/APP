@@ -11,7 +11,11 @@ class MenuSistema extends Eloquent {
 
     static function obtenerPermisosAccesosURL($user, $url){
         $accesos=array();
-        $abierto = AnioRemuneracion::isMesAbierto();
+        if($url=='#empresas' || $url=='#tabla-global-mensual'){
+            $abierto = true;
+        }else{
+            $abierto = AnioRemuneracion::isMesAbierto();
+        }
         
         if(Auth::usuario()->user()->id > 1){
             $menuOpc = MenuSistema::where('href', $url)->get();

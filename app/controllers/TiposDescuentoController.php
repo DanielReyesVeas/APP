@@ -148,17 +148,17 @@ class TiposDescuentoController extends \BaseController {
                             'codigo' => $tipoDescuento->codigo,
                             'nombre' => 'APVC AFP ' . $tipoDescuento->nombreAfp()
                         );
-                    }else if($tipoDescuento->estructura_descuento_id==7){
-                        $listaTiposDescuentoLegales[]=array(
-                            'id' => $tipoDescuento->id,
-                            'sid' => $tipoDescuento->sid,
-                            'codigo' => $tipoDescuento->codigo,
-                            'nombre' => 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp()
-                        );
                     }
                 }
             }
         }
+        
+        $listaTiposDescuentoLegales[]=array(
+            'id' => 0,
+            'sid' => 'cuentaAhorro',
+            'codigo' => '',
+            'nombre' => 'Cuenta de Ahorro AFP'
+        );
         
         $datos = array(
             'accesos' => $permisos,
@@ -224,40 +224,55 @@ class TiposDescuentoController extends \BaseController {
      * @return Response
      */
     public function show($sid)
-    {
-        $tipoDescuento = TipoDescuento::whereSid($sid)->first();
+    {        
         $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-descuentos');
         $cuentas = Cuenta::listaCuentas();
         $datosDescuento = null;
 
         if($sid){
-            if($tipoDescuento->estructuraDescuento->id==3){
-                $nombre = 'APVC AFP ' . $tipoDescuento->nombreAfp();
-            }else if($tipoDescuento->estructuraDescuento->id==4){
-                $nombre = 'APV Régimen A AFP ' . $tipoDescuento->nombreAfp();
-            }else if($tipoDescuento->estructuraDescuento->id==5){
-                $nombre = 'APV Régimen B AFP ' . $tipoDescuento->nombreAfp();
-            }else if($tipoDescuento->estructuraDescuento->id==7){
-                $nombre = 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp();
-            }else if($tipoDescuento->estructuraDescuento->id==9){
-                $nombre = $tipoDescuento->nombreIsapre();
+            if($sid=='cuentaAhorro'){
+                $cuentas = TipoDescuento::where('estructura_descuento_id', 7)->get();
+                $datosDescuento=array(
+                    'id' => 0,
+                    'sid' => 'cuentaAhorro',
+                    'codigo' => '',
+                    'nombre' => 'Cuenta de Ahorro AFP',
+                    'caja' => false,
+                    'descripcion' => '',
+                    'descuentos' => TipoDescuento::descuentosCuentaAhorro(),
+                    'idEstructura' => 7,
+                    'cuentas' => $cuentas
+                );                
             }else{
-                $nombre = $tipoDescuento->nombre;
-            } 
-            $datosDescuento=array(
-                'id' => $tipoDescuento->id,
-                'sid' => $tipoDescuento->sid,
-                'codigo' => $tipoDescuento->codigo,
-                'nombre' => $nombre,
-                'caja' => $tipoDescuento->caja ? true : false,
-                'descripcion' => $tipoDescuento->descripcion,
-                'descuentos' => $tipoDescuento->misDescuentos(),
-                'idEstructura' => $tipoDescuento->estructura_descuento_id,
-                'tipo' => array(
-                    'id' => $tipoDescuento->estructuraDescuento->id,
-                    'nombre' => $tipoDescuento->estructuraDescuento->nombre
-                )
-            );
+                $tipoDescuento = TipoDescuento::whereSid($sid)->first();
+                if($tipoDescuento->estructuraDescuento->id==3){
+                    $nombre = 'APVC AFP ' . $tipoDescuento->nombreAfp();
+                }else if($tipoDescuento->estructuraDescuento->id==4){
+                    $nombre = 'APV Régimen A AFP ' . $tipoDescuento->nombreAfp();
+                }else if($tipoDescuento->estructuraDescuento->id==5){
+                    $nombre = 'APV Régimen B AFP ' . $tipoDescuento->nombreAfp();
+                }else if($tipoDescuento->estructuraDescuento->id==7){
+                    $nombre = 'Cuenta de Ahorro AFP ' . $tipoDescuento->nombreAfp();
+                }else if($tipoDescuento->estructuraDescuento->id==9){
+                    $nombre = $tipoDescuento->nombreIsapre();
+                }else{
+                    $nombre = $tipoDescuento->nombre;
+                }
+                $datosDescuento=array(
+                    'id' => $tipoDescuento->id,
+                    'sid' => $tipoDescuento->sid,
+                    'codigo' => $tipoDescuento->codigo,
+                    'nombre' => $nombre,
+                    'caja' => $tipoDescuento->caja ? true : false,
+                    'descripcion' => $tipoDescuento->descripcion,
+                    'descuentos' => $tipoDescuento->misDescuentos(),
+                    'idEstructura' => $tipoDescuento->estructura_descuento_id,
+                    'tipo' => array(
+                        'id' => $tipoDescuento->estructuraDescuento->id,
+                        'nombre' => $tipoDescuento->estructuraDescuento->nombre
+                    )
+                );
+            }
         }
         
         $datos = array(
@@ -386,7 +401,7 @@ class TiposDescuentoController extends \BaseController {
     {
         $tipoDescuento = TipoDescuento::whereSid($sid)->first();
         $datos = $this->get_datos_formulario();
-        $errores = $tipoDescuento->validar($datos);    
+        $errores = TipoDescuento::errores($datos);  
         
         if(!$errores and $tipoDescuento){
             $tipoDescuento->estructura_descuento_id = $datos['estructura_descuento_id'];
@@ -493,6 +508,7 @@ class TiposDescuentoController extends \BaseController {
     
     public function get_datos_formulario(){
         $datos = array(
+            'id' => Input::get('id'),
             'codigo' => Input::get('codigo'),
             'nombre' => Input::get('nombre'),
             'estructura_descuento_id' => Input::get('tipo')['id'],

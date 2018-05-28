@@ -21,6 +21,7 @@ angular.module('angularjsApp')
       var datos = trabajador.planillaCostoEmpresa().get();
       datos.$promise.then(function(response){
         $scope.datos = response.datos;
+        $scope.totales = response.totales;
         $scope.accesos = response.accesos;
         $rootScope.cargando = false;
         $scope.cargado = true;

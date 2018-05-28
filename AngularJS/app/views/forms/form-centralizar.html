@@ -101,6 +101,7 @@
 <div class="modal-footer">
   <button class="btn btn-primary" type="button" ng-if="empresa.cme" confirmation-needed="Se enviará la información a CME del mes de <b>{{ mesActual }}</b>. <br />¿Desea continuar?" confirmation-click="centralizar()" ng-disabled="!preCentralizado || comprobante.Detalle.length==0">Enviar a CME</button>
   <button class="btn btn-warning" type="button" ng-if="empresa.cme" confirmation-needed="No se ha realizado la Centralización de <b>{{ mesActual }}</b>. <br />¿Desea salir?" confirmation-click="$dismiss()">Cancelar</button>
+  <button class="btn btn-primary" type="button" ng-if="empresa.rut=='965799206'" confirmation-needed="Se realizará la centralización del mes de <b>{{ mesActual }}</b>. <br />¿Desea continuar?" confirmation-click="centralizar()" ng-disabled="!preCentralizado || comprobante.Detalle.length==0">Enviar Centralización</button>
 
   <a class="btn btn-primary" ng-if="!empresa.cme && preCentralizado" href="{{ constantes.URL }}/stories/{{ nombreDocumentoExcel }}" download="{{ nombreDocumentoExcel }}">Descargar Excel</a>
   <a class="btn btn-primary" ng-if="!empresa.cme && preCentralizado" href="{{ constantes.URL }}/stories/{{ nombreDocumentoPDF }}" download="{{ nombreDocumentoPDF }}">Descargar PDF</a>

@@ -62,6 +62,14 @@ class Empresa extends \Eloquent {
         return $url;
     }
     
+    static function suite()
+    {           
+        $sub = str_replace('rrhhes_', '', Config::get('cliente.CLIENTE.EMPRESA'));
+        $url = 'https://' . $sub . '.rrhh-es.com';
+        
+        return $url;
+    }
+    
     public function misCentrosCosto()
     {
         $centrosCosto = array();
@@ -186,6 +194,77 @@ class Empresa extends \Eloquent {
         return null;
     }
     
+    static function configuracion()
+    {
+        $bd = \Session::get('basedatos');
+        Config::set('database.default', 'principal');
+        $configuracion = DB::table('variables_globales')->where('variable', 'configuracion')->first();           
+        
+        if($configuracion->valor=='e'){
+            $configuraciones = new stdClass();
+            Config::set('database.default', $bd);
+            $variables = DB::table('variables_sistema')->get();
+            $configuraciones->configuracion = $configuracion->valor;
+            foreach($variables as $variable){
+                $nombre = $variable->variable;
+                if($variable->valor1==1){
+                    $valor = true;
+                }else if($variable->valor1==0){
+                    $valor = false;
+                }else{
+                    $valor = $variable->valor1;                
+                }
+                $configuraciones->$nombre = $valor;
+            }
+        }else{
+            $configuraciones = new stdClass();
+            $variables = DB::table('variables_globales')->get();
+            foreach($variables as $variable){
+                $nombre = $variable->variable;
+                if($variable->valor==1){
+                    $valor = true;
+                }else if($variable->valor==0){
+                    $valor = false;
+                }else{
+                    $valor = $variable->valor;                
+                }
+                $configuraciones->$nombre = $valor;
+            }
+            $configuraciones->configuracion = $configuracion->valor;
+        }
+        
+        \Session::set('configuracion', $configuraciones);
+        Config::set('database.default', $bd);
+        
+        return $configuraciones;
+    }
+    
+    static function variableConfiguracion($var)
+    {
+        $configuracion = \Session::get('configuracion');
+        if(isset($configuracion->$var)){
+            return $configuracion->$var;                
+        }
+        
+        return false;
+    }    
+    
+    static function habilitadas($empresas)
+    {
+        $bd = \Session::get('basedatos');
+        Config::set('database.default', 'principal');
+        $habilitadas = DB::table('empresas')->where('habilitada', 1)->lists('id');
+        Config::set('database.default', $bd);
+        
+        foreach($empresas as $index => $empresa){
+            if(!in_array($empresa['id'], $habilitadas)){
+                unset($empresas[$index]);
+            }
+        }
+        
+        return $empresas;
+    }
+
     public function porcentajeMutual()
     {
         $idAnio = \Session::get('mesActivo')->idAnio;

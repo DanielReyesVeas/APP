@@ -12,6 +12,7 @@ angular.module('angularjsApp')
     
     $anchorScroll();
 
+    $scope.empresa = $rootScope.globals.currentUser.empresa;
     $scope.datos = [];
     $scope.constantes = constantes;
     $scope.cargado = false;
@@ -120,6 +121,7 @@ angular.module('angularjsApp')
     }
 
     $scope.openIngresoDescuento = function (obj) {
+      console.log(obj)
       var miModal = $uibModal.open({
         animation: true,
         templateUrl: 'views/forms/form-nuevo-ingreso-descuento.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
@@ -135,7 +137,7 @@ angular.module('angularjsApp')
         Notification.success({message: object.mensaje, title: 'Mensaje del Sistema'});
         cargarDatos();
       }, function () {
-        javascript:void(0)
+        javascript:void(0);
       });
     }
 

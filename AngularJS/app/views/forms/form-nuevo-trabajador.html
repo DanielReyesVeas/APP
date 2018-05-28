@@ -468,7 +468,7 @@
       <div class="panel-body">  
 
         <fieldset>
-          <legend>Imponibles</legend>
+          <legend>Imponibles Permanentes</legend>
           <div class="form-group form-group-md" style="margin-top: 30px;">
 
             <label class="col-sm-3 control-label required">Sueldo Base:</label>
@@ -607,7 +607,7 @@
               </div>
               <div class="col-sm-2" ng-class="{ 'hidden' : isImponible || trabajador.estado==='Finiquitado' }">
                 <a href="" ng-click="editarImponible(imp)"><i class="fa fa fa fa-pencil"></i></a>
-                <a href="" confirmation-click="eliminarImponible(imp)" confirmation-needed="El Imponible permanente será eliminado. ¿Desea continuar?"><i class="fa fa fa fa-trash"></i></a>
+                <a href="" confirmation-click="eliminarImponible(imp)" confirmation-needed="El haber permanente <b>{{ imp.tipo.nombre }}</b> será eliminado. ¿Desea continuar?"><i class="fa fa fa fa-trash"></i></a>
               </div>
             </div>  
           </div>
@@ -633,16 +633,16 @@
                   <select class="form-control form-white" ng-model="imponible.moneda" name="monedaImponible" ng-change="cambiarMonedaImponible()" ng-options="mon.nombre as mon.nombre for mon in monedas" > 
                   </select>
                 </div>                            
-                <div class="col-sm-6" ng-show="imponible.moneda==='$'">
-                  <input ng-model="imponible.monto" class="form-control form-white" name="montoImponible" type="text" placeholder="ingrese el monto en pesos del imponible" />
+                <div class="col-sm-5" ng-show="imponible.moneda==='$'">
+                  <input ng-model="imponible.monto" class="form-control form-white" name="montoImponible" type="number" placeholder="ingrese el monto en pesos" />
                 </div>
-                <div class="col-sm-6" ng-show="imponible.moneda==='UF'">
-                  <input ng-model="imponible.monto" class="form-control form-white" name="montoImponible" type="text" placeholder="ingrese el monto en UF del imponible" />
+                <div class="col-sm-5" ng-show="imponible.moneda==='UF'">
+                  <input ng-model="imponible.monto" class="form-control form-white" name="montoImponible" type="text" placeholder="ingrese el monto en UF" />
                 </div>
-                <div class="col-sm-6" ng-show="imponible.moneda==='UTM'">
-                  <input ng-model="imponible.monto" class="form-control form-white" name="montoImponible" type="text" placeholder="ingrese el monto en UTM del imponible" />
+                <div class="col-sm-5" ng-show="imponible.moneda==='UTM'">
+                  <input ng-model="imponible.monto" class="form-control form-white" name="montoImponible" type="text" placeholder="ingrese el monto en UTM" />
                 </div>
-                <div class="col-sm-1" ng-show="imponible.monto">
+                <div class="col-sm-2" ng-show="imponible.monto">
                   <button type="button" ng-click="guardarImponible()" class="btn btn-primary btn-sm" ng-class="{ 'hidden' : isEditImponible }"><i class="fa fa-plus"></i> Agregar</button>
                   <button type="button" ng-click="updateImponible(imponible)" class="btn btn-primary btn-sm" ng-class="{ 'hidden' : !isEditImponible }"><i class="fa fa-pencil"></i> Modificar</button>
                 </div>
@@ -659,8 +659,8 @@
         </fieldset>
 
         <fieldset>
-          <legend>No Imponibles</legend>
-          <div class="form-group form-group-md" style="margin-top: 30px;">
+          <legend>No Imponibles Permanentes</legend>
+          <!--<div class="form-group form-group-md" style="margin-top: 30px;">
             <label class="col-sm-2 control-label">Colación:</label>
             <div class="col-sm-8" style="padding: 0px;">
               <div class="col-sm-3">
@@ -739,7 +739,7 @@
                 <input type="checkbox" ng-model="trabajador.proporcionalViatico" value="true" icheck> Proporcional
               </label>   
             </div> 
-          </div>  
+          </div>  -->
 
           <div ng-repeat="noImp in trabajador.haberes | filter:{ tipo: { imponible:false } }" style="margin-top: 20px;">
             <div class="form-group form-group-md">
@@ -750,7 +750,7 @@
               </div>
               <div class="col-sm-2" ng-class="{ 'hidden' : isNoImponible || trabajador.estado==='Finiquitado' }">
                 <a href="" ng-click="editarNoImponible(noImp)"><i class="fa fa fa fa-pencil"></i></a>
-                <a href="" confirmation-click="eliminarNoImponible(noImp)" confirmation-needed="El no Imponible permanente será eliminado. ¿Desea continuar?"><i class="fa fa fa fa-trash"></i></a>
+                <a href="" confirmation-click="eliminarNoImponible(noImp)" confirmation-needed="El haber permanente <b>{{ noImp.tipo.nombre }}</b> será eliminado. ¿Desea continuar?"><i class="fa fa fa fa-trash"></i></a>
               </div>
             </div>  
           </div>
@@ -766,7 +766,12 @@
                 <select class="form-control form-white" ng-model="noImponible.tipo" name="tipoNoImponible" ng-options="noImp as noImp.nombre for noImp in opciones.tiposHaber | filter:{ imponible:false }" > 
                   <option value="">-- Seleccione un Haber --</option>
                 </select>
-              </div>                
+              </div>     
+              <div class="col-sm-4">
+                <label class="col-sm-12" ng-class="{ 'hidden' : noImponible.tipo.nombre!='Colación' && noImponible.tipo.nombre!='Movilización' && noImponible.tipo.nombre!='Viático' }">
+                  <input type="checkbox" ng-model="noImponible.proporcional" value="true" icheck> Proporcional
+                </label>   
+              </div>              
             </div>
 
             <div class="form-group form-group-md">
@@ -774,18 +779,18 @@
               <div class="col-sm-9">
                 <div class="col-sm-2" style="padding-left: 0px;">
                   <select class="form-control form-white" ng-model="noImponible.moneda" name="monedaNoImponible" ng-change="cambiarMonedaNoImponible()" ng-options="mon.nombre as mon.nombre for mon in monedas" > 
-                  </select>
-                </div>                            
-                <div class="col-sm-7" ng-show="noImponible.moneda==='$'">
-                  <input ng-model="noImponible.monto" class="form-control form-white" type="text" name="montoNoImponible" placeholder="ingrese el monto en pesos del no imponible" />
+                  </select>                  
+                </div>                                         
+                <div class="col-sm-5" ng-show="noImponible.moneda==='$'">
+                  <input ng-model="noImponible.monto" class="form-control form-white" type="number" name="montoNoImponible" placeholder="ingrese el monto en pesos" />
                 </div>
-                <div class="col-sm-7" ng-show="noImponible.moneda==='UF'">
-                  <input ng-model="noImponible.monto" class="form-control form-white" type="text" name="montoNoImponible" placeholder="ingrese el monto en UF del no imponible" />
+                <div class="col-sm-5" ng-show="noImponible.moneda==='UF'">
+                  <input ng-model="noImponible.monto" class="form-control form-white" type="text" name="montoNoImponible" placeholder="ingrese el monto en UF" />
                 </div>
-                <div class="col-sm-7" ng-show="noImponible.moneda==='UTM'">
-                  <input ng-model="noImponible.monto" class="form-control form-white" type="text" name="montoNoImponible" placeholder="ingrese el monto en UTM del no imponible" />
-                </div>
-                <div class="col-sm-1" ng-show="noImponible.monto">
+                <div class="col-sm-5" ng-show="noImponible.moneda==='UTM'">
+                  <input ng-model="noImponible.monto" class="form-control form-white" type="text" name="montoNoImponible" placeholder="ingrese el monto en UTM" />
+                </div>                
+                <div class="col-sm-2" ng-show="noImponible.monto">
                   <button type="button" ng-click="guardarNoImponible()" class="btn btn-primary btn-sm" ng-class="{ 'hidden' : isEditNoImponible }"><i class="fa fa-plus"></i> Agregar</button>
                   <button type="button" ng-click="updateNoImponible(noImponible)" class="btn btn-primary btn-sm" ng-class="{ 'hidden' : !isEditNoImponible }"><i class="fa fa-pencil"></i> Modificar</button>
                 </div>
@@ -1010,8 +1015,8 @@
   <div class="modal-footer">
     <div class="pull-right" style="padding: 6px;">
       <button class="btn btn-primary" type="button" ng-click="guardar(true)" ng-disabled="formTrabajador.$invalid" ng-class="{ 'hidden' : trabajador.estado!=='En Creación' && trabajador.sid }">Ingresar Trabajador</button>
-      <button class="btn btn-primary" type="button" ng-click="guardar(false)" ng-disabled="errorRUT!=='valido' || !trabajador.rut" ng-if="!trabajador.sid || trabajador.sid && trabajador.estado==='En Creación'">Guardar cambios</button>
-      <button class="btn btn-primary" type="button" confirmation-click="confirmacion(true)" confirmation-needed="La ficha del trabajador <b>{{ trabajador.nombreCompleto }}</b> será modificada. <br />¿Desea continuar?" ng-disabled="errorRUT!=='valido' || formTrabajador.$invalid" ng-class="{ 'hidden' : trabajador.estado!=='Ingresado' }">Modificar Ficha</button>
+      <button class="btn btn-primary" type="button" ng-click="guardar(false)" ng-disabled="errorRUT!=='valido' || !trabajador.rut || isImponible || isNoImponible" ng-if="!trabajador.sid || trabajador.sid && trabajador.estado==='En Creación'">Guardar cambios</button>
+      <button class="btn btn-primary" type="button" confirmation-click="confirmacion(true)" confirmation-needed="La ficha del trabajador <b>{{ trabajador.nombreCompleto }}</b> será modificada. <br />¿Desea continuar?" ng-disabled="errorRUT!=='valido' || formTrabajador.$invalid || isImponible || isNoImponible" ng-class="{ 'hidden' : trabajador.estado!=='Ingresado' }">Modificar Ficha</button>
       <button class="btn btn-primary" type="button" confirmation-click="reincorporar()" confirmation-needed="El trabajador <b>{{ trabajador.nombreCompleto }}</b> será reincorporado a la empresa. <br />¿Desea continuar?" ng-class="{ 'hidden' : trabajador.estado!=='Finiquitado' }">Reincorporar Trabajador</button>
       <button class="btn btn-warning" type="button" ng-click="$dismiss()">Cancelar</button>
     </div>

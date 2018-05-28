@@ -175,6 +175,28 @@ return array(
                     'collation' => 'utf8_unicode_ci',
                     'prefix'    => '',
                 ),
+                
+                'esystems_me_22222222' => array(
+                    'driver'    => 'mysql',
+                    'host'      => 'localhost',
+                    'database'  => 'esystems_me_22222222',
+                    'username'  => 'root',
+                    'password'  => '1234',
+                    'charset'   => 'utf8',
+                    'collation' => 'utf8_unicode_ci',
+                    'prefix'    => '',
+                ),
+                
+                'esystems_me_33333333' => array(
+                    'driver'    => 'mysql',
+                    'host'      => 'localhost',
+                    'database'  => 'esystems_me_33333333',
+                    'username'  => 'root',
+                    'password'  => '1234',
+                    'charset'   => 'utf8',
+                    'collation' => 'utf8_unicode_ci',
+                    'prefix'    => '',
+                ),
                 /*INICIO_PLANTILLA*/
 	),
 

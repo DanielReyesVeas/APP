@@ -1,4 +1,4 @@
 @echo off
 
-cd C:\RRHH\AngularJS
+cd C:\xampp\htdocs\RRHH\AngularJS
 grunt serve

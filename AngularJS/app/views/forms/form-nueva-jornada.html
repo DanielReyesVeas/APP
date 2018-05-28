@@ -28,11 +28,33 @@
         </div>
 
         <div class="col-sm-12" style="margin-top: 20px;">
+          <div class="form-group form-group-md required">
+            <label class="col-sm-4 control-label">Tramos Horas Extra:</label>
+            <div class="col-sm-6">
+              <div class="col-sm-12" ng-repeat="tramo in jornada.tramos">
+                <div class="form-group form-group-md">
+                  <label class="col-sm-8 control-label">{{ tramo.factor }}</label>
+                  <div class="col-sm-4" ng-class="{ 'hidden' : isTramo }">
+                    <a href="" ng-if="jornada.tramos.length>1" confirmation-click="eliminarTramo(tramo)" confirmation-needed="El Tramo seleccionado será eliminado. ¿Desea continuar?"><i class="fa fa-trash"></i></a>
+                  </div>
+                </div>  
+              </div>
+            </div>
+            <div class="col-sm-2" ng-show="!isTramo">
+              <button class="btn btn-sm btn-primary" type="button" ng-click="agregarTramo()" ><i class="fa fa-plus"></i> Agregar</button>
+            </div>
+            
+          </div>
+        </div>
+
+        <div class="col-sm-12" style="margin-top: 20px;" ng-if="isTramo">
           <div class="form-group form-group-md required">          
-            <label class="col-sm-4 control-label">Tramo Horas Extra:</label>
-            <div class="col-sm-4">
-              <select class="form-control form-white" ng-model="jornada.tramoHoraExtra" ng-options="tram as tram.factor for tram in tramosHorasExtra" required> 
+            <div class="col-sm-6 col-sm-offset-4">
+              <select class="form-control form-white" ng-model="jornada.tramo" ng-options="tram as tram.factor for tram in tramosHorasExtra | filter: fnTramos()" required> 
               </select>
+            </div>
+            <div class="col-sm-2">
+              <button class="btn btn-sm btn-primary" type="button" ng-click="guardarTramo(jornada.tramo)" ><i class="fa fa-plus"></i></button>
             </div>
           </div>
         </div>
@@ -44,7 +66,7 @@
 </div>
 
 <div class="modal-footer">
-  <button class="btn btn-primary" type="button" ng-if="!isEdit" ng-click="guardar(jornada)" ng-disabled="jornadaForm.$invalid">Guardar</button>
-  <button class="btn btn-primary" type="button" ng-if="isEdit" ng-click="guardar(jornada)" ng-disabled="jornadaForm.$invalid">Modificar</button>
+  <button class="btn btn-primary" type="button" ng-if="!isEdit" ng-click="guardar(jornada)" ng-disabled="jornadaForm.$invalid || isTramo">Guardar</button>
+  <button class="btn btn-primary" type="button" ng-if="isEdit" ng-click="guardar(jornada)" ng-disabled="jornadaForm.$invalid || isTramo">Modificar</button>
   <button class="btn btn-warning" type="button" ng-click="$dismiss()">Cancelar</button>
 </div>

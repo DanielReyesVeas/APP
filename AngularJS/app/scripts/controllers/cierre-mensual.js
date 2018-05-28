@@ -32,7 +32,6 @@ angular.module('angularjsApp')
       $rootScope.cargando = true;
       $http.get(constantes.URL + 'trabajadores/cuentas/obtener')
       .then(function(response){
-        console.log(response.data);
         $rootScope.cargando = false;      
       });
     }    
@@ -51,17 +50,41 @@ angular.module('angularjsApp')
         $rootScope.cargando = false;      
         $scope.cargado = true;  
         actualizarOptions();
+        console.log($scope.datos)
       });
     };
 
     $scope.isFirst = function(index){
       var bool = false;
 
-      if($scope.datos.estadoMeses[index].disponible && !$scope.datos.estadoMeses[index].iniciado){        
-        bool = true;
+      if(!$scope.datos.estadoMeses[index].iniciado){
+        if($scope.datos.estadoMeses[index].disponible){        
+          bool = true;
 
+          for(var i=0, len=$scope.datos.estadoMeses.length; i<len; i++){
+            if($scope.datos.estadoMeses[i].disponible && !$scope.datos.estadoMeses[i].iniciado){
+              if(i===index){
+                bool = true;
+                break;
+              }else{
+                bool = false;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      return bool;
+    }
+
+    $scope.isDisponibleSinIndicadores = function(index){
+      var bool = false;
+
+      if(!$scope.datos.estadoMeses[index].iniciado && !$scope.datos.estadoMeses[index].disponible && $scope.datos.estadoMeses[(index - 1)].iniciado){
+        bool = true;
         for(var i=0, len=$scope.datos.estadoMeses.length; i<len; i++){
-          if($scope.datos.estadoMeses[i].disponible && !$scope.datos.estadoMeses[i].iniciado){
+          if(!$scope.datos.estadoMeses[i].disponible && !$scope.datos.estadoMeses[i].iniciado){
             if(i===index){
               bool = true;
               break;
@@ -128,7 +151,15 @@ angular.module('angularjsApp')
       });
     }
 
-    $scope.confirmar = function(obj){
+    $scope.confirmar = function(obj, anio, isIndicadores){
+      if(isIndicadores){
+        openTerminos(obj);
+      }else{
+        openConfirmar(obj, anio);
+      }
+    }
+
+    function openTerminos(obj){
       var miModal = $uibModal.open({
         animation: true,
         backdrop: false,
@@ -141,20 +172,45 @@ angular.module('angularjsApp')
         }
       });
       miModal.result.then(function (mes) {
-        iniciar(mes);
+        iniciar(mes, true);
       }, function () {
         javascript:void(0)
       });
     }
 
-    function iniciar(mes){
+    function openConfirmar(obj, anio){
+      var miModal = $uibModal.open({
+        animation: true,
+        backdrop: false,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormConfirmarApertura',
+        resolve: {
+          objeto: function () {
+            return obj;
+          }, 
+          anio: function () {
+            return anio;
+          }
+        }
+      });
+      miModal.result.then(function (mes) {
+        iniciar(mes, false);
+      }, function () {
+        javascript:void(0)
+      });
+    }
+
+    function iniciar(mes, indicadores){
       $rootScope.cargando=true;
-      console.log(mes)
       if(mes.nombre==='NuevoAnio'){
-        var datosMes = { mes : '2018-01-01', nombre : 'NuevoAnio', fechaRemuneracion : '2018-01-31', idAnio : $scope.datos.id };
+        var mes = mes;
+        var remuneracion = mes;
+        var nuevoMes = { mes : mes, remuneracion : remuneracion };
+        var datosMes = { mes : nuevoMes.mes, nombre : 'NuevoAnio', fechaRemuneracion : nuevoMes.remuneracion, idAnio : $scope.datos.id };
       }else{
         var datosMes = { mes : mes.mes, nombre : mes.nombre, fechaRemuneracion : mes.fechaRemuneracion, idAnio : $scope.datos.id };
       }
+      datosMes.indicadores = indicadores;
       var response;
       response = mesDeTrabajo.datos().create({}, datosMes);
 
@@ -172,24 +228,46 @@ angular.module('angularjsApp')
     }
 
 
-      $scope.selectAnio = function(){
-          $scope.cargado = false;
-          $rootScope.cargando = true;
-          var datos = anio.datosCierre().get({anio:$scope.cierre.anio.nombre});
-          datos.$promise.then(function(response){
-            $scope.anios = response.anios;
-            $scope.isNuevoAnio = response.isNuevoAnio;
-            $scope.datos = response.datos;
-            $scope.accesos = response.accesos;
-            $scope.isLiquidaciones = response.isLiquidaciones;
-            $scope.isCuentas = response.isCuentas;
-            $rootScope.cargando = false;      
-            $scope.cargado = true;  
-            actualizarOptions();
-          });
-      };
-
+    $scope.selectAnio = function(){
+        $scope.cargado = false;
+        $rootScope.cargando = true;
+        var datos = anio.datosCierre().get({anio:$scope.cierre.anio.nombre});
+        datos.$promise.then(function(response){
+          $scope.anios = response.anios;
+          $scope.isNuevoAnio = response.isNuevoAnio;
+          $scope.datos = response.datos;
+          $scope.accesos = response.accesos;
+          $scope.isLiquidaciones = response.isLiquidaciones;
+          $scope.isCuentas = response.isCuentas;
+          $rootScope.cargando = false;      
+          $scope.cargado = true;  
+          actualizarOptions();
+        });
+    };
   })
+
+  .controller('FormConfirmarApertura', function ($scope, $rootScope, $uibModalInstance, objeto, anio) {
+
+    $scope.mes = angular.copy(objeto);
+
+    $scope.mensaje = '<b> El mes de ' + $scope.mes.nombre + ' ' + anio + ' será iniciado sin los Indicadores Previsionales</b>.<br /> La información generada por el sistema será meramente referencial, ya que se estarán utilizando los valores de los indicadores del mes anterior hasta que se cargen los indicadores correspondientes.';
+    $scope.mensaje2 = '¿Desea continuar?';      
+    $scope.ok = 'Iniciar';
+    $scope.titulo = 'Apertura de Mes sin Indicadores';
+    $scope.cancel = 'Cancelar';
+    $scope.isOK = true;
+    $scope.isCerrar = true;
+    $scope.isExclamation = true;
+
+    $scope.aceptar = function(){
+      $uibModalInstance.close($scope.mes);
+    }
+
+    $scope.cerrar = function(){
+      $uibModalInstance.dismiss();
+    }  
+  
+  })  
   .controller('FormTerminos', function ($scope, $uibModalInstance, objeto, $rootScope) {
 
     $scope.aceptar = function(){

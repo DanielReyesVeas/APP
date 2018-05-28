@@ -25,6 +25,34 @@ class MesDeTrabajo extends Eloquent {
         return $bool;
     }
     
+    static function isUltimoMes()
+    {
+        $mes = \Session::get('mesActivo');
+        $ultimoMes = MesDeTrabajo::orderBy('mes', 'DESC')->first();
+        
+        return ($mes->id==$ultimoMes->id);
+    }
+    
+    static function isMesDisponible(&$notificaciones)
+    {
+        $empresa = \Session::get('empresa');
+        $mes = \Session::get('mesActivo');
+        $fecha = date('Y-m-d', strtotime('+' . 1 . ' month', strtotime($mes->mes)));
+        Config::set('database.default', 'admin' );                
+        $isDisponible = DB::table('meses')->where('mes', $fecha)->first() ? true : false;
+        Config::set('database.default', $empresa->base_datos );
+        if($isDisponible){
+            $nombre = Funciones::obtenerMesAnioTexto($fecha);
+            $notificaciones[] = array(
+                'concepto' => 'MesDeTrabajo',
+                'titulo' => "<a href='#cierre-mensual'>Mes de Trabajo</a>",
+                'mensaje' => "<a href='#cierre-mensual'>El mes de " . $nombre . " ya se encuentra disponible para su apertura.</a>"
+            );             
+        }
+        
+        return;
+    }
+    
     static function listaMesesDeTrabajo()
     {
     	$listaMesesDeTrabajo = array();

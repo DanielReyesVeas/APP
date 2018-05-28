@@ -406,6 +406,9 @@
                     @endif 
                     <tr id="bottom">
                         <td></td>
+                        @if(!$local)
+                            <td></td>
+                        @endif
                         @if($datos->conceptos['dias_trabajados'])
                             <td><b>{{ $datos->totales['totalDiasTrabajados'] }}</b></td>
                         @endif
@@ -443,7 +446,6 @@
                         @endif        
                     </tr>
                 </tr>
-                <?php echo($ind); ?>
             </tbody> 
         </table>
 </div>

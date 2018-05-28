@@ -32,6 +32,17 @@ class DetalleApvc extends Eloquent {
         return $codigo;
     }
     
+    public function nombreAfp()
+    {
+        $afp = $this->afp;
+        $nombre = '';
+        if($afp){
+            $nombre = $afp->glosa;
+        }
+        
+        return $nombre;
+    }
+    
     static function errores($datos){
          
         $rules = array(

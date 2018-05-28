@@ -338,7 +338,7 @@ class LiquidacionesController extends \BaseController {
                     'noImponibles' => $liquidacion->no_imponibles,
                     'totalHaberes' => $liquidacion->total_haberes,
                     'imponibles' => $liquidacion->imponibles,
-                    'totalImponibles' => $liquidacion->renta_imponible,
+                    'totalImponibles' => $liquidacion->imponibles,
                     'seguroCesantia' => $totalSeguroCesantia,
                     'totalDescuentos' => $liquidacion->total_descuentos,
                     'totalOtrosDescuentos' => $otrosDescuentos,

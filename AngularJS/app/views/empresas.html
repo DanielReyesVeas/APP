@@ -4,7 +4,7 @@
   
     <div class="column col-sm-12" ng-if="cargado" style="margin-top: 40px;">   
 
-      <div>
+      <div ng-if="accesos.crear">
         <button class="btn btn-primary btn-md pull-right" ng-if="datos.length<=0" ng-click="editar({ id : 0 });">
           <i class="fa fa-plus"></i> Nuevo
         </button>
@@ -30,7 +30,7 @@
           <input id="filtro" type="text" class="form-control form-white form-white" ng-model="filtro">
         </div>
         <div ng-if="datos.length < globals.currentUser.max" class="col-md-3" style="text-align:right; padding-right:0px;">
-          <button class="btn btn-primary btn-md" ng-click="editar({ id : 0 });">
+          <button class="btn btn-primary btn-md" ng-click="editar({ id : 0 });" ng-if="accesos.crear">
             <i class="fa fa-plus"></i> Nuevo
           </button>
           <!--<button ng-if="false" class="btn btn-primary btn-md" ng-click="getEmpresas();">
@@ -90,12 +90,17 @@
               <td>{{ dato.razonSocial }}</td>
               <td>{{ dato.nombreFantasia }}</td>
               <td>                          
-                <a class="btn-acciones btn btn-default" href="javascript:void(0);" ng-click="editar(dato);" uib-tooltip-html="toolTipEdicion(dato.razonSocial)">
+                <a class="btn-acciones btn btn-default" href="javascript:void(0);" ng-click="editar(dato);" uib-tooltip-html="toolTipEdicion(dato.razonSocial)" ng-if="accesos.editar">
                   <i class="fa fa-pencil"></i>
                 </a>
-                <a ng-if="false" class="btn-acciones btn btn-danger" href="javascript:void(0);" confirmation-click="eliminar( dato );" confirmation-needed="La Empresa <b>{{ dato.razonSocial }}</b> será eliminada del sistema. ¿Desea continuar?">
+                <a ng-if="false" class="btn-acciones btn btn-danger" href="javascript:void(0);" confirmation-click="eliminar( dato );" confirmation-needed="La Empresa <b>{{ dato.razonSocial }}</b> será eliminada del sistema. ¿Desea continuar?" ng-if="accesos.eliminar">
                   <i class="fa fa-remove"></i>
                 </a>
+                <label class="switch switch-green" uib-tooltip-html="toolTipHabilitar(dato)" ng-if="accesos.editar">
+                  <input class="switch-input" ng-model="dato.habilitada" ng-disabled="dato.id==empresaActual.id" type="checkbox" ng-change="habilitar(dato)">
+                  <span class="switch-label" data-on="SI" data-off="NO"></span>
+                  <span class="switch-handle"></span>
+                </label>
               </td>
             </tr>
           </tbody>

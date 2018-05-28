@@ -201,28 +201,56 @@ angular.module('angularjsApp')
   .controller('FormJornadaCtrl', function ($scope, $uibModalInstance, $filter, objeto, Notification, $rootScope, jornada, tramoHoraExtra) {
     
     $scope.tramosHorasExtra = objeto.tramosHorasExtra;
+    $scope.isEdit = false;
+    $scope.isTramo = false;  
 
     if(objeto.datos){
-      $scope.jornada = angular.copy(objeto.datos);
-      $scope.jornada.tramoHoraExtra = $filter('filter')( $scope.tramosHorasExtra, {id :  $scope.jornada.tramoHoraExtra.id }, true )[0];
+      $scope.jornada = angular.copy(objeto.datos);    
       $scope.titulo = 'Modificación Jornadas';
       $scope.encabezado = $scope.jornada.nombre;
       $scope.isEdit = true;
     }else{
-      $scope.jornada = {};
+      $scope.jornada = { tramos : [] };
       $scope.titulo = 'Ingreso Jornadas';
       $scope.encabezado = 'Nueva Jornada';
       $scope.isEdit = false;
     }    
 
+    $scope.agregarTramo = function(){
+      $scope.isTramo = !$scope.isTramo;
+      $scope.jornada.tramo = null;
+    }
+
+    $scope.eliminarTramo = function(tramo){
+      var index = $scope.jornada.tramos.indexOf(tramo);
+      $scope.jornada.tramos.splice(index,1);
+    }
+
+    $scope.guardarTramo = function(tramo){
+      $scope.isTramo = !$scope.isTramo;
+      var nuevoTramo = { factor : tramo.factor, idTramo : tramo.id };
+      $scope.jornada.tramos.push(nuevoTramo);
+    }
+
+    $scope.fnTramos = function(){
+      console.log($scope.jornada)
+      return function(item) {
+        var a = $filter('filter')( $scope.jornada.tramos, {idTramo :  item.id }, true )[0];        
+        if(a){
+          return false;
+        }else{
+          return true;
+        }
+      }
+    }
+
     $scope.guardar = function () {
       $rootScope.cargando=true;
       var response;
-      var jor = { nombre : $scope.jornada.nombre, numeroHoras : $scope.jornada.numeroHoras, idTramoHoraExtra : $scope.jornada.tramoHoraExtra.id };
       if( $scope.jornada.sid ){
-          response = jornada.datos().update({sid:$scope.jornada.sid}, jor);
+          response = jornada.datos().update({sid:$scope.jornada.sid}, $scope.jornada);
       }else{
-          response = jornada.datos().create({}, jor);
+          response = jornada.datos().create({}, $scope.jornada);
       }
       response.$promise.then(
         function(response){

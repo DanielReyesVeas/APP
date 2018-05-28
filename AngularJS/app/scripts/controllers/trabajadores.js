@@ -401,6 +401,7 @@ angular.module('angularjsApp')
   })
   .controller('FormTrabajadorContratosCtrl', function ($scope, $uibModalInstance, documento, constantes, objeto, trabajador, Notification, $uibModal, $filter, $rootScope, plantillaContrato) {
     $scope.trabajador = angular.copy(objeto.datos);
+    console.log($scope.trabajador)
     $scope.accesos = angular.copy(objeto.accesos);
     $scope.constantes = angular.copy(constantes);
 
@@ -2009,7 +2010,7 @@ angular.module('angularjsApp')
 
   })  
   .controller('FormTrabajadorCtrl', function ($scope, formulario, $uibModalInstance, $http, objeto, $uibModal, Notification, $rootScope, trabajador, constantes, $filter, haber, descuento, fecha, moneda, validations) {
-    
+
     $scope.empresa = $rootScope.globals.currentUser.empresa;
     $scope.opciones = angular.copy(formulario);
     $scope.errores = {};
@@ -2413,9 +2414,11 @@ angular.module('angularjsApp')
       $scope.trabajador.haberes[$scope.noImpIndex].tipo = noImp.tipo;
       $scope.trabajador.haberes[$scope.noImpIndex].moneda = noImp.moneda;
       $scope.trabajador.haberes[$scope.noImpIndex].monto = noImp.monto;
+      $scope.trabajador.haberes[$scope.noImpIndex].proporcional = noImp.proporcional;
 
       $scope.noImponible.tipo = "";
       $scope.noImponible.monto = "";
+      $scope.noImponible.proporcional = false;
     }
 
     $scope.guardarNoImponible = function(){
@@ -2424,6 +2427,7 @@ angular.module('angularjsApp')
       $scope.isNoImponible = false;
       $scope.noImponible.tipo = "";
       $scope.noImponible.monto = "";
+      $scope.noImponible.proporcional = false;
     }
 
     $scope.editarNoImponible = function(noImp){
@@ -2431,7 +2435,7 @@ angular.module('angularjsApp')
       $scope.noImpIndex = $scope.trabajador.haberes.indexOf(noImp);
       $scope.isNoImponible = true;
       $scope.isEditNoImponible = true;
-      $scope.noImponible = { moneda : noImp.moneda, monto : noImp.monto, tipo : noImp.tipo };
+      $scope.noImponible = { moneda : noImp.moneda, monto : noImp.monto, tipo : noImp.tipo, proporcional : noImp.proporcional };
       $scope.noImponible.tipo = $filter('filter')( $scope.opciones.tiposHaber, {id :  noImp.tipo.id }, true )[0]; 
     }
 
@@ -2455,7 +2459,7 @@ angular.module('angularjsApp')
       }else{
         $scope.tituloNoImponible = 'Agregar no Imponible';
         $scope.isNoImponible = true;
-        $scope.noImponible = { moneda : $scope.monedas[0].nombre };
+        $scope.noImponible = { moneda : $scope.monedas[0].nombre, proporcional : false };
       }
     }
     

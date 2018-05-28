@@ -44,6 +44,7 @@ class AniosRemuneracionesController extends \BaseController {
         $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#cierre-mensual');
         $aniosRemuneraciones = AnioRemuneracion::all();
         $listaAniosRemuneraciones=array();
+        $bd = \Session::get('basedatos');
         
         $maxAnio=0;
         if( $aniosRemuneraciones->count() ){
@@ -53,7 +54,8 @@ class AniosRemuneracionesController extends \BaseController {
                     'sid' => $anioRemuneracion->sid,
                     'nombre' => $anioRemuneracion->anio                    
                 );
-                $maxAnio = max($maxAnio, $anioRemuneracion->anio);
+                $maxAnio = AnioRemuneracion::orderBy('anio', 'DESC')->first()->anio;
+                $max = AnioRemuneracion::orderBy('anio', 'DESC')->get();
             }
         }
         
@@ -91,7 +93,7 @@ class AniosRemuneracionesController extends \BaseController {
             'accesos' => $permisos,
             'anios' => $listaAniosRemuneraciones,
             'datos' => $datosAnioRemuneracion,
-            'isNuevoAnio' => $anioRemuneracion->isNuevoAnio() && ($anioRemuneracion->anio==$maxAnio && $maxAnio == date("Y")-1 )
+            'isNuevoAnio' => $anioRemuneracion->isNuevoAnio() && ($anioRemuneracion->anio==$maxAnio && $maxAnio<date("Y"))
         );
         
         return Response::json($datos);

@@ -12,6 +12,7 @@ class HorasExtraController extends \BaseController {
     {
         $horasExtra = HoraExtra::all();
         $listaHorasExtra=array();
+        
         if( $horasExtra->count() ){
             foreach( $horasExtra as $horaExtra ){
                 $listaHorasExtra[]=array(
@@ -97,17 +98,31 @@ class HorasExtraController extends \BaseController {
      */
     public function show($sid)
     {
-        $horaExtra = HoraExtra::whereSid($sid)->first();
-
-        $datos=array(
-            'id' => $horaExtra->id,
-            'sid' => $horaExtra->sid,            
-            'fecha' => $horaExtra->fecha,
-            'factor' => $horaExtra->factor,
-            'cantidad' => $horaExtra->cantidad,
-            'observacion' => $horaExtra->observacion,
-            'trabajador' => $horaExtra->trabajadorHoraExtra()
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-horas-extra');
+        $datosHoraExtra = null;
+        $trabajadores = array();
+        
+        if($sid){
+            $horaExtra = HoraExtra::whereSid($sid)->first();
+            $datosHoraExtra=array(
+                'id' => $horaExtra->id,
+                'sid' => $horaExtra->sid,            
+                'fecha' => $horaExtra->fecha,
+                'factor' => $horaExtra->factor,
+                'cantidad' => $horaExtra->cantidad,
+                'observacion' => $horaExtra->observacion,
+                'trabajador' => $horaExtra->trabajadorHoraExtra()
+            );
+        }else{
+            $trabajadores = Trabajador::activosFiniquitados();
+        }
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $datosHoraExtra,
+            'trabajadores' => $trabajadores
         );
+        
         return Response::json($datos);
     }
 

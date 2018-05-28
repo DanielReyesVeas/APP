@@ -14,6 +14,7 @@ angular.module('angularjsApp')
     $scope.constantes = constantes;
     $scope.cargado = false;
     $scope.isLarge = false;
+    $scope.empresa = $rootScope.globals.currentUser.empresa;
 
     $scope.data = [];
 

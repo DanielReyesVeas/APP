@@ -37,8 +37,8 @@
             Ordenar:
           </label>
           <div class="col-md-3">
-            <select ng-model="orden" id="orden" ng-init="orden='fechaIngreso'" class="form-control form-white" ng-change="reverse = false">
-              <option value="fechaIngreso">Fecha</option>
+            <select ng-model="orden" id="orden" ng-init="orden='fechaOrden'" class="form-control form-white" ng-change="reverse = false">
+              <option value="fechaOrden">Fecha</option>
               <option value="accion">Acción</option>
               <option value="datoOrden">Dato</option>
               <option value="dato2Orden">Dato 2</option>
@@ -49,7 +49,7 @@
             </select>
           </div>
           <div class="col-md-1">
-            <a ng-click="reverse=!reverse" ng-init="reverse=false" href="">
+            <a ng-click="reverse=!reverse" ng-init="reverse=true" href="">
               <i ng-class="{ 'hidden' : reverse }" class="fa fa-arrow-down"></i>
               <i ng-class="{ 'hidden' : !reverse }" class="fa fa-arrow-up"></i></a>
           </div>

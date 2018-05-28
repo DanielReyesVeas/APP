@@ -28,6 +28,24 @@ angular.module('angularjsApp')
       },
       datosEmpresaPortalTrabajador : function(sid){
         return $resource(constantes.URL + 'empresas/datos-empresa/portal-trabajador/' + sid);
+      },
+      configuracion : function(){
+        return $resource(constantes.URL + 'empresas/configuracion/obtener');
+      },
+      habilitar: function(){
+        return $resource(constantes.URL + 'empresas/habilitar/cambiar', {},{
+          post : { method : 'POST'}
+        });
+      },
+      cambiarConfiguracion: function(){
+        return $resource(constantes.URL + 'empresas/configuracion/cambiar', {},{
+          post : { method : 'POST'}
+        });
+      },
+      cambiarValor: function(){
+        return $resource(constantes.URL + 'empresas/valor-configuracion/cambiar', {},{
+          post : { method : 'POST'}
+        });
       }
     };
   });

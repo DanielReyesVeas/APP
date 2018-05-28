@@ -40,7 +40,7 @@ class AnioRemuneracion extends Eloquent {
             return true;
         }
         
-        return false;
+        return $isIngresado;
     }
     
     public function mesesFestivos()
@@ -191,6 +191,31 @@ class AnioRemuneracion extends Eloquent {
         return $disponible;
     }
     
+    public function isDisponibleSinIndicadores($mes)
+    {
+        $empresa =  \Session::get('empresa');
+        $disponible = false; 
+        $isIngresado = false;
+        $anio = $this->anio;
+        $fechaActual = Funciones::obtenerFechaMes($mes, $anio);
+        $fecha = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($fechaActual)));
+        $date = date('Y-m-d');
+        $textMes = strtolower($mes);
+        $mesActual = $this;
+        $fechaInicial = VariableSistema::where('variable', 'mes_inicial')->first();
+        $fechaInicial = date($fechaInicial['valor1']);
+        
+        Config::set('database.default', 'admin' );                
+        $isIngresado = DB::table('meses')->where('mes', $fechaActual)->first();
+        Config::set('database.default', $empresa->base_datos );
+        
+        if($fecha<=$date && $fechaActual>=$fechaInicial && ($isIngresado || ($mes=="Enero" && $anio==2018) ) ){
+            $disponible = true;
+        }
+        return true;
+        return $disponible;
+    }
+    
     static function isCentralizado($mes)
     {
         $centralizacion = ComprobanteCentralizacion::where('mes', $mes)->get();
@@ -210,14 +235,20 @@ class AnioRemuneracion extends Eloquent {
         
         foreach($meses as $mes){
             $nombre = strtolower($mes['value']);
+            $isIniciado = $this->isIniciado($mes['value']);
+            $isDisponible = true;
+            if(!$isIniciado){
+                $isDisponible = $this->isDisponible($mes['value']);
+            }
             $estadoMeses[] = array(
                 'nombre' => $mes['value'],
                 'abierto' => $this->$nombre ? true : false,
-                'iniciado' => $this->isIniciado($mes['value']),
-                'disponible' => $this->isDisponible($mes['value']), 
+                'iniciado' => $isIniciado,
+                'disponible' => $isDisponible, 
                 'mes' => Funciones::obtenerFechaMes($mes['value'], $anio),
                 'fechaRemuneracion' => Funciones::obtenerFechaRemuneracion($mes['value'], $anio),
-                'isCentralizado' => AnioRemuneracion::isCentralizado(Funciones::obtenerFechaMes($mes['value'], $anio))
+                'isCentralizado' => AnioRemuneracion::isCentralizado(Funciones::obtenerFechaMes($mes['value'], $anio)),
+                'disponibleSinIndicadores' => $this->isDisponibleSinIndicadores($mes['value'])
             );            
         }            
 

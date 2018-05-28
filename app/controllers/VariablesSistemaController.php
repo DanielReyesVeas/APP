@@ -1,6 +1,35 @@
 <?php
 
 class VariablesSistemaController extends \BaseController {
+    
+    public function configuracion()
+    {
+        if(!\Session::get('empresa')){
+            return Response::json(array('datos' => array(), 'permisos' => array()));
+        }
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#configuracion');
+        
+        $configuracion = Empresa::configuracion();
+        $configuraciones = array(
+            array(
+                'valor' => 'e',
+                'nombre' => 'Por Empresa'
+            ), 
+            array(
+                'valor' => 'g',
+                'nombre' => 'Global'
+            )
+        );
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $configuracion,
+            'configuraciones' => $configuraciones
+        );
+        
+        return Response::json($datos);
+    }
+    
     public function obtener_anio_inicial_registros(){
         $variable = VariableSistema::where('variable', 'ANIO_INICIAL')->first();
         if( !$variable ){
@@ -25,6 +54,7 @@ class VariablesSistemaController extends \BaseController {
             'anioFinal' => $anioFinal
         ));
     }
+    
     public function obtenerConfiguracionDepreciacion(){
         $variable = VariableSistema::where('variable', 'CONFIGURACION_DEPRECIACION_PERIODO')->first();
         if( !$variable ){

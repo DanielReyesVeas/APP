@@ -28,6 +28,7 @@ angular.module('angularjsApp')
       var datos = trabajador.trabajadoresLiquidaciones().get();
       datos.$promise.then(function(response){
         $scope.accesos = response.accesos;
+        $scope.mostrarFiniquitados = response.mostrarFiniquitados;
         $scope.trabajadores = [ response.sinLiquidacion, response.conLiquidacion, response.sinLiquidacionFiniquitados, response.conLiquidacionFiniquitados ];
         $rootScope.cargando = false;
         crearModels();
@@ -44,19 +45,23 @@ angular.module('angularjsApp')
 
 
     function generarLiquidacion(trabajadores){
-        $rootScope.cargando = true;
-        var datos = trabajador.liquidacion().post({}, trabajadores);
-        datos.$promise.then(function(response){
-            if(response.success){
-                Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
-                cargarDatos();
-                recibirLiquidaciones(response.datos);
-                $rootScope.cargando = false;
-            }else{
-                Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
-                $rootScope.cargando = false;
-            }
-        });
+      $rootScope.cargando = true;
+      var datos = trabajador.liquidacion().post({}, trabajadores);
+      datos.$promise.then(function(response){
+        if(response.success){
+          cargarDatos();
+          if(response.sinRentaImponibleAnterior.length>0){
+            Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});            
+          }else{
+            Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
+          }
+          recibirLiquidaciones(response.datos, response.sinRentaImponibleAnterior);
+          $rootScope.cargando = false;
+        }else{
+          Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
+          $rootScope.cargando = false;
+        }
+      });
     }
 
     /*$scope.generar = function(trabajador){
@@ -85,11 +90,15 @@ angular.module('angularjsApp')
       });
     }*/
 
-    function recibirLiquidaciones(datos){
-      if(datos.length>1){
-        openLiquidaciones(datos);
+    function recibirLiquidaciones(datos, sinRentaImponibleAnterior){
+      if((datos.length + sinRentaImponibleAnterior.length)>1){
+        openLiquidaciones(datos, sinRentaImponibleAnterior);
       }else{
-        open(datos[0], false);
+        if(datos.length>0){
+          open(datos[0], false);
+        }else{
+          openLiquidaciones(datos, sinRentaImponibleAnterior);
+        }
       }
       //window.open(url);
       /*if(bool){
@@ -221,7 +230,7 @@ angular.module('angularjsApp')
     }*/
 
     $scope.generar = function(index, sid, multi, update){
-      var liquidaciones = { trabajadores : [], comprobar : update };
+      var liquidaciones = { trabajadores : [], comprobar : update, rentaImponibleAnterior : false, listaRentaImponibleAnteriorSIS : [], listaRentaImponibleAnteriorSC : [] };
       if(multi){
         for(var i=0,len=$scope.trabajadores[index].length; i<len; i++){
           if($scope.trabajadores[index][i].check){
@@ -277,7 +286,7 @@ angular.module('angularjsApp')
       $scope.objeto.todos = [ false, false, false, false ];
     }
 
-    function openLiquidaciones(obj){
+    function openLiquidaciones(datos, sinRentaImponibleAnterior){
       var miModal = $uibModal.open({
         animation: true,
         templateUrl: 'views/forms/form-liquidaciones.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
@@ -285,7 +294,10 @@ angular.module('angularjsApp')
         size: 'lg',
         resolve: {
           objeto: function () {
-            return obj;          
+            return datos;          
+          },
+          sinRentaImponibleAnterior: function () {
+            return sinRentaImponibleAnterior;          
           }
         }
       });
@@ -293,6 +305,7 @@ angular.module('angularjsApp')
         ingresar(datos);              
       }, function () {
         limpiarChecks();
+        cargarDatos();
       });
     };
 
@@ -433,8 +446,9 @@ angular.module('angularjsApp')
     }
 
   })
-  .controller('FormLiquidacionesCtrl', function ($scope, constantes, $uibModal, $filter, $uibModalInstance, objeto, Notification, $rootScope) {
+  .controller('FormLiquidacionesCtrl', function ($scope, constantes, trabajador, $uibModal, $filter, $uibModalInstance, objeto, sinRentaImponibleAnterior, Notification, $rootScope) {
     $scope.datos = angular.copy(objeto);
+    $scope.sinRentaImponibleAnterior = angular.copy(sinRentaImponibleAnterior);
 
     $scope.openLiquidacion = function(obj){
       var miModal = $uibModal.open({
@@ -476,6 +490,60 @@ angular.module('angularjsApp')
         }
       };
     }
+
+    $scope.regenerar = function(sid, multi, rentaImponibleAnteriorSIS, rentaImponibleAnteriorSC){
+      var liquidaciones = { trabajadores : [], comprobar : false, rentaImponibleAnterior : true, listaRentaImponibleAnteriorSIS : [], listaRentaImponibleAnteriorSC : [] };
+      var nombre = '';
+      if(multi){
+        for(var i=0,len=$scope.sinRentaImponibleAnterior.length; i<len; i++){
+          if($scope.sinRentaImponibleAnterior[i].check){
+            liquidaciones.trabajadores.push({ sid : $scope.sinRentaImponibleAnterior[i].sidTrabajador });
+            nombre = $scope.sinRentaImponibleAnterior[i].trabajador_id;
+            liquidaciones.listaRentaImponibleAnteriorSIS[nombre] = $scope.sinRentaImponibleAnterior[i].rentaImponibleAnteriorSIS;
+            liquidaciones.listaRentaImponibleAnteriorSC[nombre] = $scope.sinRentaImponibleAnterior[i].rentaImponibleAnteriorSC;
+          }
+        }
+      }else{
+        console.log(multi)
+        liquidaciones.trabajadores.push({ sid : sid });       
+        nombre = $scope.sinRentaImponibleAnterior[0].trabajador_id; 
+        liquidaciones.listaRentaImponibleAnteriorSIS[nombre] = $scope.sinRentaImponibleAnterior[0].rentaImponibleAnteriorSIS;        
+        liquidaciones.listaRentaImponibleAnteriorSC[nombre] = $scope.sinRentaImponibleAnterior[0].rentaImponibleAnteriorSC;        
+      }
+      console.log(liquidaciones)
+      generarLiquidacion(liquidaciones);
+    }
+
+    function generarLiquidacion(trabajadores){
+      $rootScope.cargando = true;
+      var datos = trabajador.liquidacion().post({}, trabajadores);
+      datos.$promise.then(function(response){
+        if(response.success){
+          var objeto;
+          for(var i=0,len=response.datos.length; i<len; i++){
+            objeto = $filter('filter')($scope.sinRentaImponibleAnterior, { trabajador_id : response.datos[i].trabajador_id }, true)[0];
+            if(objeto){
+              var index = $scope.sinRentaImponibleAnterior.indexOf(objeto);
+              $scope.sinRentaImponibleAnterior.splice(objeto, 1);
+              $scope.datos.push(response.datos[i]);
+            }
+          }
+          if(response.sinRentaImponibleAnterior.length>0){
+            Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});            
+          }else{
+            Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
+          }
+          $rootScope.cargando = false;
+        }else{
+          Notification.error({message: response.mensaje, title: 'Mensaje del Sistema'});
+          $rootScope.cargando = false;
+        }
+      });
+    }
+
+    $scope.toolTipRegenerar = function( dato ){
+      return 'Volver a generar la liquidación de: <b>' + dato.nombreCompleto + '</b>';
+    };
 
   })
   .controller('FormLiquidacionCtrl', function ($scope, $uibModalInstance, objeto, Notification, $rootScope, isIngresar, utilities, fecha) {

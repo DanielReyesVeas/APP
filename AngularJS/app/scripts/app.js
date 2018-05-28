@@ -346,6 +346,16 @@ angular
         controller: 'FactoresActualizacionCtrl',
         controllerAs: 'factoresActualizacion'
       })
+      .when('/atrasos', {
+        templateUrl: 'views/atrasos.html',
+        controller: 'AtrasosCtrl',
+        controllerAs: 'atrasos'
+      })
+      .when('/configuracion', {
+        templateUrl: 'views/configuracion.html',
+        controller: 'ConfiguracionCtrl',
+        controllerAs: 'configuracion'
+      })
       .otherwise({
         redirectTo: '/login'
       });
@@ -417,6 +427,38 @@ angular
             }
         }
 
+        $rootScope.checkNotificaciones = function(){
+            var notificaciones = $resource(constantes.URL + 'empresa/notificaciones').get();
+            notificaciones.$promise.then(function(respuesta){
+              Notification.clearAll();
+              if(respuesta.notificaciones.length>0){
+                for(var i=0,len=respuesta.notificaciones.length; i<len; i++){
+                  Notification.warning({title: respuesta.notificaciones[i].titulo, message: respuesta.notificaciones[i].mensaje, delay: '', positionY: 'bottom', positionX: 'right'});
+                }
+              }
+                
+              /*
+                if( constantes.version !== respuesta.version ){
+                    var versionMensaje = Notification.info({message: 'Existe una nueva versión del sistema (<b>'+respuesta.version+'</b>) disponible para ser cargada. Presione el botón F5 o recargue la página nuevamente para instalarla.', title: 'Mensaje del Sistema', delay:''});
+                    $interval.cancel( $rootScope.revision);
+                    $rootScope.revision = $interval(function(){
+                        versionMensaje.then(function(notification){
+                            notification.kill();
+                        });
+                        $rootScope.checkVersion();
+                    }, 30000);
+
+                }else{
+                    $interval.cancel( $rootScope.revision);
+                    $rootScope.revision = $interval(function(){
+                      $rootScope.checkVersion();
+                    }, 30000);
+                }*/
+
+            });
+
+        };
+
 
         $rootScope.checkVersion = function(){
             var datosVersion = $resource(constantes.URL + 'inicio/version').get();
@@ -437,7 +479,7 @@ angular
                 }else{
                     $interval.cancel( $rootScope.revision);
                     $rootScope.revision = $interval(function(){
-                        $rootScope.checkVersion();
+                      $rootScope.checkVersion();
                     }, 30000);
                 }
 
@@ -449,7 +491,7 @@ angular
       //      $rootScope.checkVersion();
         }else{
             $rootScope.revision = $timeout(function(){
-                $rootScope.checkVersion();
+                $rootScope.checkVersion();                
             }, 1000);
         }
 
@@ -522,6 +564,7 @@ angular
           if( $rootScope.globals.currentUser.isEmpleado ){
             portal = angular.copy($rootScope.globals.currentUser.empresa.portal);
           }
+          Notification.clearAll();
           login.ClearCredentials();
           $location.path('/login' + (portal? '/' + portal : ''));
         };
@@ -529,10 +572,22 @@ angular
         $scope.openSoporteOnline=function(){
             var ancho=800;
             var alto=600;
-            var newUrl = 'http://soporte.easysystems.cl/chat?locale=Es&usuario=' + $rootScope.globals.currentUser.cliente;
+            var empresa;
+            if($rootScope.globals.currentUser.empresa){
+              empresa = $rootScope.globals.currentUser.empresa.empresa;
+            }else{
+              empresa = 'Sin Empresa';
+            }
+            //var newUrl = 'http://soporte.easysystems.cl/chat?locale=Es&usuario=' + $rootScope.globals.currentUser.cliente + '&url=' + $rootScope.globals.currentUser.url + '&empresa=' + empresa;
+            var newUrl = 'http://soporte.easysystems.cl/chat?locale=Es';
             var posicionX =(screen.width/2)-(ancho/2); 
             var posicionY =(screen.height/2)-(alto/2); 
             $window.open(newUrl, 'SOPORTEONLINEEASYSYSTEMSRRHH', 'width='+ancho+',height='+alto+',left='+posicionX+',top='+posicionY+', scrollbars=yes');
+        };
+
+        $scope.openManualUsuario=function(){
+            var newUrl = 'http://www.rrhh-es.com/manuales/ManualUsuarioRRHH.pdf';
+            $window.open(newUrl);
         };
 
         $scope.openFormPassword = function(){
@@ -580,8 +635,8 @@ angular
                       $rootScope.globals.currentUser.accesos = response.data.menu.secciones;
                       $rootScope.globals.currentUser.default = response.data.menu.inicio;
                       $rootScope.globals.currentUser.listaMesesDeTrabajo = response.data.listaMesesDeTrabajo;
-                      $rootScope.globals.indicadores = response.data.indicadores;                        
-                      
+                      $rootScope.globals.indicadores = response.data.indicadores;  
+                      $rootScope.checkNotificaciones();                                            
                       if(!$rootScope.globals.indicadores){
                         $rootScope.globals.isIndicadores = false;
                         $location.path('/tabla-global-mensual');
@@ -628,7 +683,7 @@ angular
                       $rootScope.globals.indicadores.uf = response.data.uf;
                       $rootScope.globals.indicadores.utm = response.data.utm;
                       $rootScope.globals.indicadores.uta = response.data.uta;                        
-
+                      $rootScope.checkNotificaciones();
                       $rootScope.globals.isIndicadores = true;
                       if( response.data.recargar ){
                         $timeout(function(){

@@ -11,7 +11,10 @@
     }
 
     .page {
-      margin: 20px;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      margin-right: 20px;
+      margin-left: 20px;
       border: 2px solid black;
     }
 
@@ -43,7 +46,7 @@
       border: 1px solid black;
       border-collapse: collapse;
       width: 100%;
-      margin-top: 15px;
+      margin-top: 7px;
       font-size: 11px;
     }
 
@@ -133,7 +136,7 @@
       border-left: 1px solid black;
       border-right: 1px solid black;
       margin: 0px;
-      margin-top: 10px;
+      margin-top: 7px;
       padding: 0;
     }
 
@@ -356,56 +359,66 @@
           
         <div>
           <table class="encabezado">
-            <tbody>
-              <!--<tr>
-                <td><b>{{ $liquidacion['empresa']['razon_social'] }}</b></td>
-                <td>RUT : <b>{{ $liquidacion['rutEmpresa'] }}</b></td>
-              </tr>
-              <tr>
-                <td>Liquidación de Sueldo del mes de {{ $liquidacion['mes'] }}</td>
-                <td>Fecha de Ingreso : <b>{{ $liquidacion['fechaIngreso'] }}</b></td>                
-              </tr>
-              <tr>
-                <td>Trabajador : <b>{{ $liquidacion['nombreCompleto'] }}</b></td>
-                <td>RUT : <b>{{ $liquidacion['rutFormato'] }}</b></td>
-              </tr>
-              <tr>
-                <td>
-                    @if($liquidacion['seccion']['nombre'])
-                        Sección :  <b>{{ $liquidacion['seccion']['nombre'] }}</b>
-                    @endif
-                </td>
-                <td>
-                    @if($liquidacion['cargo']['nombre'])
-                        Cargo :  <b>{{ $liquidacion['cargo']['nombre'] }}</b>
-                    @endif
-                </td>                
-              </tr>-->                
-              <tr>
-                <td>Trabajador : <b>{{ $liquidacion['nombreCompleto'] }}</b></td>
-                  <td rowspan="3" style="border: 1px solid black;"></td>
-              </tr>
-              <tr>
-                <td>RUT : <b>{{ $liquidacion['rutFormato'] }}</b></td>
-              </tr>
-              <tr>
-                <td>Fecha de Ingreso : <b>{{ $liquidacion['fechaIngreso'] }}</b></td>
-              </tr>
-              @if($liquidacion['seccion']['nombre'])
+            <tbody>    
+                @if($configuracion->logo_liquidacion && $liquidacion['logoEmpresa'])
                   <tr>
-                    <td>                    
-                        Sección :  <b>{{ $liquidacion['seccion']['nombre'] }}</b>
+                    <td width="400">Trabajador : <b>{{ $liquidacion['nombreCompleto'] }}</b></td>
+                    <td rowspan="3">
+                        <img align="center" height="70" width="150" style="margin:0 auto; display: block;" src="<?php echo $liquidacion['logoEmpresa']; ?>" alt="<?php echo $liquidacion['empresa']['razon_social']; ?>" tabindex="0">  
                     </td>
                   </tr>
-              @endif
-              <tr>
-                <td>
-                    @if($liquidacion['cargo']['nombre'])
-                        Cargo :  <b>{{ $liquidacion['cargo']['nombre'] }}</b>
-                    @endif
-                </td>
-                <td>RUT : <b>{{ $liquidacion['rutEmpresa'] }}</b></td>                
-              </tr>
+                  <tr>
+                    <td>RUT : <b>{{ $liquidacion['rutFormato'] }}</b></td>
+                  </tr>
+                  <tr>
+                    <td>Fecha de Ingreso : <b>{{ $liquidacion['fechaIngreso'] }}</b></td>
+                  </tr>
+                  <tr>
+                    <td>                    
+                        @if($liquidacion['seccion']['nombre'] && $configuracion->seccion_liquidacion)
+                            Sección :  <b>{{ $liquidacion['seccion']['nombre'] }}</b>
+                        @endif
+                    </td>
+                    <td>RUT : <b>{{ $liquidacion['rutEmpresa'] }}</b></td> 
+                  </tr>
+                  <tr>
+                    <td>
+                        @if($liquidacion['cargo']['nombre'] && $configuracion->cargo_liquidacion)
+                            Cargo :  <b>{{ $liquidacion['cargo']['nombre'] }}</b>
+                        @endif
+                    </td>
+                    <td></td>                
+                  </tr>
+                @else
+                    <tr>
+                    <td>Trabajador : <b>{{ $liquidacion['nombreCompleto'] }}</b></td>
+                    <td><b>{{ $liquidacion['empresa']['razon_social'] }}</b></td>
+                  </tr>
+                  <tr>
+                    <td>RUT : <b>{{ $liquidacion['rutFormato'] }}</b></td>
+                    <td>RUT : <b>{{ $liquidacion['rutEmpresa'] }}</b></td> 
+                  </tr>
+                  <tr>
+                    <td>Fecha de Ingreso : <b>{{ $liquidacion['fechaIngreso'] }}</b></td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>                    
+                        @if($liquidacion['seccion']['nombre'] && $configuracion->seccion_liquidacion)
+                            Sección :  <b>{{ $liquidacion['seccion']['nombre'] }}</b>
+                        @endif
+                    </td>
+                    <td></td> 
+                  </tr>
+                  <tr>
+                    <td>
+                        @if($liquidacion['cargo']['nombre'] && $configuracion->cargo_liquidacion)
+                            Cargo :  <b>{{ $liquidacion['cargo']['nombre'] }}</b>
+                        @endif
+                    </td>
+                    <td></td>                
+                  </tr>
+                @endif
               @if( $liquidacion['observacion'] )
                   <tr>
                       <td colspan="2" style="border:1px solid #000; height: 60px; padding:2px;" valign="top">
@@ -428,7 +441,9 @@
                 <td>Renta Imponible</td>
                 <td>Afec. Impuesto</td>
                 <td>Pacto Isapre</td>
-                <td>UF</td>
+                @if($configuracion->uf_liquidacion)
+                  <td>UF</td>
+                @endif
                 <td>Días Trabajados</td>
               </tr>
               <tr class="valores">
@@ -443,13 +458,15 @@
                   @endif
                 </td>
                 <td>
-                  @if($liquidacion['isapre']['id']!=246 && $liquidacion['isapre']['id']!=240)
+                  @if($liquidacion['isapre']['id']!=240)
                       {{ Funciones::formatoPesos($liquidacion['totalSalud']['total']) }}
                   @else
-                      0 
+                      Funciones::formatoPesos(0) 
                   @endif
                 </td>
-                <td> {{ Funciones::formatoPesos($liquidacion['uf'], true, false) }}</td>
+                @if($configuracion->uf_liquidacion)
+                    <td> {{ Funciones::formatoPesos($liquidacion['uf'], true, false) }}</td>
+                @endif
                 <td>{{ $liquidacion['diasTrabajados'] }}</td>
               </tr>
 
@@ -481,8 +498,14 @@
                       </tr>
                       <tr>
                         <td>Sueldo</td>
-                        <td>{{ Funciones::formatoPesos($liquidacion['sueldo']) }}</td>
+                        <td>{{ Funciones::formatoPesos(($liquidacion['sueldo'] + $liquidacion['atrasos']['descuento'])) }}</td>
                       </tr>
+                      @if($liquidacion['atrasos']['total']>0)
+                        <tr>
+                          <td>Descuento Atrasos ({{$liquidacion['atrasos']['total']}} hrs)</td>
+                          <td>-{{ Funciones::formatoPesos($liquidacion['atrasos']['descuento']) }}</td>
+                        </tr>
+                      @endif
                       @if($liquidacion['gratificacion']>0)
                         <tr>
                           <td>Gratificación Legal</td>
@@ -751,26 +774,28 @@
         </div>
 
         <div class="conforme">
-          @if($liquidacion['cuenta'] && $liquidacion['banco'])            
+          @if($liquidacion['cuenta'] && $liquidacion['banco'] && $configuracion->cuenta_liquidacion)            
             Recibí conforme el alcance líquido de la presente liquidación en mi cuenta {{ $liquidacion['cuenta'] }} del banco {{ $liquidacion['banco'] }}, no teniendo cargo o cobro alguno que hacer por ningún concepto.
           @else
             Recibí conforme el alcance líquido de la presente liquidación, no teniendo cargo o cobro alguno que hacer por ningún concepto.
           @endif
         </div>
-
-        <div class="firma">
-          <table class="tablaFirma">
-            <tbody>
-              <tr>
-                <td></td>
-                <td></td>
-                <td style="width: 50%; border-top: 1px solid black;">
-                  {{ $liquidacion['nombreCompleto'] }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        
+        @if($configuracion->firma_liquidacion)
+            <div class="firma">
+              <table class="tablaFirma">
+                <tbody>
+                  <tr>
+                    <td></td>
+                    <td></td>
+                    <td style="width: 50%; border-top: 1px solid black;">
+                      {{ $liquidacion['nombreCompleto'] }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+        @endif
 
       </div>
 

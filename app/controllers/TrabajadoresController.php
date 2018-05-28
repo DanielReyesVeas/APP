@@ -112,7 +112,7 @@ class TrabajadoresController extends \BaseController {
         foreach($liquidaciones as $liquidacion){            
             if(in_array($liquidacion->trabajador_id, $trabajadores)){
                 $detalles = $liquidacion->detalles;
-                $apvis = $liquidacion->detalleApvi;
+                $apvis = $liquidacion->detalleApvi;                
                 if($detalles->count()){
                     foreach($detalles as $detalle){
                         if($detalle->tipo_id==1){
@@ -121,11 +121,14 @@ class TrabajadoresController extends \BaseController {
                                 $haberes['imponibles'][$index] = $detalle->nombre;   
                                 $liquidacion->$index = isset($liquidacion->$index) ? ($liquidacion->$index + $detalle->valor) : $detalle->valor;
                                 $sumas['imponibles'][$index] = isset($sumas['imponibles'][$index]) ? ($sumas['imponibles'][$index] + $detalle->valor) : $detalle->valor;
-                            }else{
+                            }else{                                
                                 $index = $detalle->tipo_id . '-' . $detalle->detalle_id;
                                 $haberes['noImponibles'][$index] = $detalle->nombre;                        
                                 $liquidacion->$index = isset($liquidacion->$index) ? ($liquidacion->$index + $detalle->valor) : $detalle->valor;
                                 $sumas['noImponibles'][$index] = isset($sumas['noImponibles'][$index]) ? ($sumas['noImponibles'][$index] + $detalle->valor) : $detalle->valor;
+                                if($detalle->detalle_id==4){
+                                    $haberes['noImponibles'][$index] = 'Movilización Permanente';  
+                                }
                             }
                         }else{
                             $index = $detalle->tipo_id . '-' . $detalle->detalle_id;
@@ -143,6 +146,12 @@ class TrabajadoresController extends \BaseController {
                         $sumas['apvs'][$index] = isset($sumas['apvs'][$index]) ? ($sumas['apvs'][$index] + $apvi->monto) : $apvi->monto;
                     }
                 }
+                if($liquidacion->colacion){                    
+                    $haberes['noImponibles']['colacion_permanente'] = 'Colación Permanente';
+                    $liquidacion->$index = isset($liquidacion->colacion_permanente) ? ($liquidacion->colacion_permanente + $liquidacion->colacion) : $liquidacion->colacion;
+                    $sumas['noImponibles']['colacion_permanente'] = isset($sumas['noImponibles']['colacion_permanente']) ? ($sumas['noImponibles']['colacion_permanente'] + $liquidacion->colacion) : $liquidacion->colacion;
+                }
+                
                 $sis = 0;
                 $cotizacionSalud = $liquidacion->totalSalud();
                 $liquidacion->totalApvs = $liquidacion->totalApvs();
@@ -240,10 +249,11 @@ class TrabajadoresController extends \BaseController {
                     });
                 })->store('xls', public_path('stories'));
             }else{
+                $local = Config::get('cliente.LOCAL');
                 $filename = 'LibroPDF.pdf';
                 $destination = public_path() . '/stories/' . $filename;
                 $pdf = new \Thujohn\Pdf\Pdf();
-                $content = $pdf->load(View::make('pdf.libroLarge', array('datos' => $datos)), 'A4', 'landscape')->output();               
+                $content = $pdf->load(View::make('pdf.libroLarge', array('datos' => $datos, 'local' => $local)), 'A4', 'landscape')->output();               
                 File::put($destination, $content); 
             }
         }else{
@@ -550,7 +560,7 @@ class TrabajadoresController extends \BaseController {
                         $j++;
                         
                         $a = $j.$i;
-                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalTotalImponibles'])); 
+                        $sheet->setCellValue($a, Funciones::formatoPesos($totales['totalImponibles'])); 
                         $sheet->setBorder($a, 'thin');
                         $sheet->setCellValue($j.($i + 1), Funciones::formatoPesos($totales['totalAsignacionFamiliar'])); 
                         $sheet->setBorder($j.($i + 1), 'thin');
@@ -1420,7 +1430,7 @@ class TrabajadoresController extends \BaseController {
             });
 
         })->export('xlsx');
-        
+         
     }
     
     public function generarPlanillaExcel()
@@ -1434,7 +1444,26 @@ class TrabajadoresController extends \BaseController {
         
         foreach($liquidaciones as $liquidacion){
             if(in_array($liquidacion->trabajador_id, $trabajadores)){
-                $planilla[] = $liquidacion;
+                $liq = array(
+                    'id' => $liquidacion->id,
+                    'idTrabajador' => $liquidacion->trabajador_id,
+                    'sid' => $liquidacion->sid,
+                    'rutFormato' => $liquidacion->trabajador->rut_formato(),
+                    'apellidos' => $liquidacion->trabajador->ficha()->apellidos,
+                    'nombreCompleto' => $liquidacion->trabajador->ficha()->nombreCompleto(),
+                    'cargo' => $liquidacion->trabajador_cargo,
+                    'sueldo' => $liquidacion->sueldo,
+                    'sueldoLiquido' => $liquidacion->sueldo_liquido,
+                    'imponibles' => $liquidacion->renta_imponible,
+                    'noImponibles' => $liquidacion->no_imponibles,
+                    'mutual' => $liquidacion->detalleMutual ? $liquidacion->detalleMutual->cotizacion_accidentes : 0,
+                    'seguroCesantia' => $liquidacion->detalleSeguroCesantia ? $liquidacion->detalleSeguroCesantia->aporte_empleador : 0,
+                    'sis' => $liquidacion->detalleAfp ? $liquidacion->detalleAfp->sis : 0,
+                    'caja' => $liquidacion->detalleCaja ? $liquidacion->detalleCaja->cotizacion : 0,
+                    'fonasa' => $liquidacion->detalleIpsIslFonasa ? $liquidacion->detalleIpsIslFonasa->cotizacion_fonasa : 0,
+                    'aportes' => $liquidacion->total_aportes
+                );
+                $planilla[] = $liq;
             }
         }
         
@@ -1599,6 +1628,8 @@ class TrabajadoresController extends \BaseController {
                     $estado = 'Ingresado';
                     $dato['fechaFiniquito'] = NULL;
                 }
+                
+                $fecha = Funciones::primerDia(Funciones::regularizarFecha($dato['fechaIngreso']));
 
                 $ficha = new FichaTrabajador();
                 $ficha->trabajador_id = $trabajador->id;
@@ -1626,6 +1657,7 @@ class TrabajadoresController extends \BaseController {
                 $ficha->banco_id = $dato['banco'];
                 $ficha->numero_cuenta = $dato['numeroCuenta'];
                 $ficha->fecha_ingreso = Funciones::regularizarFecha($dato['fechaIngreso']);
+                $ficha->fecha = $fecha;
                 $ficha->fecha_reconocimiento = Funciones::regularizarFecha($dato['fechaReconocimiento']);
                 $ficha->fecha_reconocimiento_cesantia = $dato['fechaReconocimientoSCesantia'] ? Funciones::regularizarFecha($dato['fechaReconocimientoSCesantia']) : NULL;
                 $ficha->tipo_contrato_id = $dato['tipoContrato'];
@@ -2260,20 +2292,24 @@ class TrabajadoresController extends \BaseController {
         return $lista;
     }
     
-    public function descargarArchivoPreviredExcel()
+    public function generarArchivoPreviredExcel()
     {
+        $datos = Input::all();
         $mes = \Session::get('mesActivo');
         $finMes = $mes->fechaRemuneracion;
-        $trabajadores = Trabajador::all();        
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
+        $sid = (array) $datos['trabajadores'];
+        $trabajadores = Trabajador::whereIn('sid', $sid)->get();
         $listaTrabajadores = array();
         $empresa = Session::get('empresa');
         if($trabajadores){
             foreach($trabajadores as $trabajador){
                 $empleado = $trabajador->ficha();
                 if($empleado){
-                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mes->mes && $empleado->fecha_ingreso<=$finMes){
-                        if($trabajador->id!=99){
-                            $liquidacion = Liquidacion::where('trabajador_id', $trabajador->id)->where('mes', $mes->mes)->first();
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mesAnterior && $empleado->fecha_ingreso<=$finMes){
+                        $liquidacion = Liquidacion::where('trabajador_id', $trabajador->id)->where('mes', $mes->mes)->first();
+                        if($liquidacion){
                             $lineaAdicional = array();
                             $licenciasAdicional = false;
                             $movimientoPersonal = $liquidacion->movimiento_personal;
@@ -2292,11 +2328,11 @@ class TrabajadoresController extends \BaseController {
                                 $dias = ($dias - 1);
                             }
                             //$dias = $liquidacion->diasTotales();
-                            
+
                             $listaTrabajadores[] = array(
                                 /*'id' => $trabajador->id,
                                 'sid' => $trabajador->sid,*/
-                                
+
                                 //Datos del Trabajador
                                 'rutSinDigito' => $trabajador->rut_sin_digito(),
                                 'rutDigito' => $trabajador->rut_digito(),
@@ -2323,9 +2359,10 @@ class TrabajadoresController extends \BaseController {
                                 'asignacionFamiliarRetroactiva' => $liquidacion->asignacion_retroactiva,
                                 'reintegroCargasFamiliares' => $liquidacion->reintegro_cargas,
                                 'solicitudTrabajadorJoven' => $trabajador->solicitudTrabajadorJoven(),
-                                
+
                                 //Datos de la AFP
                                 'codigoAfp' => $detallesAfp['codigoAfp'] ? $detallesAfp['codigoAfp'] : $detallesSeguroCesantia['codigo'],
+                                'nombreAfp' => $detallesAfp['nombreAfp'],
                                 'rentaImponible' => $detallesAfp['rentaImponible'],
                                 'cotizacionAfp' => $detallesAfp['cotizacionAfp'],
                                 'sis' => $detallesAfp['sis'],
@@ -2339,22 +2376,24 @@ class TrabajadoresController extends \BaseController {
                                 'puestoTrabajoPesado' => $detallesAfp['puestoTrabajoPesado'],
                                 'porcentajeTrabajoPesado' => $detallesAfp['porcentajeTrabajoPesado'],
                                 'cotizacionTrabajoPesado' => $detallesAfp['cotizacionTrabajoPesado'],
-                                
+
                                 //Datos Ahorro Previsional Voluntario Individual    
-                                'codigoAPVI' => $detallesApvi['codigo'],
-                                'numeroContratoAPVI' => $detallesApvi['numeroContrato'],
-                                'formaPagoAPVI' => $detallesApvi['formaPago'],
-                                'cotizacionAPVI' => $detallesApvi['cotizacion'],
-                                'cotizacionDepositosConvenidos' => $detallesApvi['cotizacionDepositosConvenidos'],
-                                
+                                'codigoAPVI' => $detallesApvi['codigoAPVI'],
+                                'nombreAPVI' => $detallesApvi['nombreAPVI'],
+                                'numeroContratoAPVI' => $detallesApvi['numeroContratoAPVI'],
+                                'formaPagoAPVI' => $detallesApvi['formaPagoAPVI'],
+                                'cotizacionAPVI' => $detallesApvi['cotizacionAPVI'],
+                                'cotizacionDepositosConvenidos' => $detallesApvi['cotizacionDepositosConvenidosAPVI'],
+
                                 //Datos Ahorro Previsional Voluntario Colectivo
-                                'codigoAPVC' => $detallesApvc['codigo'],
-                                'numeroContratoAPVC' => $detallesApvc['numeroContrato'],
-                                'formaPagoAPVC' => $detallesApvc['formaPago'],
-                                'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajador'],
-                                'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleador'],
-                                
-                                
+                                'codigoAPVC' => $detallesApvc['codigoAPVC'],
+                                'nombreAPVC' => $detallesApvc['nombreAPVC'],
+                                'numeroContratoAPVC' => $detallesApvc['numeroContratoAPVC'],
+                                'formaPagoAPVC' => $detallesApvc['formaPagoAPVC'],
+                                'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajadorAPVC'],
+                                'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleadorAPVC'],
+
+
                                 //Datos Afiliado Voluntario
                                 'rutAfiliadoVoluntario' => '',
                                 'dvAfiliadoVoluntario' => '',
@@ -2368,7 +2407,7 @@ class TrabajadoresController extends \BaseController {
                                 'montoCapitalizacionVoluntaria' => 0,
                                 'montoAhorroVoluntario' => 0,
                                 'numeroPeriodosCotizacion' => 0,
-                                
+
                                 //Datos IPS-ISL-FONASA
                                 'codigoExCaja' => $detallesIpsIslFonasa['codigoExCaja'],
                                 'tasaCotizacionExCaja' => $detallesIpsIslFonasa['tasa'],
@@ -2383,9 +2422,10 @@ class TrabajadoresController extends \BaseController {
                                 'bonificacion15386' => $detallesIpsIslFonasa['bonificacion'],
                                 'descuentoCargasIsl' => $detallesIpsIslFonasa['descuentoCargasIsl'],
                                 'bonosGobierno' => $detallesIpsIslFonasa['bonosGobierno'],                            
-                                
+
                                 //Datos Salud
                                 'codigoInstitucionSalud' => $detallesSalud['codigoSalud'],
+                                'nombreSalud' => $detallesSalud['nombreSalud'],
                                 'numeroFun' => '',
                                 'rentaImponibleIsapre' => $detallesSalud['rentaImponible'],
                                 'monedaPlanIsapre' => $detallesSalud['moneda'],
@@ -2393,7 +2433,7 @@ class TrabajadoresController extends \BaseController {
                                 'cotizacionObligatoria' => $detallesSalud['cotizacionObligatoria'],
                                 'cotizacionAdicional' => $detallesSalud['cotizacionAdicional'],
                                 'montoGarantiaExplicita' => $detallesSalud['ges'],
-                                
+
                                 //Datos Caja de Compensación
                                 'codigoCcaf' => $detallesCaja['codigoCaja'],
                                 'rentaImponibleCcaf' => $detallesCaja['rentaImponible'],
@@ -2408,36 +2448,36 @@ class TrabajadoresController extends \BaseController {
                                 'otrosDescuentosCcaf2' => $detallesCaja['otrosDescuentos2'],
                                 'bonosGobiernoSalud' => $detallesCaja['bonosGobierno'],
                                 'codigoSucursalSalud' => $detallesCaja['codigoSucursal'],
-                                
+
                                 //Datos Mutualidad
                                 'codigoMutualidad' => $detallesMutual['codigoMutual'],
                                 'rentaImponibleMutual' => $detallesMutual['rentaImponible'],
                                 'cotizacionAccidenteTrabajo' => $detallesMutual['cotizacionAccidentes'],
                                 'sucursalPagoMutual' => $detallesMutual['codigoSucursal'],
-                                
+
                                 //Datos Administradora de Seguro de Cesantía
                                 'rentaImponibleSeguroCesantia' => $detallesSeguroCesantia['rentaImponible'],
                                 'aporteTrabajadorSeguroCesantia' => $detallesSeguroCesantia['aporteTrabajador'],
                                 'aporteEmpleadorSeguroCesantia' => $detallesSeguroCesantia['aporteEmpleador'],
-                                
+
                                 //Datos Pagador de Subsidios
                                 'rutPagadoraSubsidio' => $detallesPagadorSubsidio['rut'],
                                 'dvPagadoraSubsidio' => $detallesPagadorSubsidio['digito'],
-                                
+
                                 //Otros Datos de la Empresa
                                 'centroCosto' => $liquidacion->centroCosto ? $liquidacion->centroCosto->codigo : ''              
-                                
+
                                 //'liquidacion' => $liquidacion                           
                             );
                             //$lineaAdicional                        
                             if($liquidacion->movimiento_personal==3){
                                 $licenciasAdicional = $trabajador->licenciasAdicional();
                             }
-                            
+
                             if($licenciasAdicional){
                                 foreach($licenciasAdicional as $licencia){
                                     $listaTrabajadores[] = array(
-        
+
                                         //Datos del Trabajador
                                         'rutSinDigito' => $trabajador->rut_sin_digito(),
                                         'rutDigito' => $trabajador->rut_digito(),
@@ -2464,9 +2504,10 @@ class TrabajadoresController extends \BaseController {
                                         'asignacionFamiliarRetroactiva' => $liquidacion->asignacion_retroactiva,
                                         'reintegroCargasFamiliares' => $liquidacion->reintegro_cargas,
                                         'solicitudTrabajadorJoven' => $trabajador->solicitudTrabajadorJoven(),
-                                        
+
                                         //Datos de la AFP
                                         'codigoAfp' => $detallesAfp['codigoAfp'] ? $detallesAfp['codigoAfp'] : $detallesSeguroCesantia['codigo'],
+                                        'nombreAfp' => $detallesAfp['nombreAfp'],
                                         'rentaImponible' => $detallesAfp['rentaImponible'],
                                         'cotizacionAfp' => $detallesAfp['cotizacionAfp'],
                                         'sis' => $detallesAfp['sis'],
@@ -2480,22 +2521,24 @@ class TrabajadoresController extends \BaseController {
                                         'puestoTrabajoPesado' => $detallesAfp['puestoTrabajoPesado'],
                                         'porcentajeTrabajoPesado' => $detallesAfp['porcentajeTrabajoPesado'],
                                         'cotizacionTrabajoPesado' => $detallesAfp['cotizacionTrabajoPesado'],
-                                        
+
                                         //Datos Ahorro Previsional Voluntario Individual    
-                                        'codigoAPVI' => $detallesApvi['codigo'],
-                                        'numeroContratoAPVI' => $detallesApvi['numeroContrato'],
-                                        'formaPagoAPVI' => $detallesApvi['formaPago'],
-                                        'cotizacionAPVI' => $detallesApvi['cotizacion'],
-                                        'cotizacionDepositosConvenidos' => $detallesApvi['cotizacionDepositosConvenidos'],
-                                        
+                                        'codigoAPVI' => $detallesApvi['codigoAPVI'],
+                                        'nombreAPVI' => $detallesApvi['nombreAPVI'],
+                                        'numeroContratoAPVI' => $detallesApvi['numeroContratoAPVI'],
+                                        'formaPagoAPVI' => $detallesApvi['formaPagoAPVI'],
+                                        'cotizacionAPVI' => $detallesApvi['cotizacionAPVI'],
+                                        'cotizacionDepositosConvenidos' => $detallesApvi['cotizacionDepositosConvenidosAPVI'],
+
                                         //Datos Ahorro Previsional Voluntario Colectivo
-                                        'codigoAPVC' => $detallesApvc['codigo'],
-                                        'numeroContratoAPVC' => $detallesApvc['numeroContrato'],
-                                        'formaPagoAPVC' => $detallesApvc['formaPago'],
-                                        'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajador'],
-                                        'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleador'],
-                                        
-                                        
+                                        'codigoAPVC' => $detallesApvc['codigoAPVC'],
+                                        'nombreAPVC' => $detallesApvc['nombreAPVC'],
+                                        'numeroContratoAPVC' => $detallesApvc['numeroContratoAPVC'],
+                                        'formaPagoAPVC' => $detallesApvc['formaPagoAPVC'],
+                                        'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajadorAPVC'],
+                                        'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleadorAPVC'],
+
+
                                         //Datos Afiliado Voluntario
                                         'rutAfiliadoVoluntario' => '',
                                         'dvAfiliadoVoluntario' => '',
@@ -2509,7 +2552,7 @@ class TrabajadoresController extends \BaseController {
                                         'montoCapitalizacionVoluntaria' => 0,
                                         'montoAhorroVoluntario' => 0,
                                         'numeroPeriodosCotizacion' => 0,
-                                        
+
                                         //Datos IPS-ISL-FONASA
                                         'codigoExCaja' => $detallesIpsIslFonasa['codigoExCaja'],
                                         'tasaCotizacionExCaja' => $detallesIpsIslFonasa['tasa'],
@@ -2524,9 +2567,10 @@ class TrabajadoresController extends \BaseController {
                                         'bonificacion15386' => $detallesIpsIslFonasa['bonificacion'],
                                         'descuentoCargasIsl' => $detallesIpsIslFonasa['descuentoCargasIsl'],
                                         'bonosGobierno' => $detallesIpsIslFonasa['bonosGobierno'],                            
-                                        
+
                                         //Datos Salud
                                         'codigoInstitucionSalud' => $detallesSalud['codigoSalud'],
+                                        'nombreSalud' => $detallesSalud['nombreSalud'],
                                         'numeroFun' => '',
                                         'rentaImponibleIsapre' => $detallesSalud['rentaImponible'],
                                         'monedaPlanIsapre' => $detallesSalud['moneda'],
@@ -2534,7 +2578,7 @@ class TrabajadoresController extends \BaseController {
                                         'cotizacionObligatoria' => $detallesSalud['cotizacionObligatoria'],
                                         'cotizacionAdicional' => $detallesSalud['cotizacionAdicional'],
                                         'montoGarantiaExplicita' => $detallesSalud['ges'],
-                                        
+
                                         //Datos Caja de Compensación
                                         'codigoCcaf' => $detallesCaja['codigoCaja'],
                                         'rentaImponibleCcaf' => $detallesCaja['rentaImponible'],
@@ -2549,22 +2593,22 @@ class TrabajadoresController extends \BaseController {
                                         'otrosDescuentosCcaf2' => $detallesCaja['otrosDescuentos2'],
                                         'bonosGobiernoSalud' => $detallesCaja['bonosGobierno'],
                                         'codigoSucursalSalud' => $detallesCaja['codigoSucursal'],
-                                        
+
                                         //Datos Mutualidad
                                         'codigoMutualidad' => $detallesMutual['codigoMutual'],
                                         'rentaImponibleMutual' => $detallesMutual['rentaImponible'],
                                         'cotizacionAccidenteTrabajo' => $detallesMutual['cotizacionAccidentes'],
                                         'sucursalPagoMutual' => $detallesMutual['codigoSucursal'],
-                                        
+
                                         //Datos Administradora de Seguro de Cesantía
                                         'rentaImponibleSeguroCesantia' => '',
                                         'aporteTrabajadorSeguroCesantia' => '',
                                         'aporteEmpleadorSeguroCesantia' => '',
-                                        
+
                                         //Datos Pagador de Subsidios
                                         'rutPagadoraSubsidio' => $detallesPagadorSubsidio['rut'],
                                         'dvPagadoraSubsidio' => $detallesPagadorSubsidio['digito'],
-                                        
+
                                         //Otros Datos de la Empresa
                                         'centroCosto' => $liquidacion->centroCosto ? $liquidacion->centroCosto->codigo : ''                 
                                     );
@@ -2573,7 +2617,7 @@ class TrabajadoresController extends \BaseController {
                             if(count($lineaAdicional)){
                                 foreach($lineaAdicional as $linea){
                                     $listaTrabajadores[] = array(
-        
+
                                         //Datos del Trabajador
                                         'rutSinDigito' => $trabajador->rut_sin_digito(),
                                         'rutDigito' => $trabajador->rut_digito(),
@@ -2600,9 +2644,10 @@ class TrabajadoresController extends \BaseController {
                                         'asignacionFamiliarRetroactiva' => $liquidacion->asignacion_retroactiva,
                                         'reintegroCargasFamiliares' => $liquidacion->reintegro_cargas,
                                         'solicitudTrabajadorJoven' => $trabajador->solicitudTrabajadorJoven(),
-                                        
+
                                         //Datos de la AFP
                                         'codigoAfp' => $detallesAfp['codigoAfp'] ? $detallesAfp['codigoAfp'] : $detallesSeguroCesantia['codigo'],
+                                        'nombreAfp' => $detallesAfp['nombreAfp'],
                                         'rentaImponible' => $detallesAfp['rentaImponible'],
                                         'cotizacionAfp' => $detallesAfp['cotizacionAfp'],
                                         'sis' => $detallesAfp['sis'],
@@ -2616,22 +2661,24 @@ class TrabajadoresController extends \BaseController {
                                         'puestoTrabajoPesado' => $detallesAfp['puestoTrabajoPesado'],
                                         'porcentajeTrabajoPesado' => $detallesAfp['porcentajeTrabajoPesado'],
                                         'cotizacionTrabajoPesado' => $detallesAfp['cotizacionTrabajoPesado'],
-                                        
+
                                         //Datos Ahorro Previsional Voluntario Individual    
-                                        'codigoAPVI' => $linea['codigo'],
-                                        'numeroContratoAPVI' => $linea['numeroContrato'],
-                                        'formaPagoAPVI' => $linea['formaPago'],
-                                        'cotizacionAPVI' => $linea['cotizacion'],
-                                        'cotizacionDepositosConvenidos' => $linea['cotizacionDepositosConvenidos'],
-                                        
+                                        'codigoAPVI' => $linea['codigoAPVI'],
+                                        'nombreAPVI' => $linea['nombreAPVI'],
+                                        'numeroContratoAPVI' => $linea['numeroContratoAPVI'],
+                                        'formaPagoAPVI' => $linea['formaPagoAPVI'],
+                                        'cotizacionAPVI' => $linea['cotizacionAPVI'],
+                                        'cotizacionDepositosConvenidos' => $linea['cotizacionDepositosConvenidosAPVI'],
+
                                         //Datos Ahorro Previsional Voluntario Colectivo
-                                        'codigoAPVC' => $detallesApvc['codigo'],
-                                        'numeroContratoAPVC' => $detallesApvc['numeroContrato'],
-                                        'formaPagoAPVC' => $detallesApvc['formaPago'],
-                                        'cotizacionTrabajadorAPVC' => $detallesApvc['cotizacionTrabajador'],
-                                        'cotizacionEmpleadorAPVC' => $detallesApvc['cotizacionEmpleador'],
-                                        
-                                        
+                                        'codigoAPVC' => $linea['codigoAPVC'],
+                                        'nombreAPVC' => $linea['nombreAPVC'],
+                                        'numeroContratoAPVC' => $linea['numeroContratoAPVC'],
+                                        'formaPagoAPVC' => $linea['formaPagoAPVC'],
+                                        'cotizacionTrabajadorAPVC' => $linea['cotizacionTrabajadorAPVC'],
+                                        'cotizacionEmpleadorAPVC' => $linea['cotizacionEmpleadorAPVC'],
+
+
                                         //Datos Afiliado Voluntario
                                         'rutAfiliadoVoluntario' => '',
                                         'dvAfiliadoVoluntario' => '',
@@ -2645,7 +2692,7 @@ class TrabajadoresController extends \BaseController {
                                         'montoCapitalizacionVoluntaria' => 0,
                                         'montoAhorroVoluntario' => 0,
                                         'numeroPeriodosCotizacion' => 0,
-                                        
+
                                         //Datos IPS-ISL-FONASA
                                         'codigoExCaja' => $detallesIpsIslFonasa['codigoExCaja'],
                                         'tasaCotizacionExCaja' => $detallesIpsIslFonasa['tasa'],
@@ -2660,9 +2707,10 @@ class TrabajadoresController extends \BaseController {
                                         'bonificacion15386' => $detallesIpsIslFonasa['bonificacion'],
                                         'descuentoCargasIsl' => $detallesIpsIslFonasa['descuentoCargasIsl'],
                                         'bonosGobierno' => $detallesIpsIslFonasa['bonosGobierno'],                            
-                                        
+
                                         //Datos Salud
                                         'codigoInstitucionSalud' => $detallesSalud['codigoSalud'],
+                                        'nombreSalud' => $detallesSalud['nombreSalud'],
                                         'numeroFun' => '',
                                         'rentaImponibleIsapre' => $detallesSalud['rentaImponible'],
                                         'monedaPlanIsapre' => $detallesSalud['moneda'],
@@ -2670,7 +2718,7 @@ class TrabajadoresController extends \BaseController {
                                         'cotizacionObligatoria' => $detallesSalud['cotizacionObligatoria'],
                                         'cotizacionAdicional' => $detallesSalud['cotizacionAdicional'],
                                         'montoGarantiaExplicita' => $detallesSalud['ges'],
-                                        
+
                                         //Datos Caja de Compensación
                                         'codigoCcaf' => $detallesCaja['codigoCaja'],
                                         'rentaImponibleCcaf' => $detallesCaja['rentaImponible'],
@@ -2685,27 +2733,28 @@ class TrabajadoresController extends \BaseController {
                                         'otrosDescuentosCcaf2' => $detallesCaja['otrosDescuentos2'],
                                         'bonosGobiernoSalud' => $detallesCaja['bonosGobierno'],
                                         'codigoSucursalSalud' => $detallesCaja['codigoSucursal'],
-                                        
+
                                         //Datos Mutualidad
                                         'codigoMutualidad' => $detallesMutual['codigoMutual'],
                                         'rentaImponibleMutual' => $detallesMutual['rentaImponible'],
                                         'cotizacionAccidenteTrabajo' => $detallesMutual['cotizacionAccidentes'],
                                         'sucursalPagoMutual' => $detallesMutual['codigoSucursal'],
-                                        
+
                                         //Datos Administradora de Seguro de Cesantía
                                         'rentaImponibleSeguroCesantia' => '',
                                         'aporteTrabajadorSeguroCesantia' => '',
                                         'aporteEmpleadorSeguroCesantia' => '',
-                                        
+
                                         //Datos Pagador de Subsidios
                                         'rutPagadoraSubsidio' => $detallesPagadorSubsidio['rut'],
                                         'dvPagadoraSubsidio' => $detallesPagadorSubsidio['digito'],
-                                        
+
                                         //Otros Datos de la Empresa
                                         'centroCosto' => $liquidacion->centroCosto ? $liquidacion->centroCosto->codigo : ''                 
                                     );
                                 }
                             }
+                            
                         }
                     }
                 }
@@ -2714,19 +2763,175 @@ class TrabajadoresController extends \BaseController {
         
         $filename = "ArchivoPrevired.xls";
         
-        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidoPaterno');
         
         $destination = public_path('stories/' . $filename);
         
         $fp = fopen($destination, "w+");
         if($fp){
+            $afps = array();
+            $isapres = array();
+            $caja = array(
+                'nombre' => $empresa->caja->glosa,
+                'total' => 0
+            );
+            $mutual = array(
+                'nombre' => $empresa->mutual->glosa,
+                'total' => 0
+            );
+            $ipsFonasa = array(
+                'fonasa' => array(
+                    'total' => 0
+                ), 
+                'isl' => array(
+                    'total' => 0
+                )
+            );
+            $ruts = array();
+            $totalAfp = 0;
+            $totalIsapre = 0;
+            $totalIpsFonasa = 0;
+            $totalCaja = 0;
+            $totalMutual = 0;
+            $apvs = array();
+            $a = 0;
             if(count($listaTrabajadores)){
                 foreach($listaTrabajadores as $index => $trab){
                     //fputcsv($fp, $trab, ";");
+                    
+                    $afp = $trab['nombreAfp'];
+                    $isapre = $trab['nombreSalud'];
+                    $apvs[] = $trab['codigoAPVI'];
+                    $apvcs[] = $trab['codigoAPVC'];
+                    $apvi = $trab['nombreAPVI'];
+                    $apvc = $trab['nombreAPVC'];
+                    $montoAhorroVoluntario = $trab['cuentaAhorroVoluntario'];
+                    $totalApvc = ($trab['cotizacionTrabajadorAPVC'] + $trab['cotizacionEmpleadorAPVC']);
+                    unset($trab['nombreAfp']);
+                    unset($trab['nombreSalud']);
+                    unset($trab['nombreAPVI']);
+                    unset($trab['nombreAPVC']);
+                    if($trab['cotizacionAPVI']){                        
+                        $a = (int) $trab['codigoAPVI'];
+                        $totalAfp += $trab['cotizacionAPVI'];
+                        if(isset($afps[$a])){
+                            $afps[$a]['total'] = ($afps[$a]['total'] + $trab['cotizacionAPVI']);
+                        }else{
+                            $afps[$a] = array(
+                                'codigo' => $a,
+                                'nombre' => $apvi,
+                                'total' => $trab['cotizacionAPVI']
+                            );
+                        }
+                    }                    
+                    if($totalApvc){                        
+                        $a = (int) $trab['codigoAPVC'];                        
+                        $totalAfp += $totalApvc;
+                        if(isset($afps[$a])){
+                            $afps[$a]['total'] = ($afps[$a]['total'] + $totalApvc);
+                        }else{
+                            $afps[$a] = array(
+                                'codigo' => $a,
+                                'nombre' => 'APVC ' . $apvc,
+                                'total' => $totalApvc
+                            );
+                        }
+                    }
+                    if($montoAhorroVoluntario){                        
+                        $a = (int) $trab['codigoAfp'];                    
+                        $totalAfp += $montoAhorroVoluntario;
+                        if(isset($afps[$a])){
+                            $afps[$a]['total'] = ($afps[$a]['total'] + $montoAhorroVoluntario);
+                        }else{
+                            $afps[$a] = array(
+                                'codigo' => $a,
+                                'nombre' => 'Ahorro ' . $afp,
+                                'total' => $montoAhorroVoluntario
+                            );
+                        }
+                    }
                     fputs($fp, utf8_decode(implode(";", $trab))."\r\n", 2048);
+                    
+                    if(!isset($ruts[$trab['rutSinDigito']])){
+                        $ruts[$trab['rutSinDigito']] = $trab['rutSinDigito'];
+                        $montoAfp = ($trab['cotizacionAfp'] + $trab['sis'] + $trab['aporteTrabajadorSeguroCesantia'] + $trab['aporteEmpleadorSeguroCesantia']);                        
+                        $montoIsapre = ($trab['cotizacionObligatoria'] + $trab['cotizacionAdicional']);
+                        $a = (int) $trab['codigoAfp'];
+                        if($montoAfp){
+                            if(isset($afps[$a])){
+                                $afps[$a]['total'] = ($afps[$a]['total'] + $montoAfp);
+                            }else{
+                                $afps[$a] = array(
+                                    'codigo' => $a,
+                                    'nombre' => $afp,
+                                    'total' => $montoAfp
+                                );
+                            }
+                        }
+                        if($montoAhorroVoluntario){
+                            if(isset($afps[$a])){
+                                $afps[$a]['total'] = ($afps[$a]['total'] + $montoAfp);
+                            }else{
+                                $afps[$a] = array(
+                                    'codigo' => $a,
+                                    'nombre' => $afp,
+                                    'total' => $montoAfp
+                                );
+                            }
+                        }
+                        if($montoIsapre){
+                            if(isset($isapres[$trab['codigoInstitucionSalud']])){
+                                $isapres[$trab['codigoInstitucionSalud']]['total'] = ($isapres[$trab['codigoInstitucionSalud']]['total'] + $montoIsapre);
+                            }else{
+                                $isapres[$trab['codigoInstitucionSalud']] = array(
+                                    'codigo' => $trab['codigoInstitucionSalud'],
+                                    'nombre' => $isapre,
+                                    'total' => $montoIsapre
+                                );
+                            }
+                        }
+                        if($trab['cotizacionFonasa']){
+                            $ipsFonasa['fonasa']['total'] += $trab['cotizacionFonasa'];
+                        }
+                        if($trab['cotizacionIsl']){
+                            $ipsFonasa['isl']['total'] += ($trab['cotizacionIsl'] - $trab['descuentoCargasIsl']);
+                        }
+                        if($trab['cotizacionCcafNoAfiliadosIsapre']){
+                            $caja['total'] += (($trab['cotizacionCcafNoAfiliadosIsapre'] + $trab['creditosPersonalesCcaf'] + $trab['descuentoDentalCcaf'] + $trab['descuentosSeguroCcaf']) - $trab['descuentoCargasFamiliaresCcaf']);
+                        }
+                        
+                        if($trab['cotizacionAccidenteTrabajo']){
+                            $mutual['total'] += $trab['cotizacionAccidenteTrabajo'];
+                        }
+                        $totalAfp += $montoAfp;
+                        $totalIsapre += $montoIsapre;
+                        $totalIpsFonasa += ($trab['cotizacionIsl'] + $trab['cotizacionFonasa'] - $trab['descuentoCargasIsl']);
+                        $totalCaja += (($trab['cotizacionCcafNoAfiliadosIsapre'] + $trab['creditosPersonalesCcaf'] + $trab['descuentoDentalCcaf'] + $trab['descuentosSeguroCcaf']) - $trab['descuentoCargasFamiliaresCcaf']);
+                        $totalMutual += $trab['cotizacionAccidenteTrabajo'];
+                    }
+                        
                 }
             }
             fclose($fp);
+            $detalles = array(
+                'ruts' => array_values($ruts),
+                'afps' => array_values($afps),
+                'totalAfp' => $totalAfp,
+                'isapres' => array_values($isapres),
+                'totalIsapre' => $totalIsapre,
+                'ipsFonasa' => $ipsFonasa,
+                'totalIpsFonasa' => $totalIpsFonasa,
+                'caja' => $caja,
+                'apvs' => $apvs,
+                'apvcs' => $apvcs,
+                'totalCaja' => $totalCaja,
+                'mutual' => $mutual,
+                'totalMutual' => $totalMutual,
+                'total' => ($totalAfp + $totalIsapre + $totalIpsFonasa + $totalCaja + $totalMutual),
+                'nombreDocumento' => 'archivoPrevired.xls',
+                'aliasDocumento' => 'previred.xls',
+                'a' => $a
+            );
         }
         
         /*
@@ -2740,11 +2945,30 @@ class TrabajadoresController extends \BaseController {
         */
         
         
+        /*
+        return Response::make(file_get_contents($destination), 200, [
+            'Content-Type' => 'text/plain',
+            'Content-Disposition' => 'attachment; filename="ArchivoPrevired.csv"'
+        ]);   */
+        
+        $respuesta = array(
+            'success' => true,
+            'datos' => $listaTrabajadores,
+            'detalles' => $detalles
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function descargarPrevired()
+    {
+        $filename = "ArchivoPrevired.xls";        
+        $destination = public_path('stories/' . $filename);
         
         return Response::make(file_get_contents($destination), 200, [
             'Content-Type' => 'text/plain',
             'Content-Disposition' => 'attachment; filename="ArchivoPrevired.csv"'
-        ]);   
+        ]);
     }
     
     public function index()
@@ -2763,14 +2987,14 @@ class TrabajadoresController extends \BaseController {
         $listaTrabajadores=array();
         if( $trabajadores->count() ){
             foreach( $trabajadores as $trabajador ){
-                $empleado = $trabajador->ficha();
+                $empleado = $trabajador->ultimaFicha();
                 if($empleado){
                     //if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='En Creación' || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mes){
                         $listaTrabajadores[]=array(    
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
                             'rutFormato' => $trabajador->rut_formato(),
-                            'apellidos' => ucwords(strtolower($empleado->apellidos)),      
+                            'apellidos' => $empleado->apellidos ? ucwords(strtolower($empleado->apellidos)) : "",      
                             'nombreCompleto' => $empleado->nombreCompleto(),      
                             'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "", 
                             'cargo' => array(
@@ -2786,15 +3010,15 @@ class TrabajadoresController extends \BaseController {
                                 'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
                             ),
                             'estado' => $empleado->estado,
-                            'isContrato' => $trabajador->isContrato()
+                            'isContrato' => $trabajador->isContrato(),
+                            'isFicha' => $trabajador->ficha() ? true : false
                         );
                     //}
                 }
             }
         }
+        
         $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
-
-
 
         $totalTrabajadores = 0;
         $variable = VariableGlobal::where('variable', "TRABAJADORES")->first();
@@ -2822,7 +3046,8 @@ class TrabajadoresController extends \BaseController {
             'trabajadoresPermitidos' => $trabajadoresPermitidos,
             'totalTrabajadores' => $totalTrabajadores,
             'accesos' => $permisos,
-            'datos' => $listaTrabajadores
+            'datos' => $listaTrabajadores,
+            'em' => \Session::get('empresa')->get()
         );
         
         return Response::json($datos);
@@ -3358,7 +3583,7 @@ class TrabajadoresController extends \BaseController {
     public function trabajadorContratos($sid)
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
-        $empleado = $trabajador->ficha();
+        $empleado = $trabajador->ultimaFicha();
         $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores');
         
         $trabajadorContratos = array(
@@ -3366,7 +3591,8 @@ class TrabajadoresController extends \BaseController {
             'sid' => $trabajador->sid,
             'rutFormato' => $trabajador->rut_formato(),
             'nombreCompleto' => $empleado->nombreCompleto(),
-            'contratos' => $trabajador->misContratos()
+            'contratos' => $trabajador->misContratos(),
+            'isFicha' => $trabajador->ficha() ? true : false
         );
         
         $datos = array(
@@ -3380,7 +3606,7 @@ class TrabajadoresController extends \BaseController {
     public function trabajadorFichas($sid)
     {        
         $trabajador = Trabajador::whereSid($sid)->first();
-        $empleado = $trabajador->ficha();
+        $empleado = $trabajador->ultimaFicha();
         $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#trabajadores');
         
         $trabajadorFichas = array(
@@ -3417,6 +3643,7 @@ class TrabajadoresController extends \BaseController {
         $listaLiquidaciones = array();
         $listaFiniquitados = array();
         $listaLiquidacionesFiniquitados = array();
+        $mostrarFiniquitados = Empresa::variableConfiguracion('finiquitados_liquidacion');
         
         if($trabajadores->count()){
             foreach($trabajadores as $trabajador){
@@ -3447,7 +3674,7 @@ class TrabajadoresController extends \BaseController {
             }
         }
         
-        if($trabajadores->count()){
+        if($trabajadores->count() && $mostrarFiniquitados){
             foreach($trabajadores as $trabajador){
                 $empleado = $trabajador->ficha();
                 if($empleado){
@@ -3477,7 +3704,7 @@ class TrabajadoresController extends \BaseController {
         
         if( $liquidaciones->count() ){
             foreach( $liquidaciones as $liquidacion ){
-                if($liquidacion->estado==1){
+                if($liquidacion->estado==1 || true){
                     $listaLiquidaciones[]=array(
                         'id' => $liquidacion->trabajador_id,
                         'sid' => $liquidacion->sid,
@@ -3496,23 +3723,25 @@ class TrabajadoresController extends \BaseController {
                         'observaciones' => $liquidacion->observacion
                     );
                 }else{
-                    $listaLiquidacionesFiniquitados[]=array(
-                        'id' => $liquidacion->trabajador_id,
-                        'sid' => $liquidacion->sid,
-                        'sidDocumento' => $liquidacion->documento->sid,
-                        'nombreDocumento' => $liquidacion->documento->nombre,
-                        'aliasDocumento' => $liquidacion->documento->alias,
-                        'sidTrabajador' => $liquidacion->trabajador->sid,
-                        'rut' => $liquidacion->trabajador->rut,
-                        'rutFormato' => $liquidacion->trabajador->rut_formato(),
-                        'apellidos' => ucwords(strtolower($liquidacion->trabajador_apellidos)),
-                        'cargoOrden' => ucwords(strtolower($liquidacion->trabajador_cargo)),
-                        'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
-                        'cargo' => $liquidacion->trabajador_cargo,              
-                        'sueldoBasePesos' => $liquidacion->sueldo_base,
-                        'sueldoLiquido' => $liquidacion->sueldo_liquido,
-                        'observaciones' => $liquidacion->observacion
-                    );
+                    if($mostrarFiniquitados){
+                        $listaLiquidacionesFiniquitados[]=array(
+                            'id' => $liquidacion->trabajador_id,
+                            'sid' => $liquidacion->sid,
+                            'sidDocumento' => $liquidacion->documento->sid,
+                            'nombreDocumento' => $liquidacion->documento->nombre,
+                            'aliasDocumento' => $liquidacion->documento->alias,
+                            'sidTrabajador' => $liquidacion->trabajador->sid,
+                            'rut' => $liquidacion->trabajador->rut,
+                            'rutFormato' => $liquidacion->trabajador->rut_formato(),
+                            'apellidos' => ucwords(strtolower($liquidacion->trabajador_apellidos)),
+                            'cargoOrden' => ucwords(strtolower($liquidacion->trabajador_cargo)),
+                            'nombreCompleto' => $liquidacion->trabajador_nombres . ' ' . $liquidacion->trabajador_apellidos,
+                            'cargo' => $liquidacion->trabajador_cargo,              
+                            'sueldoBasePesos' => $liquidacion->sueldo_base,
+                            'sueldoLiquido' => $liquidacion->sueldo_liquido,
+                            'observaciones' => $liquidacion->observacion
+                        );
+                    }
                 }
             }
         }
@@ -3527,6 +3756,7 @@ class TrabajadoresController extends \BaseController {
             'sinLiquidacionFiniquitados' => $listaFiniquitados,
             'conLiquidacionFiniquitados' => $listaLiquidacionesFiniquitados,
             'cuentas' => Liquidacion::comprobarCuentas($liquidaciones),
+            'mostrarFiniquitados' => $mostrarFiniquitados,
             'mesAnterior' => $mesAnterior
         );
         
@@ -4474,8 +4704,22 @@ class TrabajadoresController extends \BaseController {
         $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#planilla-costo-empresa');
         $listaTrabajadores = array();
         
+        $totalSueldo = 0;
+        $totalImponibles = 0;
+        $totalNoImponibles = 0;
+        $totalSC = 0;
+        $totalSIS = 0;
+        $totalCaja = 0;
+        $totalMutual = 0;
+        $totalISL = 0;
+        
         if($liquidaciones->count()){
             foreach( $liquidaciones as $liquidacion ){
+                $mutual = $liquidacion->detalleMutual ? $liquidacion->detalleMutual->cotizacion_accidentes : 0;
+                $isl = $liquidacion->detalleIpsIslFonasa ? $liquidacion->detalleIpsIslFonasa->cotizacion_isl : 0;
+                $sc = $liquidacion->detalleSeguroCesantia ? $liquidacion->detalleSeguroCesantia->aporte_empleador : 0;
+                $sis = $liquidacion->detalleAfp ? $liquidacion->detalleAfp->sis : 0;
+                $caja = $liquidacion->detalleCaja ? $liquidacion->detalleCaja->cotizacion : 0;
                 $listaTrabajadores[]=array(
                     'id' => $liquidacion->id,
                     'idTrabajador' => $liquidacion->trabajador_id,
@@ -4485,23 +4729,45 @@ class TrabajadoresController extends \BaseController {
                     'nombreCompleto' => $liquidacion->trabajador->ficha()->nombreCompleto(),
                     'sueldoBasePesos' => $liquidacion->sueldo,
                     'sueldoLiquido' => $liquidacion->sueldo_liquido,
-                    'imponibles' => $liquidacion->renta_imponible,
+                    'imponibles' => $liquidacion->imponibles,
                     'noImponibles' => $liquidacion->no_imponibles,
-                    'mutual' => $liquidacion->total_mutual,
-                    'seguroCesantia' => $liquidacion->total_seguro_cesantia_empleador,
-                    'sis' => $liquidacion->total_afp_empleador,
-                    'caja' => $liquidacion->total_salud_caja,
-                    'fonasa' => $liquidacion->total_salud_fonasa,
+                    'mutual' => $mutual,
+                    'isl' => $isl,
+                    'seguroCesantia' => $sc,
+                    'sis' => $sis,
+                    'caja' => $caja,
+                    'fonasa' => $liquidacion->detalleIpsIslFonasa ? $liquidacion->detalleIpsIslFonasa->cotizacion_fonasa : 0,
                     'aportes' => $liquidacion->total_aportes
                 );
+                
+                $totalSueldo += $liquidacion->sueldo;
+                $totalImponibles += $liquidacion->imponibles;
+                $totalNoImponibles += $liquidacion->no_imponibles;
+                $totalSC += $sc;
+                $totalSIS += $sis;
+                $totalCaja += $caja;
+                $totalMutual += $mutual;
+                $totalISL += $isl;
             }
         }
+        
+        $totales = array(
+            'totalSueldo' => $totalSueldo,
+            'totalImponibles' => $totalImponibles,
+            'totalNoImponibles' => $totalNoImponibles,
+            'totalSC' => $totalSC,
+            'totalSIS' => $totalSIS,
+            'totalCaja' => $totalCaja,
+            'totalMutual' => $totalMutual,
+            'totalISL' => $totalISL
+        );
         
         $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
             
         $datos = array(
             'accesos' => $permisos,
-            'datos' => $listaTrabajadores
+            'datos' => $listaTrabajadores,
+            'totales' => $totales
         );
         
         return Response::json($datos);
@@ -5314,6 +5580,7 @@ class TrabajadoresController extends \BaseController {
         $idMes = \Session::get('mesActivo')->id;  
         
         if(!$errores){
+            $fecha = MesDeTrabajo::find($idMes);
             $trabajador->sid = Funciones::generarSID();
             $trabajador->rut = $datos['rut'];            
             $trabajador->save();
@@ -5381,10 +5648,11 @@ class TrabajadoresController extends \BaseController {
             $ficha->monto_sindicato = $datos['monto_sindicato'];
             $ficha->zona_id = $datos['zona_id'];
             $ficha->estado = $datos['estado'];
+            $ficha->fecha = $fecha->mes;
             
             if($ficha->estado=='Ingresado'){
                 $ficha->tramo_id = FichaTrabajador::calcularTramo(Funciones::convertir($datos['sueldo_base'], $datos['moneda_sueldo']));
-                //$trabajador->crearUser();
+                $trabajador->crearUser();
                 if($ficha->semana_corrida==1){
                     $trabajador->crearSemanaCorrida();
                 }
@@ -5598,6 +5866,78 @@ class TrabajadoresController extends \BaseController {
         return Response::json($datos);     
     }
     
+    public function trabajadoresAtrasos()
+    {
+        if(!\Session::get('empresa')){
+            return Response::json(array('datos' => array(), 'permisos' => array()));
+        }
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#atrasos');
+        $trabajadores = Trabajador::all();
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
+        
+        $listaTrabajadores = array();
+        if($trabajadores->count()){
+            foreach($trabajadores as $trabajador){
+                $empleado = $trabajador->ficha();
+                if($empleado){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMes && $empleado->fecha_finiquito >= $mesAnterior){
+                        $idTrabajador = $trabajador->id;
+                        $atrasos = $trabajador->totalAtrasos();
+                        $listaTrabajadores[] = array(
+                            'id' => $trabajador->id,
+                            'sid' => $trabajador->sid,
+                            'rutFormato' => $trabajador->rut_formato(),
+                            'rut' => $trabajador->rut,
+                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                            'cargo' => array(
+                                'id' => $empleado->cargo ? $empleado->cargo->id : "",
+                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
+                            ),
+                            'nombreCompleto' => $empleado->nombreCompleto(),
+                            'total' => $atrasos['total'],
+                            'atrasos' => $atrasos['atrasos'],
+                            'jornada' => $trabajador->horasJornada()
+                        );
+                    }
+                }
+            }
+        }
+        
+        $listaTrabajadores = Funciones::ordenar($listaTrabajadores, 'apellidos');
+        
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $listaTrabajadores
+        );
+        
+        return Response::json($datos);     
+    }
+    
+    public function trabajadorAtrasos($sid)
+    {        
+        $trabajador = Trabajador::whereSid($sid)->first();
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#atrasos');
+        
+        $trabajadorInasistencias = array(
+            'id' => $trabajador->id,
+            'sid' => $trabajador->sid,
+            'rutFormato' => $trabajador->rut_formato(),
+            'rut' => $trabajador->rut,
+            'nombreCompleto' => $trabajador->ficha()->nombreCompleto(),
+            'atrasos' => $trabajador->misAtrasos(),
+            'jornada' => $trabajador->horasJornada()
+        );
+        $datos = array(
+            'accesos' => $permisos,
+            'datos' => $trabajadorInasistencias
+        );
+        return Response::json($datos);     
+    }
+    
     public function trabajadoresLicencias()
     {
         if(!\Session::get('empresa')){
@@ -5671,7 +6011,10 @@ class TrabajadoresController extends \BaseController {
             return Response::json(array('datos' => array(), 'permisos' => array()));
         }
         $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#ingreso-horas-extra');
-        $finMes = \Session::get('mesActivo')->fechaRemuneracion;     
+        $mes = \Session::get('mesActivo');
+        $finMes = $mes->fechaRemuneracion;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes->mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
         $trabajadores = Trabajador::all();
         
         $listaTrabajadores = array();
@@ -5679,23 +6022,32 @@ class TrabajadoresController extends \BaseController {
             foreach($trabajadores as $trabajador){
                 $empleado = $trabajador->ficha();
                 if($empleado){
-                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito < $finMes && $empleado->fecha_finiquito >= $mesAnterior){
                         $idTrabajador = $trabajador->id;
-                        $listaTrabajadores[] = array(
-                            'id' => $trabajador->id,
-                            'sid' => $trabajador->sid,
-                            'rutFormato' => $trabajador->rut_formato(),
-                            'rut' => $trabajador->rut,
-                            'apellidos' => ucwords(strtolower($empleado->apellidos)),
-                            'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
-                            'cargo' => array(
-                                'id' => $empleado->cargo ? $empleado->cargo->id : "",
-                                'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
-                            ),
-                            'tramos' => $trabajador->tramosHorasExtra(),
-                            'nombreCompleto' => $empleado->nombreCompleto(),
-                            'totalHorasExtra' => $trabajador->totalHorasExtra()
-                        );
+                        $horasExtra = $trabajador->totalHorasExtra();
+                        if($horasExtra){
+                            $listaTrabajadores[] = array(
+                                'id' => $trabajador->id,
+                                'sid' => $trabajador->sid,
+                                'rutFormato' => $trabajador->rut_formato(),
+                                'rut' => $trabajador->rut,
+                                'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                                'cargoOrden' => $empleado->cargo ? ucwords(strtolower($empleado->cargo->nombre)) : "",
+                                'jornadaOrden' => $empleado->tipoJornada ? ucwords(strtolower($empleado->tipoJornada->nombre)) : "",
+                                'jornada' => array(
+                                    'id' => $empleado->tipoJornada ? $empleado->tipoJornada->id : "",
+                                    'nombre' => $empleado->tipoJornada ? $empleado->tipoJornada->nombre : "",
+                                    'horas' => $empleado->tipoJornada ? $empleado->tipoJornada->numero_horas : ""
+                                ),
+                                'cargo' => array(
+                                    'id' => $empleado->cargo ? $empleado->cargo->id : "",
+                                    'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
+                                ),
+                                'tramos' => $trabajador->tramosHorasExtra(),
+                                'nombreCompleto' => $empleado->nombreCompleto(),
+                                'totalHorasExtra' => $trabajador->totalHorasExtra()
+                            );
+                        }
                     }
                 }
             }
@@ -6105,6 +6457,18 @@ class TrabajadoresController extends \BaseController {
             $mes = \Session::get('mesActivo')->mes;
             $idMes = \Session::get('mesActivo')->id;   
             $empleado = $trabajador->ficha();
+            $sueldoBase = $empleado->sueldo_base;
+            if($empleado->moneda_sueldo=='$'){
+                $sueldoBase = (int) $sueldoBase;
+            }
+            $gratificacion = $empleado->monto_gratificacion;
+            if($empleado->moneda_gratificacion=='$'){
+                $gratificacion = (int) $gratificacion;
+            }
+            $montoIsapre = $empleado->monto_isapre;
+            if($empleado->cotizacion_isapre=='$'){
+                $montoIsapre = (int) $montoIsapre;
+            }
 
             $datosTrabajador = array(
                 'id' => $trabajador->id,
@@ -6189,10 +6553,10 @@ class TrabajadoresController extends \BaseController {
                 'gratificacion' => $empleado->gratificacion,
                 'gratificacionEspecial' => $empleado->gratificacion_especial ? true : false,
                 'monedaGratificacion' => $empleado->moneda_gratificacion,
-                'montoGratificacion' => $empleado->monto_gratificacion,
+                'montoGratificacion' => $gratificacion,
                 'proporcionalInasistencias' => $empleado->gratificacion_proporcional_inasistencias ? true : false,
                 'proporcionalLicencias' => $empleado->gratificacion_proporcional_licencias ? true : false,
-                'sueldoBase' => $empleado->sueldo_base,
+                'sueldoBase' => $sueldoBase,
                 'tipoTrabajador' => $empleado->tipo_trabajador,
                 'excesoRetiro' => $empleado->exceso_retiro,
                 'proporcionalColacion' => $empleado->proporcional_colacion ? true : false,
@@ -6222,7 +6586,7 @@ class TrabajadoresController extends \BaseController {
                     'nombre' => $empleado->isapre ? $empleado->isapre->glosa : ""
                 ),
                 'cotizacionIsapre' => $empleado->cotizacion_isapre,
-                'montoIsapre' => $empleado->monto_isapre,
+                'montoIsapre' => $montoIsapre,
                 'sindicato' => $empleado->sindicato ? true : false,
                 'monedaSindicato' => $empleado->moneda_sindicato,
                 'montoSindicato' => $empleado->monto_sindicato,
@@ -6365,6 +6729,8 @@ class TrabajadoresController extends \BaseController {
         $mesActual = \Session::get('mesActivo');
         $finMes = $mesActual->fechaRemuneracion;
         $mes = $mesActual->mes;
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes)));
+        $finMesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($finMes)));
         $trabajadores = Trabajador::all();
         
         $listaActivos = array();
@@ -6373,7 +6739,7 @@ class TrabajadoresController extends \BaseController {
             foreach($trabajadores as $trabajador){
                 $empleado = $trabajador->ficha();
                 if($empleado){
-                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mes && $empleado->fecha_ingreso<=$finMes){
+                    if($empleado->estado=='Ingresado' && $empleado->fecha_ingreso<=$finMes || $empleado->estado=='Finiquitado' && $empleado->fecha_finiquito >= $mesAnterior && $empleado->fecha_ingreso<=$finMes){
                         $listaActivos[] = array(
                             'id' => $trabajador->id,
                             'sid' => $trabajador->sid,
@@ -6581,6 +6947,9 @@ class TrabajadoresController extends \BaseController {
         $sid = (array) $datos['trabajadores'];
         $isComprobar = $datos['comprobar'];
         $comprobar = false;
+        $comprobarRentaImponibleAnterior = $datos['rentaImponibleAnterior'];
+        $listaRentaImponibleAnteriorSIS = $datos['listaRentaImponibleAnteriorSIS'];
+        $listaRentaImponibleAnteriorSC = $datos['listaRentaImponibleAnteriorSC'];
         
         if($isComprobar){
             $comprobar = $this->comprobarLiquidaciones($datos['trabajadores']);
@@ -6589,10 +6958,13 @@ class TrabajadoresController extends \BaseController {
         $mes = \Session::get('mesActivo');
         $trabajadores = Trabajador::whereIn('sid', $sid)->get();
         $listaPDF = array();
+        $sinRentaImponibleAnterior = array();
 		$empresa = \Session::get('empresa');
 		$rutEmpresa = Funciones::formatear_rut($empresa->rut);
         $liquidaciones = array();
         $cliente = Config::get('cliente.CLIENTE.EMPRESA');
+        $configuracion = \Session::get('configuracion');
+        $logo = $empresa->logo ? URL::to("stories/".$empresa->logo) : NULL;
         
         foreach($trabajadores as $trabajador){
             $empleado = $trabajador->ficha();
@@ -6603,620 +6975,656 @@ class TrabajadoresController extends \BaseController {
             $diasDescontados = $trabajador->diasDescontados();
             $diasTrabajados = $trabajador->diasTrabajados();
             $horasExtra = $trabajador->horasExtraPagar();
-            $totalAfp = $trabajador->totalAfp();
-            
-            if($totalAfp['pagaSis']=='empleado'){
-                $sis = $totalAfp['sis'];
+            if($comprobarRentaImponibleAnterior){
+                $totalAfp = $trabajador->totalAfp($listaRentaImponibleAnteriorSIS[$trabajador->id]);
+                $totalSeguroCesantia = $trabajador->totalSeguroCesantia($listaRentaImponibleAnteriorSC[$trabajador->id]);
+            }else{
+                $totalAfp = $trabajador->totalAfp();
+                $totalSeguroCesantia = $trabajador->totalSeguroCesantia();
             }
-            
-            $tasaAfp = $trabajador->tasaAfp();
-            $totalSalud = $trabajador->totalSalud();
-            $totalSeguroCesantia = $trabajador->totalSeguroCesantia();
-            $baseImpuestoUnico = $trabajador->baseImpuestoUnico();
-            $impuestoDeterminado = $trabajador->impuestoDeterminado();
-            $tramoImpuesto = $trabajador->tramoImpuesto()->factor;
-            $sumaImponibles = $trabajador->sumaImponibles();
-            $noImponibles = $trabajador->noImponibles();
-            $totalOtrosDescuentos = $trabajador->totalOtrosDescuentos();
-            $totalAnticipos = $trabajador->totalAnticipos();
-            $totalDescuentosPrevisionales = $trabajador->totalDescuentosPrevisionales();
-            $otrosImponibles = $trabajador->otrosImponibles();
-            $rentaImponible = $trabajador->rentaImponible();
-            $totalHaberes = $trabajador->totalHaberes();
-            $cargasFamiliares = $trabajador->cargasFamiliares();
-            $asignacionRetroactiva = $trabajador->asignacionRetroactiva();
-            $sueldo = $trabajador->sueldo();
-            $sueldoDiario = $trabajador->sueldoDiario();
-            $sueldoLiquido = $trabajador->sueldoLiquido();
-            $gratificacion = $trabajador->gratificacion();
-            $totalColacion = $trabajador->totalColacion();
-            $totalMovilizacion = $trabajador->totalMovilizacion();
-            $totalViatico = $trabajador->totalViatico();
-            $totalMutual = $trabajador->totalMutual();        
-            $semanaCorrida = $trabajador->miSemanaCorrida();
-            $semanaCorridas = $trabajador->miSemanaCorridas();
-            $descuentos = $trabajador->misDescuentos();
-            $haberes = $trabajador->misHaberes();
-            $prestamos = $trabajador->misCuotasPrestamo();
-            $totalAportes = ($totalMutual + $totalSeguroCesantia['totalEmpleador'] + $totalSalud['montoCaja'] + $totalSalud['montoFonasa']);
-            $movimientoPersonal = $trabajador->movimientoPersonal();
-            $prestamosCaja = $trabajador->prestamosCaja();
-            
-            $filename = date("m-Y", strtotime($mes->mes))."_".$empresa->rut."_Liquidacion_".$trabajador->rut. '.pdf';
-            $alias = 'Liquidación de Sueldo ' . $empleado->nombreCompleto() . ' ' . $mes->nombre . ' del ' . $mes->anio . '.pdf';
-            
-            
-            $miLiquidacion = array(
-                'mes' => $mes->nombre . ' del ' . $mes->anio,
-                'empresa' => $empresa,
-                'rutEmpresa' => $rutEmpresa,
-                'id' => $trabajador->id,
-                'sid' => $trabajador->sid,
-                'rutFormato' => $trabajador->rut_formato(),
-                'rut' => $trabajador->rut,
-                'nombres' => $empleado->nombres,
-                'apellidos' => ucwords(strtolower($empleado->apellidos)),
-                'nombreCompleto' => $empleado->nombreCompleto(),
-                'cargo' => array(
-                    'id' => $empleado->cargo ? $empleado->cargo->id : "",
-                    'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
-                ),
-                'seccion' => array(
-                    'id' => $empleado->seccion ? $empleado->seccion->id : "",
-                    'nombre' => $empleado->seccion ? $empleado->seccion->nombre : ""
-                ),
-                'fechaIngreso' => $empleado->fecha_ingreso,
-                'tipoContrato' => array(
-                    'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
-                    'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
-                ),
-                'monedaSueldo' => $empleado->moneda_sueldo,
-                'sueldoBase' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo),
-                'colacion' => array(
-                    'monto' => $totalColacion
-                ),
-                'movilizacion' => array(
-                    'monto' => $totalMovilizacion
-                ),
-                'viatico' => array(
-                    'monto' => $totalViatico
-                ),
-                'afp' => array(
-                    'id' => $empleado->afp ? $empleado->afp->id : "",
-                    'nombre' => $empleado->afp ? strtoupper($empleado->afp->glosa) : ""
-                ),
-                'prevision' => array(
-                    'id' => $empleado->prevision ? $empleado->prevision->id : "",
-                    'nombre' => $empleado->prevision ? strtoupper($empleado->prevision->glosa) : ""
-                ),
-                'seguroDesempleo' => $empleado->seguro_desempleo ? true : false,
-                'afpSeguro' => array(
-                    'id' => $empleado->afpSeguro ? $empleado->afpSeguro->id : "",
-                    'nombre' => $empleado->afpSeguro ? strtoupper($empleado->afpSeguro->glosa) : ""
-                ),
-                'isapre' => array(
-                    'id' => $empleado->isapre ? $empleado->isapre->id : "",
-                    'nombre' => $empleado->isapre ? $empleado->isapre->glosa : ""
-                ),
-                'cotizacionIsapre' => $empleado->cotizacion_isapre,
-                'montoIsapre' => $empleado->monto_isapre,
-                'sindicato' => $empleado->sindicato ? true : false,
-                'monedaSindicato' => $empleado->moneda_sindicato,
-                'montoSindicato' => $empleado->monto_sindicato,
-                'estado' => $empleado->estado,
-                'diasTrabajados' => $diasTrabajados,
-                'diasDescontados' => $diasDescontados,
-                'sueldoDiario' => $sueldoDiario,
-                'sueldo' => $sueldo,
-                'gratificacion' => $gratificacion,
-                'horasExtra' => $horasExtra,
-                'imponibles' => $sumaImponibles,
-                'totalHaberes' => $totalHaberes,
-                'cargasFamiliares' => $cargasFamiliares,
-                'asignacionRetroactiva' => $asignacionRetroactiva,
-                'noImponibles' => $noImponibles,
-                'semanaCorrida' => $semanaCorrida,
-                'semanaCorridas' => $semanaCorridas,
-                'isSemanaCorrida' => $empleado->semana_corrida ? true : false,
-                'rentaImponible' => $rentaImponible,
-                'tasaAfp' => $tasaAfp['tasaTrabajador'],
-                'tasaSis' => $tasaAfp['tasaSis'],
-                'totalMutual' => $totalMutual,
-                'totalAfp' => $totalAfp['totalTrabajador'],
-                'totalAfpEmpleador' => $totalAfp['totalEmpleador'],
-                'totalSalud' => $totalSalud,
-                'totalSeguroCesantia' => $totalSeguroCesantia,
-                'totalDescuentosPrevisionales' => $totalDescuentosPrevisionales,
-                'totalDescuentos' => ($totalDescuentosPrevisionales + $totalOtrosDescuentos + $impuestoDeterminado),
-                'baseImpuestoUnico' => $baseImpuestoUnico,
-                'tramoImpuesto' => $tramoImpuesto,
-                'impuestoDeterminado' => $impuestoDeterminado,
-                'totalOtrosDescuentos' => $totalOtrosDescuentos,
-                'otrosImponibles' => $otrosImponibles,
-                'totalAportes' => $totalAportes,
-                'apvs' => $apvs,
-                'haberes' => $haberes,
-                'haberesImponibles' => $trabajador->haberesImponibles(),
-                'haberesNoImponibles' => $trabajador->haberesNoImponibles(),
-                'descuentos' => $descuentos,
-                'prestamos' => $prestamos,
-                'sueldoLiquidoPalabras' => strtoupper(Funciones::convertirPalabras($sueldoLiquido)),
-                'sueldoLiquido' => $sueldoLiquido,
-                'prop' => $trabajador->gratificacionProporcional(),
-                'banco' => $empleado->banco ? $empleado->banco->nombre : "",
-                'cuenta' => $empleado->numero_cuenta ? $empleado->numero_cuenta : "",
-                'sis' => $sis,
-                'uf' => $mes->uf,
-                'observacion' => $observacion? $observacion->observaciones : "",
-                'nombreDocumento' => $filename,
-                'aliasDocumento' => $alias
-            );
-            
-            $documento = new Documento();
-            $documento->sid = Funciones::generarSID();
-            $documento->trabajador_id = $trabajador->id;
-            $documento->tipo_documento_id = 4;
-            $documento->nombre = $filename;
-            $documento->alias = $alias;
-            $documento->descripcion = 'Liquidación de Sueldo de ' . $empleado->nombreCompleto() . ' del mes de ' . $mes->nombre . ' del ' . $mes->anio;
-            $documento->save();
-          
-            $totalApv = 0;
-          
-            if($apvs){                    
-                foreach($apvs as $apv){
-                    $totalApv = ($totalApv + $apv['montoPesos']);
+            if($totalAfp['isSIS'] && $totalSeguroCesantia['isSC']){
+                $atrasos = $trabajador->descuentoAtrasos();
+
+                if($totalAfp['pagaSis']=='empleado'){
+                    $sis = $totalAfp['sis'];
                 }
-            }
-            
-            $html = "";
-            $view = View::make('pdf.liquidacion', [
-                'liquidacion' => $miLiquidacion
-            ]);
-            $html = $view->render();
-            
-            $liquidacion = new Liquidacion();
-            $liquidacion->sid = Funciones::generarSID();
-            $liquidacion->trabajador_id = $trabajador->id;
-            $liquidacion->documento_id = $documento->id;
-            $liquidacion->empresa_id = $empresa->id;
-            $liquidacion->empresa_razon_social = $empresa->razon_social;
-            $liquidacion->empresa_rut = $empresa->rut;
-            $liquidacion->empresa_direccion = $empresa->direccion;
-            $liquidacion->inasistencias = $trabajador->totalInasistencias();
-            $liquidacion->encargado_id = Auth::usuario()->user()->id;
-            $liquidacion->mes = $mes->mes;
-            $liquidacion->folio = 45646548;
-            $liquidacion->estado = ($empleado->estado=='Ingresado') ? 1 : 0;
-            $liquidacion->trabajador_rut = $trabajador->rut;
-            $liquidacion->trabajador_nombres = $empleado->nombres;
-            $liquidacion->trabajador_apellidos = $empleado->apellidos;
-            $liquidacion->trabajador_cargo = $empleado->cargo ? $empleado->cargo->nombre : "";
-            $liquidacion->trabajador_seccion = $empleado->miSeccion();
-            $liquidacion->trabajador_tienda = $empleado->miTienda();
-            $liquidacion->trabajador_fecha_ingreso = $empleado->fecha_ingreso;
-            $liquidacion->uf = $mes->uf;
-            $liquidacion->utm = $mes->utm;
-            $liquidacion->dias_trabajados = $diasTrabajados;
-            $liquidacion->horas_extra = $horasExtra['cantidad'];
-            $liquidacion->total_horas_extra = $horasExtra['total'];
-            $liquidacion->tipo_contrato = $empleado->tipoContrato->nombre;
-            $liquidacion->sueldo_base = Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo);
-            $liquidacion->seguro_cesantia = $empleado->seguro_desempleo ? $empleado->seguro_desempleo : 0;
-            $liquidacion->base_impuesto_unico = $baseImpuestoUnico;
-            $liquidacion->impuesto_determinado = $impuestoDeterminado;
-            $liquidacion->tramo_impuesto = $tramoImpuesto;
-            $liquidacion->imponibles = $sumaImponibles;
-            $liquidacion->no_imponibles = $noImponibles;
-            $liquidacion->total_otros_descuentos = $totalOtrosDescuentos;
-            $liquidacion->total_anticipos = $totalAnticipos;
-            $liquidacion->total_descuentos_previsionales = $totalDescuentosPrevisionales;
-            $liquidacion->total_descuentos = ($totalDescuentosPrevisionales + $totalOtrosDescuentos + $impuestoDeterminado);
-            $liquidacion->total_aportes = $totalAportes;
-            $liquidacion->renta_imponible = $rentaImponible;
-            $liquidacion->otros_imponibles = $otrosImponibles;
-            $liquidacion->total_haberes = $totalHaberes;
-            $liquidacion->total_cargas = $cargasFamiliares['monto'];
-            $liquidacion->cantidad_cargas = $cargasFamiliares['cantidad'];
-            $liquidacion->cantidad_cargas_invalidas = $cargasFamiliares['cantidadInvalidas'];
-            $liquidacion->cantidad_cargas_simples = $cargasFamiliares['cantidadSimples'];
-            $liquidacion->cantidad_cargas_maternales = $cargasFamiliares['cantidadMaternales'];
-            $liquidacion->asignacion_retroactiva = $asignacionRetroactiva;
-            $liquidacion->reintegro_cargas = 0;
-            $liquidacion->sueldo = $sueldo;
-            $liquidacion->sueldo_diario = $sueldoDiario;
-            $liquidacion->sueldo_liquido = $sueldoLiquido;
-            $liquidacion->gratificacion = $gratificacion;
-            $liquidacion->colacion = $totalColacion;
-            $liquidacion->movilizacion = $totalMovilizacion;
-            $liquidacion->viatico = $totalViatico;
-            $liquidacion->movimiento_personal = $movimientoPersonal['codigo'];
-            $liquidacion->fecha_desde = $movimientoPersonal['fechaDesde'];
-            $liquidacion->fecha_hasta = $movimientoPersonal['fechaHasta'];
-            $liquidacion->tramo_id = $empleado->tramo_id ? $empleado->tramo_id : 'a';
-            $liquidacion->prevision_id = $empleado->prevision_id;
-            $liquidacion->observacion = $observacion? $observacion->observaciones : "";
-            $liquidacion->centro_costo_id = $empleado->centro_costo_id;
-            $liquidacion->cuerpo = $html;
-            
-            $liquidacion->save();
-            
-            if($liquidacion->prevision_id==8){
-                $detalleAfp = new DetalleAfp();
-                $detalleAfp->liquidacion_id = $liquidacion->id;
-                $detalleAfp->afp_id = $empleado->afp_id;
-                $detalleAfp->renta_imponible = $rentaImponible;
-                $detalleAfp->cotizacion = $totalAfp['cotizacion'];
-                $detalleAfp->sis = $totalAfp['sis'];
-                $detalleAfp->paga_sis = $totalAfp['pagaSis'];
-                $detalleAfp->porcentaje_cotizacion = $totalAfp['porcentajeCotizacion'];
-                $detalleAfp->porcentaje_sis = $totalAfp['porcentajeSis'];
-                $detalleAfp->cuenta_ahorro_voluntario = $totalAfp['cuentaAhorroVoluntario'];
-                $detalleAfp->renta_sustitutiva = 0;
-                $detalleAfp->tasa_sustitutiva = 0;
-                $detalleAfp->aporte_sustitutiva = 0;
-                $detalleAfp->numero_periodos = 0;
-                $detalleAfp->periodo_desde = null;
-                $detalleAfp->periodo_hasta = null;
-                $detalleAfp->puesto_trabajo_pesado = null;
-                $detalleAfp->porcentaje_trabajo_pesado = 0;
-                $detalleAfp->cotizacion_trabajo_pesado = 0;
-                //$detalleAfp->save();
-                
-                $liquidacion->setRelation('detalleAfp', $detalleAfp);
-            }
-            
-            if($totalColacion>0){                
-                $detalleLiquidacion = new DetalleLiquidacion();
-                $detalleLiquidacion->sid = Funciones::generarSID();
-                $detalleLiquidacion->liquidacion_id = $liquidacion->id;
-                $detalleLiquidacion->nombre = 'Colación';
-                $detalleLiquidacion->tipo = 'no imponible';
-                $detalleLiquidacion->tipo_id = 1;
-                $detalleLiquidacion->valor = $totalColacion;
-                $detalleLiquidacion->valor_2 = $empleado->monto_colacion;
-                $detalleLiquidacion->valor_3 = $empleado->moneda_colacion;
-                $detalleLiquidacion->valor_4 = null;
-                $detalleLiquidacion->valor_5 = null;
-                $detalleLiquidacion->valor_6 = null;
-                $detalleLiquidacion->detalle_id = 3;
-                //$detalleLiquidacion->save(); 
-                
-                $liquidacion->detalles->add( $detalleLiquidacion );
-            }
-            if($totalMovilizacion>0){                
-                $detalleLiquidacion = new DetalleLiquidacion();
-                $detalleLiquidacion->sid = Funciones::generarSID();
-                $detalleLiquidacion->liquidacion_id = $liquidacion->id;
-                $detalleLiquidacion->nombre = 'Movilización';
-                $detalleLiquidacion->tipo = 'no imponible';
-                $detalleLiquidacion->tipo_id = 1;
-                $detalleLiquidacion->valor = $totalMovilizacion;
-                $detalleLiquidacion->valor_2 = $empleado->monto_movilizacion;
-                $detalleLiquidacion->valor_3 = $empleado->moneda_movilizacion;
-                $detalleLiquidacion->valor_4 = null;
-                $detalleLiquidacion->valor_5 = null;
-                $detalleLiquidacion->valor_6 = null;
-                $detalleLiquidacion->detalle_id = 4;
-                //$detalleLiquidacion->save(); 
-                
-                $liquidacion->detalles->add( $detalleLiquidacion );
-            }
-            if($totalViatico>0){                
-                $detalleLiquidacion = new DetalleLiquidacion();
-                $detalleLiquidacion->sid = Funciones::generarSID();
-                $detalleLiquidacion->liquidacion_id = $liquidacion->id;
-                $detalleLiquidacion->nombre = 'Viático';
-                $detalleLiquidacion->tipo = 'no imponible';
-                $detalleLiquidacion->tipo_id = 1;
-                $detalleLiquidacion->valor = $totalColacion;
-                $detalleLiquidacion->valor_2 = $empleado->monto_viatico;
-                $detalleLiquidacion->valor_3 = $empleado->moneda_viatico;
-                $detalleLiquidacion->valor_4 = null;
-                $detalleLiquidacion->valor_5 = null;
-                $detalleLiquidacion->valor_6 = null;
-                $detalleLiquidacion->detalle_id = 5;
-                //$detalleLiquidacion->save(); 
-                
-                $liquidacion->detalles->add( $detalleLiquidacion );
-            }  
-            if($semanaCorrida>0){                
-                $detalleLiquidacion = new DetalleLiquidacion();
-                $detalleLiquidacion->sid = Funciones::generarSID();
-                $detalleLiquidacion->liquidacion_id = $liquidacion->id;
-                $detalleLiquidacion->nombre = 'Semana Corrida';
-                $detalleLiquidacion->tipo = 'imponible';
-                $detalleLiquidacion->tipo_id = 1;
-                $detalleLiquidacion->valor = $semanaCorrida;
-                $detalleLiquidacion->valor_2 = $semanaCorrida;
-                $detalleLiquidacion->valor_3 = '$';
-                $detalleLiquidacion->valor_4 = null;
-                $detalleLiquidacion->valor_5 = null;
-                $detalleLiquidacion->valor_6 = null;
-                $detalleLiquidacion->detalle_id = 6;
-                //$detalleLiquidacion->save(); 
-                
-                $liquidacion->detalles->add( $detalleLiquidacion );
-            }            
-            if($haberes){                
-                foreach($haberes as $haber)
-                {
+
+                $tasaAfp = $trabajador->tasaAfp();
+                $totalSalud = $trabajador->totalSalud();
+                $baseImpuestoUnico = $trabajador->baseImpuestoUnico();
+                $impuestoDeterminado = $trabajador->impuestoDeterminado();
+                $tramoImpuesto = $trabajador->tramoImpuesto()->factor;
+                $sumaImponibles = $trabajador->sumaImponibles();
+                $noImponibles = $trabajador->noImponibles();
+                $totalOtrosDescuentos = $trabajador->totalOtrosDescuentos();
+                $totalAnticipos = $trabajador->totalAnticipos();
+                $totalDescuentosPrevisionales = $trabajador->totalDescuentosPrevisionales();
+                $otrosImponibles = $trabajador->otrosImponibles();
+                $rentaImponible = $trabajador->rentaImponible();
+                $totalHaberes = $trabajador->totalHaberes();
+                $cargasFamiliares = $trabajador->cargasFamiliares();
+                $asignacionRetroactiva = $trabajador->asignacionRetroactiva();
+                $sueldo = $trabajador->sueldo();
+                $sueldoDiario = $trabajador->sueldoDiario();
+                $sueldoLiquido = $trabajador->sueldoLiquido();
+                $gratificacion = $trabajador->gratificacion();
+                $totalColacion = 0;
+                $totalMovilizacion = 0;
+                $totalViatico = 0;
+                $totalMutual = $trabajador->totalMutual();        
+                $semanaCorrida = $trabajador->miSemanaCorrida();
+                $semanaCorridas = $trabajador->miSemanaCorridas();
+                $descuentos = $trabajador->misDescuentos();
+                $haberes = $trabajador->misHaberes();
+                $prestamos = $trabajador->misCuotasPrestamo();
+                $totalAportes = ($totalMutual + $totalSeguroCesantia['totalEmpleador'] + $totalSalud['montoCaja'] + $totalSalud['montoFonasa']);
+                $movimientoPersonal = $trabajador->movimientoPersonal();
+                $prestamosCaja = $trabajador->prestamosCaja();
+
+                $filename = date("m-Y", strtotime($mes->mes))."_".$empresa->rut."_Liquidacion_".$trabajador->rut. '.pdf';
+                $alias = 'Liquidación de Sueldo ' . $empleado->nombreCompleto() . ' ' . $mes->nombre . ' del ' . $mes->anio . '.pdf';
+
+
+                $miLiquidacion = array(
+                    'mes' => $mes->nombre . ' del ' . $mes->anio,
+                    'empresa' => $empresa,
+                    'rutEmpresa' => $rutEmpresa,
+                    'id' => $trabajador->id,
+                    'sid' => $trabajador->sid,
+                    'rutFormato' => $trabajador->rut_formato(),
+                    'rut' => $trabajador->rut,
+                    'nombres' => $empleado->nombres,
+                    'apellidos' => ucwords(strtolower($empleado->apellidos)),
+                    'nombreCompleto' => $empleado->nombreCompleto(),
+                    'cargo' => array(
+                        'id' => $empleado->cargo ? $empleado->cargo->id : "",
+                        'nombre' => $empleado->cargo ? $empleado->cargo->nombre : ""
+                    ),
+                    'seccion' => array(
+                        'id' => $empleado->seccion ? $empleado->seccion->id : "",
+                        'nombre' => $empleado->seccion ? $empleado->seccion->nombre : ""
+                    ),
+                    'fechaIngreso' => $empleado->fecha_ingreso,
+                    'tipoContrato' => array(
+                        'id' => $empleado->tipoContrato ? $empleado->tipoContrato->id : "",
+                        'nombre' => $empleado->tipoContrato ? $empleado->tipoContrato->nombre : ""
+                    ),
+                    'monedaSueldo' => $empleado->moneda_sueldo,
+                    'sueldoBase' => Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo),
+                    'colacion' => array(
+                        'monto' => 0
+                    ),
+                    'movilizacion' => array(
+                        'monto' => 0
+                    ),
+                    'viatico' => array(
+                        'monto' => 0
+                    ),
+                    'afp' => array(
+                        'id' => $empleado->afp ? $empleado->afp->id : "",
+                        'nombre' => $empleado->afp ? strtoupper($empleado->afp->glosa) : ""
+                    ),
+                    'prevision' => array(
+                        'id' => $empleado->prevision ? $empleado->prevision->id : "",
+                        'nombre' => $empleado->prevision ? strtoupper($empleado->prevision->glosa) : ""
+                    ),
+                    'seguroDesempleo' => $empleado->seguro_desempleo ? true : false,
+                    'afpSeguro' => array(
+                        'id' => $empleado->afpSeguro ? $empleado->afpSeguro->id : "",
+                        'nombre' => $empleado->afpSeguro ? strtoupper($empleado->afpSeguro->glosa) : ""
+                    ),
+                    'isapre' => array(
+                        'id' => $empleado->isapre ? $empleado->isapre->id : "",
+                        'nombre' => $empleado->isapre ? $empleado->isapre->glosa : ""
+                    ),
+                    'cotizacionIsapre' => $empleado->cotizacion_isapre,
+                    'montoIsapre' => $empleado->monto_isapre,
+                    'sindicato' => $empleado->sindicato ? true : false,
+                    'monedaSindicato' => $empleado->moneda_sindicato,
+                    'montoSindicato' => $empleado->monto_sindicato,
+                    'estado' => $empleado->estado,
+                    'diasTrabajados' => $diasTrabajados,
+                    'diasDescontados' => $diasDescontados,
+                    'sueldoDiario' => $sueldoDiario,
+                    'sueldo' => $sueldo,
+                    'gratificacion' => $gratificacion,
+                    'horasExtra' => $horasExtra,
+                    'imponibles' => $sumaImponibles,
+                    'totalHaberes' => $totalHaberes,
+                    'cargasFamiliares' => $cargasFamiliares,
+                    'asignacionRetroactiva' => $asignacionRetroactiva,
+                    'noImponibles' => $noImponibles,
+                    'semanaCorrida' => $semanaCorrida,
+                    'semanaCorridas' => $semanaCorridas,
+                    'isSemanaCorrida' => $empleado->semana_corrida ? true : false,
+                    'rentaImponible' => $rentaImponible,
+                    'tasaAfp' => $tasaAfp['tasaTrabajador'],
+                    'tasaSis' => $tasaAfp['tasaSis'],
+                    'totalMutual' => $totalMutual,
+                    'totalAfp' => $totalAfp['totalTrabajador'],
+                    'totalAfpEmpleador' => $totalAfp['totalEmpleador'],
+                    'totalSalud' => $totalSalud,
+                    'totalSeguroCesantia' => $totalSeguroCesantia,
+                    'totalDescuentosPrevisionales' => $totalDescuentosPrevisionales,
+                    'totalDescuentos' => ($totalDescuentosPrevisionales + $totalOtrosDescuentos + $impuestoDeterminado),
+                    'baseImpuestoUnico' => $baseImpuestoUnico,
+                    'tramoImpuesto' => $tramoImpuesto,
+                    'impuestoDeterminado' => $impuestoDeterminado,
+                    'totalOtrosDescuentos' => $totalOtrosDescuentos,
+                    'otrosImponibles' => $otrosImponibles,
+                    'totalAportes' => $totalAportes,
+                    'apvs' => $apvs,
+                    'haberes' => $haberes,
+                    'haberesImponibles' => $trabajador->haberesImponibles(),
+                    'haberesNoImponibles' => $trabajador->haberesNoImponibles(),
+                    'descuentos' => $descuentos,
+                    'prestamos' => $prestamos,
+                    'sueldoLiquidoPalabras' => strtoupper(Funciones::convertirPalabras($sueldoLiquido)),
+                    'sueldoLiquido' => $sueldoLiquido,
+                    'prop' => $trabajador->gratificacionProporcional(),
+                    'banco' => $empleado->banco ? $empleado->banco->nombre : "",
+                    'cuenta' => $empleado->numero_cuenta ? $empleado->numero_cuenta : "",
+                    'sis' => $sis,
+                    'uf' => $mes->uf,
+                    'observacion' => $observacion? $observacion->observaciones : "",
+                    'nombreDocumento' => $filename,
+                    'aliasDocumento' => $alias,
+                    'atrasos' => $atrasos,
+                    'logoEmpresa' => $logo
+                );
+
+                $documento = new Documento();
+                $documento->sid = Funciones::generarSID();
+                $documento->trabajador_id = $trabajador->id;
+                $documento->tipo_documento_id = 4;
+                $documento->nombre = $filename;
+                $documento->alias = $alias;
+                $documento->descripcion = 'Liquidación de Sueldo de ' . $empleado->nombreCompleto() . ' del mes de ' . $mes->nombre . ' del ' . $mes->anio;
+                $documento->save();
+
+                $totalApv = 0;
+
+                if($apvs){                    
+                    foreach($apvs as $apv){
+                        $totalApv = ($totalApv + $apv['montoPesos']);
+                    }
+                }
+
+                $html = "";
+                $view = View::make('pdf.liquidacion', [
+                    'liquidacion' => $miLiquidacion,
+                    'configuracion' => $configuracion
+                ]);
+                $html = $view->render();
+
+                $liquidacion = new Liquidacion();
+                $liquidacion->sid = Funciones::generarSID();
+                $liquidacion->trabajador_id = $trabajador->id;
+                $liquidacion->documento_id = $documento->id;
+                $liquidacion->empresa_id = $empresa->id;
+                $liquidacion->empresa_razon_social = $empresa->razon_social;
+                $liquidacion->empresa_rut = $empresa->rut;
+                $liquidacion->empresa_direccion = $empresa->direccion;
+                $liquidacion->inasistencias = $trabajador->totalInasistencias();
+                $liquidacion->encargado_id = Auth::usuario()->user()->id;
+                $liquidacion->mes = $mes->mes;
+                $liquidacion->folio = 45646548;
+                $liquidacion->estado = ($empleado->estado=='Ingresado') ? 1 : 0;
+                $liquidacion->trabajador_rut = $trabajador->rut;
+                $liquidacion->trabajador_nombres = $empleado->nombres;
+                $liquidacion->trabajador_apellidos = $empleado->apellidos;
+                $liquidacion->trabajador_cargo = $empleado->cargo ? $empleado->cargo->nombre : "";
+                $liquidacion->trabajador_seccion = $empleado->miSeccion();
+                $liquidacion->trabajador_tienda = $empleado->miTienda();
+                $liquidacion->trabajador_fecha_ingreso = $empleado->fecha_ingreso;
+                $liquidacion->uf = $mes->uf;
+                $liquidacion->utm = $mes->utm;
+                $liquidacion->dias_trabajados = $diasTrabajados;
+                $liquidacion->horas_extra = $horasExtra['cantidad'];
+                $liquidacion->total_horas_extra = $horasExtra['total'];
+                $liquidacion->tipo_contrato = $empleado->tipoContrato->nombre;
+                $liquidacion->sueldo_base = Funciones::convertir($empleado->sueldo_base, $empleado->moneda_sueldo);
+                $liquidacion->seguro_cesantia = $empleado->seguro_desempleo ? $empleado->seguro_desempleo : 0;
+                $liquidacion->base_impuesto_unico = $baseImpuestoUnico;
+                $liquidacion->impuesto_determinado = $impuestoDeterminado;
+                $liquidacion->tramo_impuesto = $tramoImpuesto;
+                $liquidacion->imponibles = $sumaImponibles;
+                $liquidacion->no_imponibles = $noImponibles;
+                $liquidacion->total_otros_descuentos = $totalOtrosDescuentos;
+                $liquidacion->total_anticipos = $totalAnticipos;
+                $liquidacion->total_descuentos_previsionales = $totalDescuentosPrevisionales;
+                $liquidacion->total_descuentos = ($totalDescuentosPrevisionales + $totalOtrosDescuentos + $impuestoDeterminado);
+                $liquidacion->total_aportes = $totalAportes;
+                $liquidacion->renta_imponible = $rentaImponible;
+                $liquidacion->otros_imponibles = $otrosImponibles;
+                $liquidacion->total_haberes = $totalHaberes;
+                $liquidacion->total_cargas = $cargasFamiliares['monto'];
+                $liquidacion->cantidad_cargas = $cargasFamiliares['cantidad'];
+                $liquidacion->cantidad_cargas_invalidas = $cargasFamiliares['cantidadInvalidas'];
+                $liquidacion->cantidad_cargas_simples = $cargasFamiliares['cantidadSimples'];
+                $liquidacion->cantidad_cargas_maternales = $cargasFamiliares['cantidadMaternales'];
+                $liquidacion->asignacion_retroactiva = $asignacionRetroactiva;
+                $liquidacion->reintegro_cargas = 0;
+                $liquidacion->sueldo = $sueldo;
+                $liquidacion->sueldo_diario = $sueldoDiario;
+                $liquidacion->sueldo_liquido = $sueldoLiquido;
+                $liquidacion->gratificacion = $gratificacion;
+                $liquidacion->colacion = $totalColacion;
+                $liquidacion->movilizacion = $totalMovilizacion;
+                $liquidacion->viatico = $totalViatico;
+                $liquidacion->movimiento_personal = $movimientoPersonal['codigo'];
+                $liquidacion->fecha_desde = $movimientoPersonal['fechaDesde'];
+                $liquidacion->fecha_hasta = $movimientoPersonal['fechaHasta'];
+                $liquidacion->tramo_id = $empleado->tramo_id ? $empleado->tramo_id : 'a';
+                $liquidacion->prevision_id = $empleado->prevision_id;
+                $liquidacion->observacion = $observacion? $observacion->observaciones : "";
+                $liquidacion->centro_costo_id = $empleado->centro_costo_id;
+                $liquidacion->cuerpo = $html;
+
+                $liquidacion->save();
+
+                if($liquidacion->prevision_id==8){
+                    $detalleAfp = new DetalleAfp();
+                    $detalleAfp->liquidacion_id = $liquidacion->id;
+                    $detalleAfp->afp_id = $empleado->afp_id;
+                    $detalleAfp->renta_imponible = $rentaImponible;
+                    $detalleAfp->cotizacion = $totalAfp['cotizacion'];
+                    $detalleAfp->sis = $totalAfp['sis'];
+                    $detalleAfp->paga_sis = $totalAfp['pagaSis'];
+                    $detalleAfp->porcentaje_cotizacion = $totalAfp['porcentajeCotizacion'];
+                    $detalleAfp->porcentaje_sis = $totalAfp['porcentajeSis'];
+                    $detalleAfp->cuenta_ahorro_voluntario = $totalAfp['cuentaAhorroVoluntario'];
+                    $detalleAfp->renta_imponible_ingresada = $totalAfp['rentaImponibleIngresada'];
+                    $detalleAfp->renta_sustitutiva = 0;
+                    $detalleAfp->tasa_sustitutiva = 0;
+                    $detalleAfp->aporte_sustitutiva = 0;
+                    $detalleAfp->numero_periodos = 0;
+                    $detalleAfp->periodo_desde = null;
+                    $detalleAfp->periodo_hasta = null;
+                    $detalleAfp->puesto_trabajo_pesado = null;
+                    $detalleAfp->porcentaje_trabajo_pesado = 0;
+                    $detalleAfp->cotizacion_trabajo_pesado = 0;
+                    //$detalleAfp->save();
+
+                    $liquidacion->setRelation('detalleAfp', $detalleAfp);
+                }
+                /*
+                if($totalColacion>0){                
                     $detalleLiquidacion = new DetalleLiquidacion();
                     $detalleLiquidacion->sid = Funciones::generarSID();
                     $detalleLiquidacion->liquidacion_id = $liquidacion->id;
-                    $detalleLiquidacion->nombre = $haber['tipo']['nombre'];
-                    $detalleLiquidacion->tipo = $haber['tipo']['imponible'] ? 'imponible' : 'no imponible';
+                    $detalleLiquidacion->nombre = 'Colación';
+                    $detalleLiquidacion->tipo = 'no imponible';
                     $detalleLiquidacion->tipo_id = 1;
-                    $detalleLiquidacion->valor = $haber['montoPesos'];
-                    $detalleLiquidacion->valor_2 = $haber['monto'];
-                    $detalleLiquidacion->valor_3 = $haber['moneda'];
+                    $detalleLiquidacion->valor = $totalColacion;
+                    $detalleLiquidacion->valor_2 = $empleado->monto_colacion;
+                    $detalleLiquidacion->valor_3 = $empleado->moneda_colacion;
                     $detalleLiquidacion->valor_4 = null;
                     $detalleLiquidacion->valor_5 = null;
                     $detalleLiquidacion->valor_6 = null;
-                    $detalleLiquidacion->detalle_id = $haber['tipo']['id'];
+                    $detalleLiquidacion->detalle_id = 3;
                     //$detalleLiquidacion->save(); 
-                    
-                    $liquidacion->detalles->add($detalleLiquidacion);
-                }
-            }
-            
-            if($descuentos){                    
-                foreach($descuentos as $descuento)
-                {
-                    $detalleLiquidacion = new DetalleLiquidacion();
-                    $detalleLiquidacion->sid = Funciones::generarSID();
-                    $detalleLiquidacion->liquidacion_id = $liquidacion->id;
-                    $detalleLiquidacion->nombre = $descuento['tipo']['nombre'];
-                    $detalleLiquidacion->tipo = 'descuento';
-                    $detalleLiquidacion->tipo_id = 2;
-                    $detalleLiquidacion->valor = $descuento['montoPesos'];
-                    $detalleLiquidacion->valor_2 = $descuento['monto'];
-                    $detalleLiquidacion->valor_3 = $descuento['moneda'];
-                    if($descuento['tipo']['estructura']['id']==2){
-                        $detalleLiquidacion->valor_4 = 1;   
-                        $detalleLiquidacion->valor_5 = null;
-                        $detalleLiquidacion->valor_6 = null;
-                    }else if($descuento['tipo']['estructura']['id']==3){
-                        $detalleLiquidacion->valor_4 = 2;   
-                        $detalleLiquidacion->valor_5 = $descuento['tipo']['formaPago']['id'];
-                        $detalleLiquidacion->valor_6 = $descuento['tipo']['afp']['id'];
-                    }else{
-                        if($descuento['tipo']['id']==2){                            
-                            $detalleLiquidacion->valor_4 = 3;                              
-                        }else{
-                            $detalleLiquidacion->valor_4 = null;                              
-                        }
-                        $detalleLiquidacion->valor_5 = null;
-                        $detalleLiquidacion->valor_6 = null;
-                    }
-                    $detalleLiquidacion->detalle_id = $descuento['tipo']['id'];
-                    
-                    //$detalleLiquidacion->save(); 
-                    
-                    $liquidacion->detalles->add($detalleLiquidacion);
-                }
-            }
-            
-            if($apvs){                    
-                foreach($apvs as $apv)
-                {                    
-                    $detalleApvi = new DetalleApvi();
-                    $detalleApvi->liquidacion_id = $liquidacion->id;
-                    $detalleApvi->afp_id = $apv['afp']['id'];
-                    $detalleApvi->numero_contrato = $apv['numeroContrato'];
-                    $detalleApvi->forma_pago_id = $apv['formaPago']['id'];
-                    $detalleApvi->monto = $apv['montoPesos'];
-                    $detalleApvi->moneda = $apv['moneda'];
-                    $detalleApvi->regimen = strtolower($apv['regimen']);
-                    $detalleApvi->cotizacion = $apv['monto'];
-                    $detalleApvi->cotizacion_depositos_convenidos = 0;
-                    //$detalleApvi->save();
-                    
-                    $liquidacion->detalleApvi->add($detalleApvi);
-                }
-            }
-            
-            if($prestamos){                    
-                foreach($prestamos as $prestamo)
-                {
-                    $prestamo = (array) $prestamo;
-                    $detalleLiquidacion = new DetalleLiquidacion();
-                    $detalleLiquidacion->sid = Funciones::generarSID();
-                    $detalleLiquidacion->liquidacion_id = $liquidacion->id;
-                    $detalleLiquidacion->nombre = $prestamo['nombreLiquidacion'];
-                    $detalleLiquidacion->tipo = 'prestamo';
-                    $detalleLiquidacion->tipo_id = 4;
-                    $detalleLiquidacion->valor = $prestamo['montoCuotaPagar'];
-                    $detalleLiquidacion->valor_2 = $prestamo['monto'];
-                    $detalleLiquidacion->valor_3 = $prestamo['moneda'];
-                    $detalleLiquidacion->valor_4 = $prestamo['numeroCuotaPagar'];
-                    $detalleLiquidacion->valor_5 = $prestamo['cuotas'];
-                    if($prestamo['prestamoCaja']){
-                        $detalleLiquidacion->valor_6 = 1;
-                    }else if($prestamo['leasingCaja']){
-                        $detalleLiquidacion->valor_6 = 2;
-                    }
-                    $detalleLiquidacion->detalle_id = null;
-                    //$detalleLiquidacion->save(); 
-                    
+
                     $liquidacion->detalles->add( $detalleLiquidacion );
                 }
-            }
-            
-            if($apvc){
-                $detalleApvc = new DetalleApvc();
-                $detalleApvc->liquidacion_id = $liquidacion->id;
-                $detalleApvc->afp_id = $apvc['idAfp'];
-                $detalleApvc->numero_contrato = $apvc['numeroContrato'];
-                $detalleApvc->forma_pago_id = $apvc['idFormaPago'];
-                $detalleApvc->monto = $apvc['monto'];
-                $detalleApvc->moneda = $apvc['moneda'];
-                $detalleApvc->cotizacion_trabajador = $apvc['cotizacionTrabajador'];
-                $detalleApvc->cotizacion_empleador = $apvc['cotizacionEmpleador'];
-                //$detalleApvc->save();
-                
-                $liquidacion->detalleApvc->add($detalleApvc);
-            }
-        
-            $detalleIpsIslFonasa = new DetalleIpsIslFonasa();
-            $detalleIpsIslFonasa->liquidacion_id = $liquidacion->id;
-            if($empleado->prevision_id==9){
-                $detalleIpsIslFonasa->ex_caja_id = $empleado->afp_id;
-                $detalleIpsIslFonasa->tasa_cotizacion = $tasaAfp['tasaTrabajador'];
-                $detalleIpsIslFonasa->cotizacion_obligatoria = $totalAfp['totalTrabajador'];
-            }else{
-                $detalleIpsIslFonasa->ex_caja_id = 0;
-                $detalleIpsIslFonasa->tasa_cotizacion = 0;
-                $detalleIpsIslFonasa->cotizacion_obligatoria = 0;
-            }
-            $detalleIpsIslFonasa->renta_imponible = $rentaImponible;
-            $detalleIpsIslFonasa->renta_imponible_desahucio = 0;
-            $detalleIpsIslFonasa->ex_caja_desahucio_id = 0;
-            $detalleIpsIslFonasa->tasa_desahucio = 0;
-            $detalleIpsIslFonasa->cotizacion_desahucio = 0;
-            if($empleado->isapre_id==246){
-                $detalleIpsIslFonasa->cotizacion_fonasa = $totalSalud['montoFonasa'];
-            }else{
-                $detalleIpsIslFonasa->cotizacion_fonasa = 0;
-            }
-            if($empresa->mutual_id==263){
-                $detalleIpsIslFonasa->cotizacion_isl = $totalMutual;                
-            }else{
-                $detalleIpsIslFonasa->cotizacion_isl = 0;
-            }
-            $detalleIpsIslFonasa->bonificacion = 0;
-            $detalleIpsIslFonasa->descuento_cargas_isl = 0;
-            $detalleIpsIslFonasa->bonos_gobierno = 0;
-            //$detalleIpsIslFonasa->save();   
-            
-            $liquidacion->setRelation('detalleIpsIslFonasa', $detalleIpsIslFonasa);
-            
-            $detalleSalud = new DetalleSalud();
-            $detalleSalud->liquidacion_id = $liquidacion->id;
-            $detalleSalud->salud_id = $empleado->isapre_id;
-            
-            if($empleado->salud_id!=240 & $empleado->salud_id!=246){
-                $detalleSalud->numero_fun = 145652;
-                $detalleSalud->renta_imponible = $rentaImponible;
-                if($empleado->cotizacion_isapre=='UF'){
-                    $mon = 'UF';
-                    $pac = $empleado->monto_isapre;
-                }else{
-                    $mon = '$';
-                    if($empleado->cotizacion_isapre=='7%'){
-                        $pac = round($rentaImponible * 0.07);
-                    }else if($empleado->cotizacion_isapre=='7% + UF'){
-                        $pac = round($rentaImponible * 0.07);
-                        $pac += Funciones::convertirUF($empleado->monto_isapre);
-                    }else{
-                        $pac = $empleado->monto_isapre;
+                if($totalMovilizacion>0){                
+                    $detalleLiquidacion = new DetalleLiquidacion();
+                    $detalleLiquidacion->sid = Funciones::generarSID();
+                    $detalleLiquidacion->liquidacion_id = $liquidacion->id;
+                    $detalleLiquidacion->nombre = 'Movilización';
+                    $detalleLiquidacion->tipo = 'no imponible';
+                    $detalleLiquidacion->tipo_id = 1;
+                    $detalleLiquidacion->valor = $totalMovilizacion;
+                    $detalleLiquidacion->valor_2 = $empleado->monto_movilizacion;
+                    $detalleLiquidacion->valor_3 = $empleado->moneda_movilizacion;
+                    $detalleLiquidacion->valor_4 = null;
+                    $detalleLiquidacion->valor_5 = null;
+                    $detalleLiquidacion->valor_6 = null;
+                    $detalleLiquidacion->detalle_id = 4;
+                    //$detalleLiquidacion->save(); 
+
+                    $liquidacion->detalles->add( $detalleLiquidacion );
+                }
+                if($totalViatico>0){                
+                    $detalleLiquidacion = new DetalleLiquidacion();
+                    $detalleLiquidacion->sid = Funciones::generarSID();
+                    $detalleLiquidacion->liquidacion_id = $liquidacion->id;
+                    $detalleLiquidacion->nombre = 'Viático';
+                    $detalleLiquidacion->tipo = 'no imponible';
+                    $detalleLiquidacion->tipo_id = 1;
+                    $detalleLiquidacion->valor = $totalColacion;
+                    $detalleLiquidacion->valor_2 = $empleado->monto_viatico;
+                    $detalleLiquidacion->valor_3 = $empleado->moneda_viatico;
+                    $detalleLiquidacion->valor_4 = null;
+                    $detalleLiquidacion->valor_5 = null;
+                    $detalleLiquidacion->valor_6 = null;
+                    $detalleLiquidacion->detalle_id = 5;
+                    //$detalleLiquidacion->save(); 
+
+                    $liquidacion->detalles->add( $detalleLiquidacion );
+                }  */
+                if($semanaCorrida>0){                
+                    $detalleLiquidacion = new DetalleLiquidacion();
+                    $detalleLiquidacion->sid = Funciones::generarSID();
+                    $detalleLiquidacion->liquidacion_id = $liquidacion->id;
+                    $detalleLiquidacion->nombre = 'Semana Corrida';
+                    $detalleLiquidacion->tipo = 'imponible';
+                    $detalleLiquidacion->tipo_id = 1;
+                    $detalleLiquidacion->valor = $semanaCorrida;
+                    $detalleLiquidacion->valor_2 = $semanaCorrida;
+                    $detalleLiquidacion->valor_3 = '$';
+                    $detalleLiquidacion->valor_4 = null;
+                    $detalleLiquidacion->valor_5 = null;
+                    $detalleLiquidacion->valor_6 = null;
+                    $detalleLiquidacion->detalle_id = 6;
+                    //$detalleLiquidacion->save(); 
+
+                    $liquidacion->detalles->add( $detalleLiquidacion );
+                }            
+                if($haberes){                
+                    foreach($haberes as $haber)
+                    {
+                        $detalleLiquidacion = new DetalleLiquidacion();
+                        $detalleLiquidacion->sid = Funciones::generarSID();
+                        $detalleLiquidacion->liquidacion_id = $liquidacion->id;
+                        $detalleLiquidacion->nombre = $haber['tipo']['nombre'];
+                        $detalleLiquidacion->tipo = $haber['tipo']['imponible'] ? 'imponible' : 'no imponible';
+                        $detalleLiquidacion->tipo_id = 1;
+                        $detalleLiquidacion->valor = $haber['montoPesos'];
+                        $detalleLiquidacion->valor_2 = $haber['monto'];
+                        $detalleLiquidacion->valor_3 = $haber['moneda'];
+                        $detalleLiquidacion->valor_4 = null;
+                        $detalleLiquidacion->valor_5 = null;
+                        $detalleLiquidacion->valor_6 = null;
+                        $detalleLiquidacion->detalle_id = $haber['tipo']['id'];
+                        //$detalleLiquidacion->save(); 
+
+                        $liquidacion->detalles->add($detalleLiquidacion);
                     }
                 }
-                $detalleSalud->moneda = $mon;
-                $detalleSalud->cotizacion_pactada = $pac;
-                $detalleSalud->cotizacion_obligatoria = $totalSalud['obligatorio'];
-                $detalleSalud->cotizacion_adicional = $totalSalud['adicional'];
-                $detalleSalud->ges = 0;
-            }else{
-                $detalleSalud->numero_fun = 0;
-                $detalleSalud->renta_imponible = $rentaImponible;
-                $detalleSalud->moneda = null;
-                $detalleSalud->cotizacion_pactada = 0;
-                $detalleSalud->cotizacion_obligatoria = 0;
-                $detalleSalud->cotizacion_adicional = 0;
-                $detalleSalud->ges = 0;
-            }
-            //$detalleSalud->save(); 
-            
-            $liquidacion->setRelation('detalleSalud', $detalleSalud);
-            
-            if($empresa->caja_id!=257){
-                $detalleCaja = new DetalleCaja();
-                $detalleCaja->liquidacion_id = $liquidacion->id;
-                $detalleCaja->caja_id = $empresa->caja_id;
-                $detalleCaja->renta_imponible = $rentaImponible;
-                $detalleCaja->creditos_personales = $prestamosCaja['caja'];
-                $detalleCaja->descuento_dental = 0;
-                $detalleCaja->descuentos_leasing = $prestamosCaja['leasing'];
-                $detalleCaja->descuentos_seguro = 0;
-                $detalleCaja->otros_descuentos = 0;
-                $detalleCaja->cotizacion = $totalSalud['montoCaja'];
-                $detalleCaja->descuento_cargas = 0;
-                $detalleCaja->otros_descuentos_1 = 0;
-                $detalleCaja->otros_descuentos_2 = 0;
-                $detalleCaja->bonos_gobierno = 0;
-                $detalleCaja->codigo_sucursal = '';                
-                //$detalleCaja->save();
-                
-                $liquidacion->setRelation('detalleCaja', $detalleCaja);
-            }
-            
-            if($empresa->mutual_id!=263){
-                $detalleMutual = new DetalleMutual();
-                $detalleMutual->liquidacion_id = $liquidacion->id;
-                $detalleMutual->mutual_id = $empresa->mutual_id;
-                $detalleMutual->renta_imponible = $rentaImponible;
-                $detalleMutual->cotizacion_accidentes = $totalMutual;
-                $detalleMutual->codigo_sucursal = 0;
-                //$detalleMutual->save();
-                
-                $liquidacion->setRelation('detalleMutual', $detalleMutual);
-            }
-            
-            if($empleado->seguro_desempleo==1){
-                $detalleSeguroCesantia = new DetalleSeguroCesantia();
-                $detalleSeguroCesantia->liquidacion_id = $liquidacion->id;
-                $detalleSeguroCesantia->renta_imponible = $totalSeguroCesantia['rentaImponible'];
-                $detalleSeguroCesantia->afp_id = $empleado->afp_seguro_id;
-                $detalleSeguroCesantia->aporte_trabajador = $totalSeguroCesantia['total'];
-                $detalleSeguroCesantia->afc_trabajador = $totalSeguroCesantia['afc'];
-                $detalleSeguroCesantia->aporte_empleador = $totalSeguroCesantia['totalEmpleador'];
-                $detalleSeguroCesantia->afc_empleador = $totalSeguroCesantia['afcEmpleador'];
-                //$detalleSeguroCesantia->save();
-                
-                $liquidacion->setRelation('detalleSeguroCesantia', $detalleSeguroCesantia);
-            }
-            
-            if($liquidacion->movimiento_personal==3){
-                $detallePagadorSubsidio = new DetallePagadorSubsidio();
-                $detallePagadorSubsidio->liquidacion_id = $liquidacion->id;
-                $detallePagadorSubsidio->rut = 0;
-                $detallePagadorSubsidio->digito = 0;
-                //$detallePagadorSubsidio->save();
-                
-                $liquidacion->setRelation('detallePagadorSubsidio', $detallePagadorSubsidio);
-            }
-            
-            $liquidacion->push();
-            
-            Logs::crearLog('#liquidaciones-de-sueldo', $documento->id, $documento->alias, 'Create', $documento->trabajador_id, $empleado->nombreCompleto(), 'Liquidaciones Trabajadores');
-                                  
-            $liquidaciones[] = $miLiquidacion;
-            $miLiquidacion['sidDocumento'] = $documento->sid;
-            $listaPDF[] = $miLiquidacion;
-            $destination = public_path() . '/stories/' . $filename;
-            //$dompdf->set_option('isHtml5ParserEnabled', true);
-            //$html = View::make('pdf.liquidacion', array('liquidaciones' => $liquidaciones))->render();
 
-            //File::put($destination, PDF::load(utf8_decode($html), 'A4', 'portrait')->output());
-            $pdf = new \Thujohn\Pdf\Pdf();
-            $content = $pdf->load(View::make('pdf.liquidacion', array('liquidacion' => $miLiquidacion)))->output();
-            File::put($destination, $content);            
+                if($descuentos){                    
+                    foreach($descuentos as $descuento)
+                    {
+                        $detalleLiquidacion = new DetalleLiquidacion();
+                        $detalleLiquidacion->sid = Funciones::generarSID();
+                        $detalleLiquidacion->liquidacion_id = $liquidacion->id;
+                        $detalleLiquidacion->nombre = $descuento['tipo']['nombre'];
+                        $detalleLiquidacion->tipo = 'descuento';
+                        $detalleLiquidacion->tipo_id = 2;
+                        $detalleLiquidacion->valor = $descuento['montoPesos'];
+                        $detalleLiquidacion->valor_2 = $descuento['monto'];
+                        $detalleLiquidacion->valor_3 = $descuento['moneda'];
+                        if($descuento['tipo']['estructura']['id']==2){
+                            $detalleLiquidacion->valor_4 = 1;   
+                            $detalleLiquidacion->valor_5 = null;
+                            $detalleLiquidacion->valor_6 = null;
+                        }else if($descuento['tipo']['estructura']['id']==3){
+                            $detalleLiquidacion->valor_4 = 2;   
+                            $detalleLiquidacion->valor_5 = $descuento['tipo']['formaPago']['id'];
+                            $detalleLiquidacion->valor_6 = $descuento['tipo']['afp']['id'];
+                        }else{
+                            if($descuento['tipo']['id']==2){                            
+                                $detalleLiquidacion->valor_4 = 3;                              
+                            }else{
+                                $detalleLiquidacion->valor_4 = null;                              
+                            }
+                            $detalleLiquidacion->valor_5 = null;
+                            $detalleLiquidacion->valor_6 = null;
+                        }
+                        $detalleLiquidacion->detalle_id = $descuento['tipo']['id'];
+
+                        //$detalleLiquidacion->save(); 
+
+                        $liquidacion->detalles->add($detalleLiquidacion);
+                    }
+                }
+
+                if($apvs){                    
+                    foreach($apvs as $apv)
+                    {                    
+                        $detalleApvi = new DetalleApvi();
+                        $detalleApvi->liquidacion_id = $liquidacion->id;
+                        $detalleApvi->afp_id = $apv['afp']['id'];
+                        $detalleApvi->numero_contrato = $apv['numeroContrato'];
+                        $detalleApvi->forma_pago_id = $apv['formaPago']['id'];
+                        $detalleApvi->monto = $apv['montoPesos'];
+                        $detalleApvi->moneda = $apv['moneda'];
+                        $detalleApvi->regimen = strtolower($apv['regimen']);
+                        $detalleApvi->cotizacion = $apv['monto'];
+                        $detalleApvi->cotizacion_depositos_convenidos = 0;
+                        //$detalleApvi->save();
+
+                        $liquidacion->detalleApvi->add($detalleApvi);
+                    }
+                }
+
+                if($prestamos){                    
+                    foreach($prestamos as $prestamo)
+                    {
+                        $prestamo = (array) $prestamo;
+                        $detalleLiquidacion = new DetalleLiquidacion();
+                        $detalleLiquidacion->sid = Funciones::generarSID();
+                        $detalleLiquidacion->liquidacion_id = $liquidacion->id;
+                        $detalleLiquidacion->nombre = $prestamo['nombreLiquidacion'];
+                        $detalleLiquidacion->tipo = 'prestamo';
+                        $detalleLiquidacion->tipo_id = 4;
+                        $detalleLiquidacion->valor = $prestamo['montoCuotaPagar'];
+                        $detalleLiquidacion->valor_2 = $prestamo['monto'];
+                        $detalleLiquidacion->valor_3 = $prestamo['moneda'];
+                        $detalleLiquidacion->valor_4 = $prestamo['numeroCuotaPagar'];
+                        $detalleLiquidacion->valor_5 = $prestamo['cuotas'];
+                        if($prestamo['prestamoCaja']){
+                            $detalleLiquidacion->valor_6 = 1;
+                        }else if($prestamo['leasingCaja']){
+                            $detalleLiquidacion->valor_6 = 2;
+                        }
+                        $detalleLiquidacion->detalle_id = null;
+                        //$detalleLiquidacion->save(); 
+
+                        $liquidacion->detalles->add( $detalleLiquidacion );
+                    }
+                }
+
+                if($apvc){
+                    $detalleApvc = new DetalleApvc();
+                    $detalleApvc->liquidacion_id = $liquidacion->id;
+                    $detalleApvc->afp_id = $apvc['idAfp'];
+                    $detalleApvc->numero_contrato = $apvc['numeroContrato'];
+                    $detalleApvc->forma_pago_id = $apvc['idFormaPago'];
+                    $detalleApvc->monto = $apvc['monto'];
+                    $detalleApvc->moneda = $apvc['moneda'];
+                    $detalleApvc->cotizacion_trabajador = $apvc['cotizacionTrabajador'];
+                    $detalleApvc->cotizacion_empleador = $apvc['cotizacionEmpleador'];
+                    //$detalleApvc->save();
+
+                    $liquidacion->detalleApvc->add($detalleApvc);
+                }
+
+                $detalleIpsIslFonasa = new DetalleIpsIslFonasa();
+                $detalleIpsIslFonasa->liquidacion_id = $liquidacion->id;
+                if($empleado->prevision_id==9){
+                    $detalleIpsIslFonasa->ex_caja_id = $empleado->afp_id;
+                    $detalleIpsIslFonasa->tasa_cotizacion = $tasaAfp['tasaTrabajador'];
+                    $detalleIpsIslFonasa->cotizacion_obligatoria = $totalAfp['totalTrabajador'];
+                }else{
+                    $detalleIpsIslFonasa->ex_caja_id = 0;
+                    $detalleIpsIslFonasa->tasa_cotizacion = 0;
+                    $detalleIpsIslFonasa->cotizacion_obligatoria = 0;
+                }
+                $detalleIpsIslFonasa->renta_imponible = $rentaImponible;
+                $detalleIpsIslFonasa->renta_imponible_desahucio = 0;
+                $detalleIpsIslFonasa->ex_caja_desahucio_id = 0;
+                $detalleIpsIslFonasa->tasa_desahucio = 0;
+                $detalleIpsIslFonasa->cotizacion_desahucio = 0;
+                if($empleado->isapre_id==246){
+                    $detalleIpsIslFonasa->cotizacion_fonasa = $totalSalud['montoFonasa'];
+                }else{
+                    $detalleIpsIslFonasa->cotizacion_fonasa = 0;
+                }
+                if($empresa->mutual_id==263){
+                    $detalleIpsIslFonasa->cotizacion_isl = $totalMutual;                
+                }else{
+                    $detalleIpsIslFonasa->cotizacion_isl = 0;
+                }
+                $detalleIpsIslFonasa->bonificacion = 0;
+                $detalleIpsIslFonasa->descuento_cargas_isl = $totalSalud['cargas'];
+                $detalleIpsIslFonasa->bonos_gobierno = 0;
+                //$detalleIpsIslFonasa->save();   
+
+                $liquidacion->setRelation('detalleIpsIslFonasa', $detalleIpsIslFonasa);
+
+                $detalleSalud = new DetalleSalud();
+                $detalleSalud->liquidacion_id = $liquidacion->id;
+                $detalleSalud->salud_id = $empleado->isapre_id;
+
+                if($empleado->salud_id!=240 & $empleado->salud_id!=246){
+                    $detalleSalud->numero_fun = 145652;
+                    $detalleSalud->renta_imponible = $rentaImponible;
+                    if($empleado->cotizacion_isapre=='UF'){
+                        $mon = 'UF';
+                        $pac = $empleado->monto_isapre;
+                    }else{
+                        $mon = '$';
+                        if($empleado->cotizacion_isapre=='7%'){
+                            $pac = round($rentaImponible * 0.07);
+                        }else if($empleado->cotizacion_isapre=='7% + UF'){
+                            $pac = round($rentaImponible * 0.07);
+                            $pac += Funciones::convertirUF($empleado->monto_isapre);
+                        }else{
+                            $pac = $empleado->monto_isapre;
+                        }
+                    }
+                    $detalleSalud->moneda = $mon;
+                    $detalleSalud->cotizacion_pactada = $pac;
+                    $detalleSalud->cotizacion_obligatoria = $totalSalud['obligatorio'];
+                    $detalleSalud->cotizacion_adicional = $totalSalud['adicional'];
+                    $detalleSalud->ges = 0;
+                }else{
+                    $detalleSalud->numero_fun = 0;
+                    $detalleSalud->renta_imponible = $rentaImponible;
+                    $detalleSalud->moneda = null;
+                    $detalleSalud->cotizacion_pactada = 0;
+                    $detalleSalud->cotizacion_obligatoria = 0;
+                    $detalleSalud->cotizacion_adicional = 0;
+                    $detalleSalud->ges = 0;
+                }
+                //$detalleSalud->save(); 
+
+                $liquidacion->setRelation('detalleSalud', $detalleSalud);
+
+                if($empresa->caja_id!=257){
+                    $detalleCaja = new DetalleCaja();
+                    $detalleCaja->liquidacion_id = $liquidacion->id;
+                    $detalleCaja->caja_id = $empresa->caja_id;
+                    $detalleCaja->renta_imponible = $rentaImponible;
+                    $detalleCaja->creditos_personales = $prestamosCaja['caja'];
+                    $detalleCaja->descuento_dental = $prestamosCaja['dental'];
+                    $detalleCaja->descuentos_leasing = $prestamosCaja['leasing'];
+                    $detalleCaja->descuentos_seguro = $prestamosCaja['seguro'];
+                    $detalleCaja->otros_descuentos = $prestamosCaja['otros'];
+                    $detalleCaja->cotizacion = $totalSalud['montoCaja'];
+                    $detalleCaja->descuento_cargas = $prestamosCaja['cargas'];
+                    $detalleCaja->otros_descuentos_1 = 0;
+                    $detalleCaja->otros_descuentos_2 = 0;
+                    $detalleCaja->bonos_gobierno = 0;
+                    $detalleCaja->codigo_sucursal = '';                
+                    //$detalleCaja->save();
+
+                    $liquidacion->setRelation('detalleCaja', $detalleCaja);
+                }
+
+                if($empresa->mutual_id!=263){
+                    $detalleMutual = new DetalleMutual();
+                    $detalleMutual->liquidacion_id = $liquidacion->id;
+                    $detalleMutual->mutual_id = $empresa->mutual_id;
+                    $detalleMutual->renta_imponible = $rentaImponible;
+                    $detalleMutual->cotizacion_accidentes = $totalMutual;
+                    $detalleMutual->codigo_sucursal = 0;
+                    //$detalleMutual->save();
+
+                    $liquidacion->setRelation('detalleMutual', $detalleMutual);
+                }
+
+                if($empleado->seguro_desempleo==1){
+                    $detalleSeguroCesantia = new DetalleSeguroCesantia();
+                    $detalleSeguroCesantia->liquidacion_id = $liquidacion->id;
+                    $detalleSeguroCesantia->renta_imponible = $totalSeguroCesantia['rentaImponible'];
+                    $detalleSeguroCesantia->renta_imponible_ingresada = $totalSeguroCesantia['rentaImponibleIngresada'];
+                    $detalleSeguroCesantia->afp_id = $empleado->afp_seguro_id;
+                    $detalleSeguroCesantia->aporte_trabajador = $totalSeguroCesantia['total'];
+                    $detalleSeguroCesantia->afc_trabajador = $totalSeguroCesantia['afc'];
+                    $detalleSeguroCesantia->aporte_empleador = $totalSeguroCesantia['totalEmpleador'];
+                    $detalleSeguroCesantia->afc_empleador = $totalSeguroCesantia['afcEmpleador'];
+                    //$detalleSeguroCesantia->save();
+
+                    $liquidacion->setRelation('detalleSeguroCesantia', $detalleSeguroCesantia);
+                }
+
+                if($liquidacion->movimiento_personal==3){
+                    $detallePagadorSubsidio = new DetallePagadorSubsidio();
+                    $detallePagadorSubsidio->liquidacion_id = $liquidacion->id;
+                    $detallePagadorSubsidio->rut = 0;
+                    $detallePagadorSubsidio->digito = 0;
+                    //$detallePagadorSubsidio->save();
+
+                    $liquidacion->setRelation('detallePagadorSubsidio', $detallePagadorSubsidio);
+                }
+
+                $liquidacion->push();
+
+                Logs::crearLog('#liquidaciones-de-sueldo', $documento->id, $documento->alias, 'Create', $documento->trabajador_id, $empleado->nombreCompleto(), 'Liquidaciones Trabajadores');
+
+                $liquidaciones[] = $miLiquidacion;
+                $miLiquidacion['sidDocumento'] = $documento->sid;
+                $listaPDF[] = $miLiquidacion;
+                $destination = public_path() . '/stories/' . $filename;
+                //$dompdf->set_option('isHtml5ParserEnabled', true);
+                //$html = View::make('pdf.liquidacion', array('liquidaciones' => $liquidaciones))->render();
+
+                //File::put($destination, PDF::load(utf8_decode($html), 'A4', 'portrait')->output());
+                $pdf = new \Thujohn\Pdf\Pdf();
+                $content = $pdf->load(View::make('pdf.liquidacion', array('liquidacion' => $miLiquidacion,
+                    'configuracion' => $configuracion)))->output();
+                File::put($destination, $content);  
+            }else{
+                $empleado->rutFormato = $trabajador->rut_formato();
+                $empleado->nombreCompleto = $empleado->nombreCompleto();
+                $empleado->sis = 0;
+                $empleado->sidTrabajador = $trabajador->sid;
+                $empleado->motivo = 'Trabajador sin R.I. anterior con 30 días trabajados.';
+                $empleado->isSIS = $totalAfp['isSIS'];
+                $empleado->isSC = $totalSeguroCesantia['isSC'];
+                $sinRentaImponibleAnterior[] = $empleado;
+            }
         }
         
         PDF::clear();
         
-        if(count($liquidaciones)>1){
-            $mensaje = "Las Liquidaciones de Sueldo fueron ingresadas correctamente";
+        if(count($sinRentaImponibleAnterior)){                    
+            if(count($liquidaciones)>0){
+                $mensaje = "Las Liquidaciones de Sueldo fueron ingresadas parcialmente";
+            }else{
+                if(count($sinRentaImponibleAnterior)>1){
+                    $mensaje = "Las Liquidación de Sueldo no pudieron ser generadas";       
+                }else{
+                    $mensaje = "La Liquidación de Sueldo fue no pudo ser generada";                    
+                }
+            }
         }else{
-            $mensaje = "La Liquidación de Sueldo fue ingresada correctamente";
+            if(count($liquidaciones)>1){
+                $mensaje = "Las Liquidaciones de Sueldo fueron ingresadas correctamente";
+            }else{
+                $mensaje = "La Liquidación de Sueldo fue ingresada correctamente";
+            }
         }
         $listaPDF = Funciones::ordenar($listaPDF, 'apellidos');
         $datos = array(
             'success' => true,
             'mensaje' => $mensaje,
             'datos' => $listaPDF,
-            'html' => $html
+            'sinRentaImponibleAnterior' => $sinRentaImponibleAnterior,
+            'a' => $configuracion
         );
         
         return Response::json($datos);
@@ -7283,7 +7691,7 @@ class TrabajadoresController extends \BaseController {
             $ficha->tramo_id = FichaTrabajador::calcularTramo(Funciones::convertir($datos['sueldo_base'], $datos['moneda_sueldo']));
             if($ficha->estado==='En Creación'){
                 $trabajador->calcularMisVacaciones($ficha->fecha_reconocimiento);
-                //$trabajador->crearUser();
+                $trabajador->crearUser();
                 $ficha->tramo_id = FichaTrabajador::calcularTramo(Funciones::convertir($datos['sueldo_base'], $datos['moneda_sueldo']));         
                 if($ficha->semana_corrida==1){
                     $trabajador->crearSemanaCorrida();
@@ -7357,11 +7765,16 @@ class TrabajadoresController extends \BaseController {
             $ficha->estado = $datos['estado'];            
             $ficha->save();              
             
+            $misHaberes = $trabajador->comprobarHaberes($datos['haberes']);
+            $misDescuentos = $trabajador->comprobarDescuentos($datos['descuentos']);
+            
             Logs::crearLog('#trabajadores', $trabajador->id, $trabajador->rut_formato(), 'Update', $ficha->id, $ficha->nombreCompleto(), 'Trabajadores');  
 
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
+                'hab' => $misHaberes,
+                'des' => $misDescuentos,
                 'sid' => $trabajador->sid
             );
         }else{

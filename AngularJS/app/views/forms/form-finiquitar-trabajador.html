@@ -27,7 +27,7 @@
             <div class="form-group form-group-md">
 
               <label class="col-sm-3 control-label required" style="padding: 0px;">Fecha:</label>            
-              <div class="col-sm-6" >
+              <div class="col-sm-6">
                 <div class="input-group"> 
                   <input type="text" class="form-control form-white" uib-datepicker-popup="dd-MM-yyyy" regularFecha ng-model="finiquito.fecha" is-open="popupFecha.opened" datepicker-options="dateOptions" close-text="Close" required />
                   <span class="input-group-btn">
@@ -37,7 +37,7 @@
                   </span>                  
                 </div>
                 <div>
-                  <i>*El día del Finiquito será considerado como día trabajado.</i>
+                  <i ng-if="false">*El día del Finiquito será considerado como día trabajado.</i>
                 </div>
               </div>   
             </div>

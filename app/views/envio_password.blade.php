@@ -1,6 +1,6 @@
 <html>
 <head>
-    <title>EasySystems - Contabilidad Multi Empresa</title>
+    <title>EasySystems - RRHH</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head>
 <body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0">

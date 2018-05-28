@@ -91,8 +91,8 @@
               </td>
               <td>
                 <a href="" ng-click="detalle(trabajador)" ng-if="trabajador.estado!=='En Creación' && false"><i class="fa fa-search" uib-tooltip-html="toolTipDetalles(trabajador.nombreCompleto)"></i></a>
-                <a href="" ng-click="editar(trabajador)" ng-if="accesos.editar && accesos.abierto"><i class="fa fa-pencil" uib-tooltip-html="toolTipEdicion(trabajador.nombreCompleto)"></i></a>
-                <a href="" ng-if="accesos.eliminar && accesos.abierto" confirmation-click="eliminar(trabajador);" confirmation-needed="El trabajador <b>{{trabajador.rutFormato}}</b> será eliminado del sistema. <br />De igual forma todos sus datos ingresados como haberes, descuentos, documentos, etc. <br />¿Desea continuar?" uib-tooltip-html="toolTipEliminar(trabajador.nombreCompleto)"><i class="fa fa-trash"></i></a>                
+                <a href="" ng-click="editar(trabajador)" ng-if="trabajador.isFicha && accesos.editar && accesos.abierto"><i class="fa fa-pencil" uib-tooltip-html="toolTipEdicion(trabajador.nombreCompleto)"></i></a>
+                <a href="" ng-if="trabajador.isFicha && accesos.eliminar && accesos.abierto" confirmation-click="eliminar(trabajador);" confirmation-needed="El trabajador <b>{{trabajador.rutFormato}}</b> será eliminado del sistema. <br />De igual forma todos sus datos ingresados como haberes, descuentos, documentos, etc. <br />¿Desea continuar?" uib-tooltip-html="toolTipEliminar(trabajador.nombreCompleto)"><i class="fa fa-trash"></i></a>                
               </td>
               <td>
                 <a href="" ng-click="fichas(trabajador)" ng-if="accesos.editar && accesos.abierto && trabajador.estado !=='En Creación'"><i class="fa fa-id-card-o" uib-tooltip-html="toolTipFichas(trabajador.nombreCompleto)"></i></a>

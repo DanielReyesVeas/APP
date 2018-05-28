@@ -43,6 +43,18 @@ angular.module('angularjsApp')
                     {},
                     { post : { 'method': 'POST' } }
                 );
+            },
+            haberesFicha : function(){
+                return $resource(constantes.URL + 'haberes/haberes-ficha/obtener',
+                    {},
+                    { post : { 'method': 'POST' } }
+                );
+            },
+            updateHaberFicha : function(){
+                return $resource(constantes.URL + 'haberes/haberes-ficha/update',
+                    {},
+                    { post : { 'method': 'POST' } }
+                );
             }
         };
   });

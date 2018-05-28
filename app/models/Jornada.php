@@ -19,17 +19,108 @@ class Jornada extends Eloquent {
     public function tramos()
     {
         $jornadasTramos = $this->jornadaTramo;
-        $datos = array();
+        $tramos = array();
+        $mostrar = '';
         if($jornadasTramos->count()){
-            foreach($jornadasTramos as $jornadasTramo){
-                $datos[] = array(
-                    'id' => $jornadasTramo->tramo->id,
-                    'factor' => $jornadasTramo->tramo->factor
+            foreach($jornadasTramos as $index => $jornadaTramo){
+                $tramos[] = array(
+                    'id' => $jornadaTramo->id,
+                    'idTramo' => $jornadaTramo->tramo->id,
+                    'factor' => $jornadaTramo->tramo->factor
                 );                
+                $mostrar .= $jornadaTramo->tramo->factor;
+                if(($index + 1) != $jornadasTramos->count()){
+                    $mostrar .= ', ';
+                }
             }
         }
         
+        $datos = array(
+            'tramos' => $tramos,
+            'mostrar' => $mostrar
+        );
+        
         return $datos;
+    }
+    
+    public function comprobarTramos($tramos)
+    {
+        $misTramos = $this->jornadaTramo;
+        $update = array();
+        $create = array();
+        $destroy = array();
+        
+        if($misTramos){
+            foreach($tramos as $tramo)
+            {
+                $isUpdate = false;
+                
+                if(isset($tramo['id'])){    
+                    foreach($misTramos as $miTramo)
+                    {
+                        if($tramo['id'] == $miTramo->id){
+                            $update[] = array(
+                                'id' => $tramo['id'],
+                                'jornada_id' => $this->id,
+                                'tramo_id' => $tramo['idTramo'],
+                                'factor' => $tramo['factor']
+                            );
+                            $isUpdate = true;
+                        }                        
+                        if($isUpdate){
+                            break;
+                        }
+                    }
+                }else{
+                    $create[] = array(
+                        'jornada_id' => $this->id,
+                        'tramo_id' => $tramo['idTramo'],
+                        'factor' => $tramo['factor']
+                    );
+                }
+            }
+
+            foreach($misTramos as $miTramo)
+            {
+                $isTramo = false;
+                foreach($tramos as $tramo)
+                {
+                    if(isset($tramo['id'])){
+                        if($miTramo->id == $tramo['id']){
+                            $isTramo = true;                        
+                        }
+                    }
+                }
+                if(!$isTramo){
+                    $destroy[] = array(
+                        'id' => $miTramo->id
+                    );
+                }
+            }
+        }else{
+            $create = $tramos;
+        }
+        
+        $datos = array(
+            'create' => $create,
+            'update' => $update,
+            'destroy' => $destroy
+        );
+        
+        return $datos;
+    }
+    
+    public function eliminarTramos()
+    {
+        $jornadasTramos = $this->jornadaTramo;
+        
+        if($jornadasTramos->count()){
+            foreach($jornadasTramos as $jornadaTramo){
+                $jornadaTramo->delete();
+            }
+        }
+        
+        return;
     }
     
     static function listaJornadas(){
@@ -77,7 +168,6 @@ class Jornada extends Eloquent {
          
         $rules = array(
             'nombre' => 'required',
-            'tramo_hora_extra_id' => 'required',
             'numero_horas' => 'required'
         );
 

@@ -13,7 +13,7 @@ angular.module('angularjsApp')
     $scope.datos = [];
     $scope.constantes = constantes;
     $scope.cargado = false;
-    var empresaActual = $rootScope.globals.currentUser.empresa;
+    $scope.empresaActual = $rootScope.globals.currentUser.empresa;
     var mutuales;
     var cajas;
 
@@ -52,7 +52,7 @@ angular.module('angularjsApp')
         if(obj.crear){
           $scope.cambiarEmpresa(obj.empresa);
         }else if(obj.editar){          
-          if(obj.empresa.id===empresaActual.id){
+          if(obj.empresa.id===$scope.empresaActual.id){
             $scope.cambiarEmpresa(obj.empresa);
           }else{
             $scope.cargarDatos();
@@ -72,6 +72,8 @@ angular.module('angularjsApp')
       emp.$promise.then(function(response){
         $scope.datos = response.empresas;
         mutuales = response.mutuales;
+        $scope.accesos = response.accesos;
+        console.log($scope.accesos)
         cajas = response.cajas;
 
         delete $localStorage.globals.currentUser.empresas;
@@ -131,11 +133,82 @@ angular.module('angularjsApp')
     };
 
     $scope.toolTipEdicion = function( nombre ){
-    	return 'Editar los datos de la Empresa: <b>' + nombre + '</b>';
+      return 'Editar los datos de la Empresa: <b>' + nombre + '</b>';
     };
+
+    $scope.toolTipHabilitar = function( emp ){
+      if($scope.empresaActual.id==emp.id){        
+        if(emp.habilitada){
+          return '<b>No puede deshabilitar la Empresa actual</b>';
+        }else{
+          return '<b>No puede habilitar la Empresa actual</b>';
+        }
+      }else{
+        if(emp.habilitada){
+          return 'Deshabilitar la Empresa: <b>' + emp.razonSocial + '</b>';
+        }else{
+      	  return 'Habilitar la Empresa: <b>' + emp.razonSocial + '</b>';
+        }
+      }
+    };
+
+    $scope.habilitar = function(emp){
+      var miModal = $uibModal.open({
+        animation: true,
+        templateUrl: 'views/forms/form-confirmacion.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
+        controller: 'FormHabilitarEmpresaCtrl',
+        resolve: {
+          objeto: function () {
+            return emp;          
+          }
+        }
+      });
+     miModal.result.then(function (object) {
+        $rootScope.cargando=true;
+        var obj = { id : object.id, habilitada : object.habilitada };
+        var datos = empresa.habilitar().post({}, obj);
+        datos.$promise.then(function(response){     
+          Notification.success({message: response.mensaje, title: 'Mensaje del Sistema'});
+          $scope.cargarDatos();
+        });
+      }, function (obj) {
+        var miEmpresa = $filter('filter')( $scope.datos, {id :  obj.id }, true )[0];
+        miEmpresa.habilitada = !obj.habilitada;
+      });      
+    }
 
     $scope.cargarDatos();
       
+  })
+  .controller('FormHabilitarEmpresaCtrl', function ($scope, $rootScope, $uibModalInstance, objeto, empresa, constantes) {
+
+    $scope.empresa = angular.copy(objeto);
+
+    if($scope.empresa.habilitada){
+      $scope.titulo = 'Habilitar Empresa';
+      $scope.mensaje = 'La Empresa <b>' + $scope.empresa.razonSocial + '</b> será habilitada.';
+      $scope.mensaje2 = 'Estará disponible para todos los usuarios que tengan permisos sobre esta. ¿Desea continuar?';      
+      $scope.ok = 'Habilitar';
+    }else{
+      $scope.titulo = 'Deshabilitar Empresa';
+      $scope.mensaje = 'La Empresa <b>' + $scope.empresa.razonSocial + '</b> será deshabilitada.';
+      $scope.mensaje2 = 'No estará disponible para ningún usuario. ¿Desea continuar?';      
+      $scope.ok = 'Deshabilitar';
+    }
+
+    $scope.cancel = 'Cancelar';
+    $scope.isOK = true;
+    $scope.isCerrar = true;
+    $scope.isExclamation = true;
+
+    $scope.aceptar = function(){
+      $uibModalInstance.close($scope.empresa);
+    }
+
+    $scope.cerrar = function(){
+      $uibModalInstance.dismiss($scope.empresa);
+    }
+
   })
   .controller('ModalFormEmpresaCtrl', function ($scope, $route, mutuales, anios, cajas, $rootScope, $timeout, $http, $uibModal, $uibModalInstance, $filter, Notification, objeto, empresa, constantes, $localStorage) {
 
@@ -170,13 +243,12 @@ angular.module('angularjsApp')
         $scope.objeto.mutual.sanna = 0;
       }
       $scope.objeto.mutual.tasaAdicional = 0;
-      $scope.isSanna = ($scope.objeto.anioInicial > 2017);
-      console.log($scope.objeto)
+      $scope.isSanna = ($scope.objeto.anioInicial > 2017);      
     } 
 
     $scope.cambiarAnio = function(){
-      cambiarMutual();
-      cambiarCaja();      
+      cambiarMutuales();
+      cambiarCCFA();      
       $scope.isSanna = ($scope.objeto.anio.nombre > 2017);
     }
 
@@ -200,6 +272,7 @@ angular.module('angularjsApp')
       $scope.objeto.mutual.codigo = null;
       $scope.objeto.caja.codigo = null;
       $scope.objeto.fotografiaBase64='';      
+      console.log($scope.objeto)
     }
     
     $scope.imagen={};
@@ -280,6 +353,9 @@ angular.module('angularjsApp')
     $scope.cambiarMutual = function(){
       var anio;
       if($scope.objeto.id){
+        var actual = $filter('filter')( $scope.objeto.mutuales, { idAnio :  $scope.objeto.anio.id }, true )[0];
+      }
+      if($scope.objeto.id){
         anio = $scope.objeto.anio.nombre;
       }else{
         anio = $scope.objeto.anioInicial;
@@ -303,14 +379,21 @@ angular.module('angularjsApp')
       }
       $scope.objeto.mutual.tasaAdicional = 0;
       $scope.objeto.mutual.codigo = null;
+      if($scope.objeto.id){
+        $scope.objeto.mutual.idMutual = actual.id;
+      }
       console.log($scope.objeto)
     }
 
-    $scope.cambiarCaja = function(){
+    $scope.cambiarCaja = function(){      
       $scope.objeto.caja.codigo = null;
+      if($scope.objeto.id){
+        var actual = $filter('filter')( $scope.objeto.cajas, { idAnio :  $scope.objeto.anio.id }, true )[0];
+        $scope.objeto.caja.idCaja = actual.id;      
+      }
     }
 
-    function cambiarMutual(){
+    function cambiarMutuales(){
       if($scope.objeto.id){
         if($scope.objeto.mutual){
           var actual = $filter('filter')( $scope.objeto.mutuales, { id :  $scope.objeto.mutual.idMutual }, true )[0];
@@ -322,7 +405,6 @@ angular.module('angularjsApp')
           $scope.objeto.mutuales[index].extraordinaria = $scope.objeto.mutual.extraordinaria;
           $scope.objeto.mutuales[index].sanna = $scope.objeto.mutual.sanna;
         }
-        console.log($scope.objeto)
         var mutual = $filter('filter')( $scope.objeto.mutuales, { idAnio :  $scope.objeto.anio.id }, true )[0];
         $scope.objeto.mutual = $filter('filter')( $scope.mutuales, { id :  mutual.mutual.id }, true )[0];
         $scope.objeto.mutual.codigo = mutual.codigo;
@@ -331,10 +413,11 @@ angular.module('angularjsApp')
         $scope.objeto.mutual.extraordinaria = mutual.extraordinaria;
         $scope.objeto.mutual.sanna = mutual.sanna;
         $scope.objeto.mutual.idMutual = mutual.id;
+        console.log($scope.objeto)
       }
     }
 
-    function cambiarCaja(){
+    function cambiarCCFA(){
       if($scope.objeto.id){
         if($scope.objeto.caja){
           var actual = $filter('filter')( $scope.objeto.cajas, { id :  $scope.objeto.caja.idCaja }, true )[0];
@@ -347,6 +430,7 @@ angular.module('angularjsApp')
         $scope.objeto.caja.codigo = caja.codigo;
         $scope.objeto.caja.idCaja = caja.id;
       }
+      console.log($scope.objeto.caja)
     }
 
     $scope.obtenerImagenB64 = function(){
@@ -427,8 +511,8 @@ angular.module('angularjsApp')
     $scope.guardar = function () {
       $rootScope.cargando=true;
       var response;
-      cambiarMutual();
-      cambiarCaja();
+      cambiarMutuales();
+      cambiarCCFA();
 
       if( $scope.objeto.id ){
         response = empresa.datos().update({id:$scope.objeto.id}, $scope.objeto);

@@ -548,8 +548,9 @@ class HaberesController extends \BaseController {
             'hasta' => $haber->hasta,
             'trabajador' => $haber->trabajadorHaber()
         );
+        
         return Response::json($datos);
-    }
+    }    
 
     /**
      * Show the form for editing the specified resource.

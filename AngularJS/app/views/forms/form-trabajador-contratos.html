@@ -8,10 +8,10 @@
 
     <div class="panel-body">
       <div class="col-sm-12">
-        <a ng-click="importar(trabajador)" ng-if="accesos.crear && accesos.abierto" href="" class="btn btn-primary btn-xs pull-right"><i class="fa fa-upload"></i> Importar Contrato</a>
+        <a ng-click="importar(trabajador)" ng-if="accesos.crear && accesos.abierto && trabajador.isFicha" href="" class="btn btn-primary btn-xs pull-right"><i class="fa fa-upload"></i> Importar Contrato</a>
       </div>
       <div class="col-sm-12">
-        <a ng-click="generarContrato(trabajador)" ng-if="accesos.crear && accesos.abierto" href="" class="btn btn-primary btn-xs pull-right"><i class="fa fa-pencil-square-o"></i> Generar Contrato</a>
+        <a ng-click="generarContrato(trabajador)" ng-if="accesos.crear && accesos.abierto && trabajador.isFicha" href="" class="btn btn-primary btn-xs pull-right"><i class="fa fa-pencil-square-o"></i> Generar Contrato</a>
       </div>
 
       <div class="container col-sm-12" style="margin: 40px;">

@@ -8,7 +8,7 @@
  * Controller of the angularjsApp
  */
 angular.module('angularjsApp')
-  .controller('IngresoHorasExtraCtrl', function ($scope, $uibModal, $filter, $anchorScroll, trabajador, constantes, $rootScope, Notification) {
+  .controller('IngresoHorasExtraCtrl', function ($scope, horaExtra, $uibModal, $filter, $anchorScroll, trabajador, constantes, $rootScope, Notification) {
     $anchorScroll();
     $scope.datos = [];
     $scope.constantes = constantes;
@@ -27,8 +27,16 @@ angular.module('angularjsApp')
 
     cargarDatos();
 
+    $scope.open = function(){
+      $rootScope.cargando=true;
+      var datos = horaExtra.datos().get({sid: 0});
+      datos.$promise.then(function(response){        
+        $rootScope.cargando=false;
+        $scope.openHoraExtra(response);
+      })
+    }
+
     $scope.openHoraExtra = function(obj){
-      console.log(obj)
       var miModal = $uibModal.open({
         animation: true,
         templateUrl: 'views/forms/form-nueva-hora-extra.html?v=' + $filter('date')(new Date(), 'ddMMyyyyHHmmss'),
@@ -138,24 +146,29 @@ angular.module('angularjsApp')
     };
 
   })
-  .controller('FormHorasExtraCtrl', function ($rootScope, Notification, tramos, $scope, $uibModalInstance, objeto, horaExtra, fecha) {
+  .controller('FormHorasExtraCtrl', function ($rootScope, $filter, trabajador, Notification, tramos, $scope, $uibModalInstance, objeto, horaExtra, fecha) {
 
     var mesActual = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
-    
-    if(objeto.trabajador){
-      $scope.trabajador = angular.copy(objeto.trabajador);
-      $scope.horaExtra = angular.copy(objeto);
+    $scope.isTrabajador = false;
+
+    if(objeto.datos){
+      $scope.trabajador = angular.copy(objeto.datos.trabajador);
+      $scope.horaExtra = angular.copy(objeto.datos);
       $scope.horaExtra.fecha = fecha.convertirFecha($scope.horaExtra.fecha);
       $scope.isEdit = true;
-      $scope.titulo = 'Modificación Hora Extra';
-      console.log($scope.horaExtra)
+      $scope.tramos = angular.copy(objeto.datos.trabajador.tramos.tramos);
+      console.log($scope.tramos)
+      $scope.titulo = 'Horas Extra';
+      $scope.encabezado = 'Modificación Hora Extra';
+      $scope.horaExtra.tramo = $filter('filter')( $scope.tramos, { tramo : $scope.horaExtra.tramo }, true )[0];
     }else{
-      $scope.trabajador = angular.copy(objeto);      
+      $scope.trabajador = angular.copy(objeto);    
+      $scope.trabajadores = angular.copy(objeto.trabajadores);  
       $scope.isEdit = false;
-      $scope.titulo = 'Ingreso Hora Extra';
+      $scope.titulo = 'Horas Extra';
+      $scope.encabezado = 'Nueva Hora Extra';
       $scope.horaExtra = { fecha : fecha.fechaActiva() };
-    }
-    $scope.tramos = angular.copy(tramos);
+    }    
 
     $scope.jornadas = [
                       { id : 1, nombre : '4 x 3' },
@@ -169,16 +182,28 @@ angular.module('angularjsApp')
                       { id : 9, nombre : '100%' }
     ];
 
+    $scope.selectTrabajador = function(){
+      $rootScope.cargando=true;
+      var datos = trabajador.horasExtra().get({sid: $scope.horaExtra.trabajador.sid});
+      datos.$promise.then(function(response){
+        $scope.isTrabajador = true;
+        $scope.trabajador = response.datos;
+        $scope.tramos = angular.copy(response.datos.tramos.tramos);
+        $rootScope.cargando=false;
+      });
+    }
 
-    $scope.guardar = function(horas, trabajador){
-
+    $scope.guardar = function(horas){
       $rootScope.cargando=true;
       var mes = $rootScope.globals.currentUser.empresa.mesDeTrabajo;
       var response;
       if(horas.fecha==fecha.fechaActiva()){
         horas.fecha = fecha.convertirFecha(fecha.convertirFechaFormato(horas.fecha));
       }
-      var HorasExtra = { idTrabajador : trabajador.id, idMes : mes.id, factor : horas.tramo.factor, cantidad : horas.cantidad, jornada : horas.jornada, fecha : horas.fecha, observacion : horas.observacion };
+      console.log($scope.trabajador)
+      console.log(horas)
+      console.log(mes)
+      var HorasExtra = { idTrabajador : $scope.trabajador.id, idMes : mes.id, factor : horas.tramo.factor, cantidad : horas.cantidad, jornada : horas.jornada, fecha : horas.fecha, observacion : horas.observacion };
 
       if( $scope.horaExtra.sid ){
         response = horaExtra.datos().update({sid:$scope.horaExtra.sid}, HorasExtra);
@@ -188,7 +213,7 @@ angular.module('angularjsApp')
       response.$promise.then(
         function(response){
           if(response.success){
-            $uibModalInstance.close({ mensaje : response.mensaje, sidTrabajador : trabajador.sid });
+            $uibModalInstance.close({ mensaje : response.mensaje, sidTrabajador : $scope.trabajador.sid });
           }else{
             // error
             $scope.erroresDatos = response.errores;

@@ -12,22 +12,34 @@
                 <th>RUT</th>        
                 <th>Nombre</th>                
                 <th>Cargo</th>                
-                <th>Sueldo Base</th>                
+                <th>Sueldo</th>                
                 <th>Total Imponibles</th>                
                 <th>Total No Imponibles</th>                
+                <th>S. Cesantía</th>                
+                <th>S.I.S.</th>                
+                <th>Fonasa</th>                
+                <th>Caja</th>                
+                <th>Mutual</th>                
                 <th>Total Aportes</th>                
+                <th>Sueldo Líquido</th>                
             </tr>
         </thead>
         <tbody>
             @foreach($planilla as $dato)
                 <tr>
-                    <td>{{ $dato->trabajador_rut }}</td>
-                    <td>{{ $dato->trabajador_nombres }} {{ $dato->trabajador_apellidos }}</td>
-                    <td>{{ $dato->trabajador_cargo }}</td>
-                    <td>{{ $dato->sueldo_base }}</td>
-                    <td>{{ $dato->imponibles }}</td>
-                    <td>{{ $dato->no_imponibles }}</td>
-                    <td>{{ $dato->total_aportes }}</td>
+                    <td>{{ $dato['rutFormato'] }}</td>
+                    <td>{{ $dato['nombreCompleto'] }}</td>
+                    <td>{{ $dato['cargo'] }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['sueldo']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['imponibles']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['noImponibles']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['seguroCesantia']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['sis']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['fonasa']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['caja']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['mutual']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['aportes']) }}</td>
+                    <td>{{ Funciones::formatoPesos($dato['sueldoLiquido']) }}</td>
                 </tr>
             @endforeach
         </tbody>        

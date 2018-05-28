@@ -17,8 +17,8 @@
             <div class="col-sm-3">
               <select class="form-control form-white" ng-model="cierre.anio" ng-options="anio as anio.nombre for anio in anios" ng-change="selectAnio()"> 
               </select>
-        
             </div> 
+            
             <div class="col-sm-5 pull-right" ng-if="cargado && isCME && false">
               <a href="#liquidaciones-de-sueldo" ng-if="!isLiquidaciones">
                 <div class="alert alert-danger">
@@ -73,7 +73,10 @@
                         <button ng-click="centralizar(mes)" type="button" class="btn btn-primary btn-xs">Centralizar</button>
                       </div>
                       <div class="col-sm-2" ng-if="isFirst($index)">
-                        <button confirmation-click="confirmar(mes)" confirmation-needed="Se inciará el mes de {{ mes.nombre }} {{ datos.nombre }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
+                        <button confirmation-click="confirmar(mes, datos.nombre, true)" confirmation-needed="Se inciará el mes de {{ mes.nombre }} {{ datos.nombre }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
+                      </div>
+                      <div class="col-sm-2" ng-if="isDisponibleSinIndicadores($index) && false">
+                        <button confirmation-click="confirmar(mes, datos.nombre, false)" confirmation-needed="Se inciará el mes de {{ mes.nombre }} {{ datos.nombre }} <b>sin los indicadores previsionales</b>. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar sin indicadores</button>
                       </div>
                     </div>
                   </td>
@@ -114,10 +117,13 @@
                         <button ng-click="centralizar(mes)" type="button" class="btn btn-primary btn-xs">Centralizar</button>
                       </div>
                       <div class="col-sm-2" ng-if="isFirst($index)">
-                        <button confirmation-click="confirmar(mes)" confirmation-needed="Se iniciará el mes de {{ mes.nombre }} {{ datos.nombre }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
+                        <button confirmation-click="confirmar(mes, datos.nombre, true)" confirmation-needed="Se iniciará el mes de {{ mes.nombre }} {{ datos.nombre }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar</button>
+                      </div>
+                      <div class="col-sm-2" ng-if="isDisponibleSinIndicadores($index) && false">
+                        <button confirmation-click="confirmar(mes, datos.nombre, false)" confirmation-needed="Se inciará el mes de {{ mes.nombre }} {{ datos.nombre }} <b>sin los indicadores previsionales</b>. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar sin indicadores</button>
                       </div>
                       <div class="col-sm-2" ng-if="isNuevoAnio && mes.nombre=='Diciembre' && mes.iniciado">
-                        <button confirmation-click="confirmar({ nombre : 'NuevoAnio' })" confirmation-needed="Se inciará el mes de Enero de 2018. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar nuevo Año</button>
+                        <button confirmation-click="confirmar({ nombre : 'NuevoAnio' })" confirmation-needed="Se inciará el mes de Enero de {{ datos.nombre + 1 }}. ¿Seguro que desea continuar?" type="button" class="btn btn-primary btn-xs">Iniciar Año {{ datos.nombre + 1 }}</button>
                       </div>
                     </div>
                   </td>

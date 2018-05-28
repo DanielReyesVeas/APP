@@ -10,7 +10,9 @@ class LogsController extends \BaseController {
     
     public function index()
     {
-        $logs = Logs::orderBy('menu_id')->orderBy('created_at', 'DESC')->get();
+        $mes = date('Y-m-d');
+        $mesAnterior = date('Y-m-d', strtotime('-' . 1 . ' month', strtotime($mes)));
+        $logs = Logs::where('created_at', '>=', new DateTime($mesAnterior))->orderBy('menu_id')->orderBy('created_at', 'DESC')->get();
         $listaLogs=array();
         
         if( $logs->count() ){
@@ -56,7 +58,8 @@ class LogsController extends \BaseController {
                         'id' => $log->submenu_id,
                         'nombre' => $log->submenu
                     ),
-                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($log->created_at)),
+                    'fechaIngreso' => date('d-m-Y H:i', strtotime($log->created_at)),
+                    'fechaOrden' => date('U', strtotime($log->created_at))
                 );
             }
         }
@@ -76,11 +79,11 @@ class LogsController extends \BaseController {
                 }
             }            
         }
-        
-        
+                
         $datos = array(
             'datos' => $listaLogs,
-            'menus' => $listaMenus
+            'menus' => $listaMenus,
+            'date' => $mesAnterior
         );
         
         return Response::json($datos);

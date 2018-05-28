@@ -18,15 +18,13 @@ class JornadasController extends \BaseController {
         $listaJornadas=array();
         if( $jornadas->count() ){
             foreach( $jornadas as $jornada ){
+                $tramos = $jornada->tramos();
                 $listaJornadas[]=array(
                     'id' => $jornada->id,
                     'sid' => $jornada->sid,
                     'nombre' => $jornada->nombre,
-                    'tramoHoraExtra' => array(
-                        'id' => $jornada->tramoHoraExtra->id,
-                        'jornada' => $jornada->tramoHoraExtra->jornada,
-                        'factor' => $jornada->tramoHoraExtra->factor
-                    ),
+                    'tramos' => $tramos['tramos'],
+                    'tramosMostrar' => $tramos['mostrar'],
                     'numeroHoras' => $jornada->numero_horas
                 );
             }
@@ -66,8 +64,15 @@ class JornadasController extends \BaseController {
             $jornada->sid = Funciones::generarSID();
             $jornada->nombre = $datos['nombre'];
             $jornada->numero_horas = $datos['numero_horas'];
-            $jornada->tramo_hora_extra_id = $datos['tramo_hora_extra_id'];
             $jornada->save();
+            if($datos['tramos']){
+                foreach($datos['tramos'] as $tramo){
+                    $nuevaJornadaTramo = new JornadaTramo();
+                    $nuevaJornadaTramo->jornada_id = $jornada->id;
+                    $nuevaJornadaTramo->tramo_id = $tramo['idTramo'];
+                    $nuevaJornadaTramo->save();
+                }
+            }
             $respuesta=array(
             	'success' => true,
             	'mensaje' => "La Información fue almacenada correctamente",
@@ -99,11 +104,7 @@ class JornadasController extends \BaseController {
             'sid' => $jornada->sid,
             'nombre' => $jornada->nombre,
             'numeroHoras' => $jornada->numero_horas,
-            'tramoHoraExtra' => array(
-                'id' => $jornada->tramoHoraExtra->id,
-                'jornada' => $jornada->tramoHoraExtra->jornada,
-                'factor' => $jornada->tramoHoraExtra->factor
-            )
+            'tramos' => $jornada->tramos()['tramos']
         );        
         
         $datos = array(
@@ -144,12 +145,37 @@ class JornadasController extends \BaseController {
         if(!$errores and $jornada){
             $jornada->nombre = $datos['nombre'];
             $jornada->numero_horas = $datos['numero_horas'];
-            $jornada->tramo_hora_extra_id = $datos['tramo_hora_extra_id'];
+            $tramos = $jornada->comprobarTramos($datos['tramos']);
+            if($tramos['create']){
+                foreach($tramos['create'] as $tramo){
+                    $nuevaJornadaTramo = new JornadaTramo();
+                    $nuevaJornadaTramo->jornada_id = $tramo['jornada_id'];
+                    $nuevaJornadaTramo->tramo_id = $tramo['tramo_id'];
+                    $nuevaJornadaTramo->save();
+                }
+            }
+            
+            if($tramos['update']){
+                foreach($tramos['update'] as $tramo){
+                    $nuevaJornadaTramo = JornadaTramo::find($tramo['id']);
+                    $nuevaJornadaTramo->jornada_id = $tramo['jornada_id'];
+                    $nuevaJornadaTramo->tramo_id = $tramo['tramo_id'];
+                    $nuevaJornadaTramo->save();
+                }
+            }
+            
+            if($tramos['destroy']){
+                foreach($tramos['destroy'] as $tramo){
+                    $nuevaJornadaTramo = JornadaTramo::find($tramo['id']);
+                    $nuevaJornadaTramo->delete();
+                }
+            }
             $jornada->save();
             $respuesta = array(
             	'success' => true,
             	'mensaje' => "La Información fue actualizada correctamente",
-                'sid' => $jornada->sid
+                'sid' => $jornada->sid,
+                'tramos' => $tramos
             );
         }else{
             $respuesta = array(
@@ -174,7 +200,8 @@ class JornadasController extends \BaseController {
         $errores = $jornada->comprobarDependencias();
         
         if(!$errores){
-            Logs::crearLog('#jornadas', $jornada->id, $jornada->nombre, 'Delete');       
+            Logs::crearLog('#jornadas', $jornada->id, $jornada->nombre, 'Delete');    
+            $jornada->eliminarTramos();
             $jornada->delete();
             $datos = array(
                 'success' => true,
@@ -193,6 +220,7 @@ class JornadasController extends \BaseController {
     public function get_datos_formulario(){
         $datos = array(
             'nombre' => Input::get('nombre'),
+            'tramos' => Input::get('tramos'),
             'tramo_hora_extra_id' => Input::get('idTramoHoraExtra'),
             'numero_horas' => Input::get('numeroHoras')
         );

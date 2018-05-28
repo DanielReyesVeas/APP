@@ -13,14 +13,15 @@
             <label class="control-label">Código:</label>
             <input ng-model="tipoHaber.codigo" ng-change="erroresDatos.codigo=null" class="form-control form-white" min="0" type="number" placeholder="cod" required >
           </div>
-          <div class="form-group col-sm-8 required">
+          <div class="form-group col-sm-8 required" ng-class="{ 'has-error': erroresDatos.nombre }">
             <label class="control-label">Nombre:</label>
-            <input ng-model="tipoHaber.nombre" class="form-control form-white" type="text" placeholder="ingrese el nombre" ng-disabled="tipoHaber.id<15" required >
+            <input ng-model="tipoHaber.nombre" ng-change="erroresDatos.nombre=null" class="form-control form-white" type="text" placeholder="ingrese el nombre" ng-disabled="tipoHaber.id<15" required >
           </div>
+          <span class="col-sm-8 col-sm-offset-3 text-danger" ng-if="erroresDatos.nombre"><b>{{ erroresDatos.nombre[0] }}</b></span>
           <span class="col-sm-12 text-danger" ng-if="erroresDatos.codigo"><b>{{ erroresDatos.codigo[0] }}</b></span>
         </div>
 
-        <div class="form-group col-sm-12" style="margin-top: 40px;" ng-if="!tipoHaber.id || tipoHaber.id>15">
+        <div class="form-group col-sm-12" style="margin-top: 40px;" ng-if="!tipoHaber.id || tipoHaber.id>15 || tipoHaber.nombre=='Colación' || tipoHaber.nombre=='Movilización' || tipoHaber.nombre=='Viático'">
           <div class="col-sm-6">
             <label class="checkbox-inline">
               <input type="checkbox" id="inlineCheckbox1" ng-model="tipoHaber.imponible" icheck> Imponible
@@ -33,7 +34,7 @@
           </div>          
         </div>
 
-        <div class="form-group col-sm-12" style="margin-top: 40px;" ng-if="!tipoHaber.id || tipoHaber.id>15">
+        <div class="form-group col-sm-12" style="margin-top: 40px;" ng-if="!tipoHaber.id || tipoHaber.id>15 || tipoHaber.nombre=='Colación' || tipoHaber.nombre=='Movilización' || tipoHaber.nombre=='Viático'">
           
           <div class="col-sm-4">
             <label class="checkbox-inline">
@@ -47,7 +48,7 @@
           </div>
         </div>     
            
-        <div class="form-group col-sm-12" style="margin-top: 40px;" ng-if="!tipoHaber.id || tipoHaber.id>15">
+        <div class="form-group col-sm-12" style="margin-top: 40px;" ng-if="!tipoHaber.id || tipoHaber.id>15 || tipoHaber.nombre=='Colación' || tipoHaber.nombre=='Movilización' || tipoHaber.nombre=='Viático'">
           <div class="col-sm-6">
             <label class="checkbox-inline">
               <input type="checkbox" id="inlineCheckbox2" ng-model="tipoHaber.calculaHorasExtras" icheck> Calcular Horas Extras
@@ -61,8 +62,8 @@
         </div>
 
       </div>
-    </form>
-  </div>
+    </div>
+  </form>
 </div>
 
 <div class="modal-footer">

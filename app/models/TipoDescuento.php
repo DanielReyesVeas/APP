@@ -82,6 +82,35 @@ class TipoDescuento extends Eloquent {
         return null;
     }
     
+    static function descuentosCuentaAhorro()
+    {
+        $idTipoDescuento = TipoDescuento::where('estructura_descuento_id', 7)->lists('id');
+        $listaDescuentos = array();
+        $idMes = \Session::get('mesActivo')->id;
+        $mes = \Session::get('mesActivo')->mes;
+        $misDescuentos = Descuento::whereIn('tipo_descuento_id', $idTipoDescuento)->get();
+        
+        if( $misDescuentos->count() ){
+            foreach($misDescuentos as $descuento){
+                $listaDescuentos[] = array(
+                    'id' => $descuento->id,
+                    'sid' => $descuento->sid,
+                    'moneda' => $descuento->moneda,
+                    'monto' => $descuento->monto,
+                    'porMes' => $descuento->por_mes ? true : false,
+                    'rangoMeses' => $descuento->rango_meses ? true : false,
+                    'permanente' => $descuento->permanente ? true : false,
+                    'mes' => $descuento->mes ? Funciones::obtenerMesAnioTextoAbr($descuento->mes) : '',
+                    'desde' => $descuento->desde ? Funciones::obtenerMesAnioTextoAbr($descuento->desde) : '',
+                    'hasta' => $descuento->hasta ? Funciones::obtenerMesAnioTextoAbr($descuento->hasta) : '',
+                    'trabajador' => $descuento->trabajadorDescuento(),
+                    'fechaIngreso' => date('Y-m-d H:i:s', strtotime($descuento->created_at))
+                );
+            }
+        }
+        return $listaDescuentos;
+    }
+    
     public function nombreAfp(){
         $afp = Glosa::find($this->nombre);
         
@@ -167,7 +196,7 @@ class TipoDescuento extends Eloquent {
             foreach($codigos as $codigo){
                 if($codigo['codigo']==$datos['codigo'] && $codigo['id']!=$this->id){
                     $errores = new stdClass();
-                    $errores->codigo = array('El c贸digo ya se encuentra registrado');
+                    $errores->codigo = array('El código ya se encuentra registrado');
                     return $errores;
                 }
             }
@@ -181,7 +210,7 @@ class TipoDescuento extends Eloquent {
         
         if($descuentos->count()){
             $errores = new stdClass();
-            $errores->error = array("El Tipo de Descuento <b>" . $this->nombre . "</b> se encuentra asignado.<br /> Debe <b>eliminar</b> estos descuentos primero para poder realizar esta acci贸n.");
+            $errores->error = array("El Tipo de Descuento <b>" . $this->nombre . "</b> se encuentra asignado.<br /> Debe <b>eliminar</b> estos descuentos primero para poder realizar esta acción.");
             return $errores;
         }
         
@@ -189,16 +218,27 @@ class TipoDescuento extends Eloquent {
     }
     
     static function errores($datos){
-         
-        $rules = array(
-            'codigo' => 'required|unique:tipos_descuento',
-            'nombre' => 'required'
-        );
+        if($datos['id']){
+            $rules =    array(
+                'codigo' => 'required|unique:tipos_descuento,codigo,'.$datos['id'],
+                'nombre' => 'required|unique:tipos_descuento,nombre,'.$datos['id']
+            );
+        }else{
+            $rules =    array(
+                'codigo' => 'required|unique:tipos_descuento,codigo',
+                'nombre' => 'required|unique:tipos_descuento,nombre'
+            );
+        }
 
         $message = array(
             'tipoDescuento.required' => 'Obligatorio!'
         );
-
+        $message =  array(
+            'nombre.required' => 'Obligatorio!',
+            'codigo.required' => 'Obligatorio!',
+            'nombre.unique' => 'El nombre ya se encuentra registrado!',
+            'codigo.unique' => 'El código ya se encuentra registrado!'
+        );
         $verifier = App::make('validation.presence');
         //$verifier->setConnection("principal");
 
@@ -206,9 +246,11 @@ class TipoDescuento extends Eloquent {
         $validation->setPresenceVerifier($verifier);
 
         if($validation->fails()){
-            return $validation->messages();
+            // la validacion tubo errores
+            return $validation->getMessageBag()->toArray();
         }else{
+            // no hubo errores de validacion
             return false;
-        }
+        }        
     }
 }

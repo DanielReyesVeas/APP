@@ -13,8 +13,8 @@
       
       <div class="panel-body">          
         <div class="form-group">  
-          <label class="col-sm-2 control-label">Nombre:</label>
-          <div class="col-sm-3" style="padding:0px !important;">
+          <label class="col-sm-2 control-label" ng-if="haber.id" >Nombre:</label>
+          <div class="col-sm-3" style="padding:0px !important;" ng-if="haber.id" >
             <ul class="dropdown-menu">
               <li ng-repeat="match in matches track by $index" id="{{::match.id}}">
               </li>
@@ -36,9 +36,17 @@
               </div>       
             </div>
           </div>
+          <label class="col-sm-2 control-label" ng-if="objeto.haber.sid=='Colación' || objeto.haber.sid=='Movilización' || objeto.haber.sid=='Viático'">Proporcional:</label>         
+          <div class="col-sm-2" ng-if="objeto.haber.sid=='Colación' || objeto.haber.sid=='Movilización' || objeto.haber.sid=='Viático'">
+            <label class="switch switch-green">
+              <input class="switch-input" name="proporcional" ng-model="objeto.haber.proporcional" type="checkbox">
+              <span class="switch-label" data-on="SI" data-off="NO"></span>
+              <span class="switch-handle"></span>
+            </label>
+          </div>
         </div>  
 
-        <div class="container" ng-show="mostrar && objeto.haber.trabajador">
+        <div class="container" ng-show="mostrar && objeto.haber.trabajador && objeto.haber.sid!='Colación' && objeto.haber.sid!='Movilización' && objeto.haber.sid!='Viático'">
 
           <div class="col-sm-12" style="margin: 40px;">
             <div class="form-group form-group-md">

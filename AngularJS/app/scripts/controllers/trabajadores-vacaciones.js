@@ -382,7 +382,12 @@ angular.module('angularjsApp')
   .controller('FormRecalculoVacacionesCtrl', function ($rootScope, $uibModal, objeto, $filter, $scope, $uibModalInstance) { 
     
     $scope.trabajador = angular.copy(objeto);
-    $scope.vacaciones = { dias : $scope.trabajador.vacacionesIniciales };
+    var dias = 0;
+    if($scope.trabajador.vacacionesIniciales){
+      dias = $scope.trabajador.vacacionesIniciales;
+    }
+    
+    $scope.vacaciones = { dias : dias };
 
     $scope.recalcular = function(){
       $uibModalInstance.close($scope.vacaciones.dias);

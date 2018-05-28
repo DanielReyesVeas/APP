@@ -39,10 +39,14 @@ class EmpresasController extends \BaseController {
     }
 
     public function lista_empresas_select()
-    {
+    {        
         Config::set('database.default', 'principal' );
         $lista=array();
-        $empresas = Empresa::orderBy('razon_social')->orderBy('nombre_fantasia')->get();
+        if(Auth::usuario()->user()->id > 1){
+            $empresas = Empresa::orderBy('razon_social')->where('habilitada', 1)->orderBy('nombre_fantasia')->get();
+        }else{
+            $empresas = Empresa::orderBy('razon_social')->orderBy('nombre_fantasia')->get();            
+        }
         if($empresas->count()){
             foreach( $empresas as $empresa ){
                 $lista[]=array(
@@ -54,6 +58,76 @@ class EmpresasController extends \BaseController {
         }
         return Response::json($lista);
     }
+    
+    public function cambiarConfiguracion()
+    {
+        $datos = Input::all();
+        
+        $var = VariableGlobal::where('variable', 'configuracion')->first();
+        
+        if($var){
+            $var->valor = $datos['valor'];
+            $var->save();
+        }
+        
+        Empresa::configuracion();
+        
+        $respuesta=array(
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente",
+            'id' => $var
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function cambiarValorConfiguracion()
+    {
+        $datos = Input::all();
+        $configuracion = \Session::get('configuracion');
+        
+        if($configuracion->configuracion=='g'){
+            $var = VariableGlobal::where('variable', $datos['variable'])->first();
+            if($var){
+                $var->valor = $datos['valor'];
+                $var->save();
+            }
+        }else{
+            $var = VariableSistema::where('variable', $datos['variable'])->first();     
+            if($var){
+                $var->valor1 = $datos['valor'];
+                $var->save();
+            }
+        }
+        
+        Empresa::configuracion();
+        
+        $respuesta=array(
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente",
+            'id' => $datos
+        );
+        
+        return Response::json($respuesta);
+    }
+    
+    public function habilitar()
+    {
+        $datos = Input::all();
+        $empresa = Empresa::find($datos['id']);
+        if($empresa){
+            $empresa->habilitada = $datos['habilitada'];
+            $empresa->save();
+        }
+        
+        $respuesta=array(
+            'success' => true,
+            'mensaje' => "La Información fue actualizada correctamente",
+            'id' => $empresa->id
+        );
+        
+        return Response::json($respuesta);
+    }
 
     /**
 	 * Display a listing of the resource.
@@ -63,7 +137,8 @@ class EmpresasController extends \BaseController {
 	 */
 	public function index()
 	{
-        Config::set('database.default', 'principal' );
+        $permisos = MenuSistema::obtenerPermisosAccesosURL(Auth::usuario()->user(), '#empresas');
+        Config::set('database.default', 'principal');
         $lista=array();
         $empresas = Empresa::orderBy('razon_social')->orderBy('nombre_fantasia')->get();
         $mutuales = Glosa::listaMutuales();
@@ -76,16 +151,21 @@ class EmpresasController extends \BaseController {
                     'razonSocial' => $empresa->razon_social,
                     'nombreFantasia' => $empresa->nombre_fantasia,
                     'rut' => $empresa->rut_formato(),
-                    'nRut' => '_'.$empresa->rut
+                    'nRut' => '_'.$empresa->rut,
+                    'habilitada' => $empresa->habilitada ? true : false
                 );
             }
         }
         
+        $emp = Empresa::habilitadas($lista);
+
         $respuesta = array(
             'success' => true,
             'empresas' => $lista,
+            'lista' => $emp,
             'mutuales' => $mutuales,
-            'cajas' => $cajas
+            'cajas' => $cajas,
+            'accesos' => $permisos
         );
         
         return Response::json($respuesta);
@@ -341,7 +421,7 @@ c139f46406b37dedd4062fea30a5ccec
                 if( $datos['base_datos'] == "100000" ){
                     // estructura original del sistema
                     $archivo = public_path()."/estructura_empresa.sql";
-
+                    
                     shell_exec("mysql -u ".$userBaseDatos." -p" . $passBaseDatos . " ".$nombreBaseDatos." < ".$archivo);
                 }else{
                     $empresaOrigen = Empresa::find($datos['base_datos']);
@@ -632,6 +712,22 @@ c139f46406b37dedd4062fea30a5ccec
         
         return Response::json($datos);
 	}
+    
+    public function notificaciones()
+    {
+        $notificaciones = array();
+        if(Empresa::variableConfiguracion('notificaciones') && MesDeTrabajo::isUltimoMes()){
+            Trabajador::trabajadoresRMI($notificaciones);
+            MesDeTrabajo::isMesDisponible($notificaciones);
+            
+        }
+        
+        $datos = array(
+            'notificaciones' => $notificaciones
+        );
+        
+        return Response::json($datos);
+    }
 
 
 	/**
@@ -721,7 +817,7 @@ c139f46406b37dedd4062fea30a5ccec
                 }
             }
             
-            $empresa->actualizarCajas($datos['cajas']);
+            $cajas = $empresa->actualizarCajas($datos['cajas']);
             $empresa->actualizarMutuales($datos['mutuales']);
             
             
@@ -828,7 +924,7 @@ c139f46406b37dedd4062fea30a5ccec
                 'crear' => false,
                 'editar' => true,
                 'id' => $empresa->id,
-                'zonas' => $zonas
+                'cajas' => $datos['cajas']
             );
         }else{
             $respuesta=array(
